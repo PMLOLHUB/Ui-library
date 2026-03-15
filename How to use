@@ -1,0 +1,78 @@
+local Library = loadstring(game:HttpGet("https://github.com/PMLOLHUB/Ui-library/raw/refs/heads/main/UI%20PMS"))()
+
+local Window = Library:CreateWindow("PM",{
+Logo="rbxassetid://98985755793415",
+
+ToggleConfig={Text="Open"}
+})
+
+-- Tabs --- more icon https://lucide.dev/icons/
+local Main = Window:CreateCategory("Home","home")
+local Farm = Window:CreateCategory("Farm","axe")
+local Player = Window:CreateCategory("Player","user")
+local Settings = Window:CreateCategory("Settings","cog")
+
+-- Main
+Main:CreateLabel("Welcome")
+
+Main:CreateButton("Test Button",function()
+print("Button clicked")
+end)
+
+Main:CreateTextbox("Pet Name","Type here...",function(text)
+print("Pet:",text)
+end)
+
+Main:CreateSearchBar("Search Player...",function(text)
+print("Search:",text)
+end)
+
+-- Farm
+Farm:CreateLabel("Farm Setup")
+
+Farm:CreateDropdown("Weapon",{
+"Bare Hands","Sword","Katana","Devil Fruit"
+},function(v)
+print("Weapon:",v)
+end)
+
+Farm:CreateDropdown("Target",{
+"Slime","Goblin","Knight","Dragon"
+},function(v)
+print("Target:",v)
+end)
+
+Farm:CreateToggle("Auto Farm",false,function(v)
+print("Auto Farm:",v)
+end)
+
+-- Player
+Player:CreateSlider("WalkSpeed",16,250,16,function(v)
+local p=game.Players.LocalPlayer
+if p.Character and p.Character:FindFirstChild("Humanoid") then
+p.Character.Humanoid.WalkSpeed=v
+end
+end)
+
+Player:CreateSlider("JumpPower",50,500,50,function(v)
+local p=game.Players.LocalPlayer
+if p.Character and p.Character:FindFirstChild("Humanoid") then
+p.Character.Humanoid.JumpPower=v
+end
+end)
+
+Player:CreateToggle("God Mode",false,function(v)
+print("God Mode:",v)
+end)
+
+-- Settings
+Settings:CreateButton("Remove Fog",function()
+game.Lighting.FogEnd=100000
+end)
+
+Settings:CreateButton("copy",function()
+if setclipboard then
+setclipboard("https://scriptblox.com/u/PMHUB")
+end
+end)
+
