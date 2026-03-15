@@ -824,14 +824,15 @@ local Icons = {
 		["lucide-zoom-out"] = "rbxassetid://10747384679",
         }
 
-local function GetIcon(name)
-if Icons[name] then
-return Icons[name]
-end
-
-local lucideName = "lucide-" .. name
-return Icons[lucideName]
-end
+setmetatable(Icons,{
+	__index = function(t,k)
+		local v = rawget(t,"lucide-"..k)
+		if v then
+			rawset(t,k,v)
+			return v
+		end
+	end
+})
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
