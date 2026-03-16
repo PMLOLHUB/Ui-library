@@ -1212,8 +1212,8 @@ else
 ApplyTextColor(LabelText)
 end
 end
-        -- (ต่อจากส่วนที่ 1)
-        function CategoryElements:CreateButton(ButtonText, TextColor, Callback)
+
+function CategoryElements:CreateButton(ButtonText, TextColor, Callback)
             if type(TextColor) == "function" then
                 Callback = TextColor
                 TextColor = nil
