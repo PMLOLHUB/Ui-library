@@ -1549,7 +1549,7 @@ function CategoryElements:CreateButton(ButtonText, TextColor, Callback)
                 local OptionBtn = Instance.new("TextButton")
                 OptionBtn.Parent = OptionList
                 OptionBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-                OptionBtn.BackgroundTransparency = GTrans -- ใช้ค่ากลาง
+                OptionBtn.BackgroundTransparency = GTrans 
                 OptionBtn.BorderSizePixel = 0
                 OptionBtn.Size = UDim2.new(1, 0, 0, 30)
                 OptionBtn.Font = Enum.Font.Gotham
