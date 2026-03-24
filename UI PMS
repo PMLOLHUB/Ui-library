@@ -1152,6 +1152,7 @@ function Library:CreateWindow(WindowName, Config)
             local newWidth = math.clamp(startSize.X + delta.X, 350, 800)
             local newHeight = math.clamp(startSize.Y + delta.Y, 250, 600)
             MainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
+            SaveSize(MainFrame.Size)
         end
     end)
 
