@@ -1,11 +1,11 @@
 local Library = {}
 local HttpService = game:GetService("HttpService")
 local ConfigFileName = "PMS_Size.json"
+local EnableSave = true
 
 local function SaveSize(size)
-    if not (writefile and isfile and readfile) then
-        return
-    end
+    if not EnableSave then return end
+    if not (writefile and isfile and readfile) then return end
 
     local data = {
         Width = size.X.Offset,
@@ -24,21 +24,19 @@ local function SaveSize(size)
 end
 
 local function LoadSize()
-    if not (isfile and readfile) then
-        return nil
-    end
+    if not EnableSave then return nil end
+    if not (isfile and readfile) then return nil end
+    if not isfile(ConfigFileName) then return nil end
 
-    if isfile(ConfigFileName) then
-        local success, content = pcall(readfile, ConfigFileName)
-        if success and content then
-            local ok, data = pcall(function()
-                return HttpService:JSONDecode(content)
-            end)
+    local success, content = pcall(readfile, ConfigFileName)
+    if not success or not content then return nil end
 
-            if ok and data and data.Width and data.Height then
-                return UDim2.new(0, data.Width, 0, data.Height)
-            end
-        end
+    local ok, data = pcall(function()
+        return HttpService:JSONDecode(content)
+    end)
+
+    if ok and data and data.Width and data.Height then
+        return UDim2.new(0, data.Width, 0, data.Height)
     end
 
     return nil
@@ -1067,9 +1065,9 @@ function Library:CreateWindow(WindowName, Config)
     Instance.new("UICorner", MainFrame)
 
     local savedSize = LoadSize()
-    if savedSize then
-        MainFrame.Size = savedSize
-    end
+if savedSize then
+    MainFrame.Size = savedSize
+end
 
     local MainStroke = Instance.new("UIStroke", MainFrame)
     MainStroke.Thickness = 2
@@ -1147,21 +1145,19 @@ function Library:CreateWindow(WindowName, Config)
     end)
 
     UserInputService.InputChanged:Connect(function(input)
-        if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - resizeStart
-            local newWidth = math.clamp(startSize.X + delta.X, 350, 800)
-            local newHeight = math.clamp(startSize.Y + delta.Y, 250, 600)
-            MainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
-            SaveSize(MainFrame.Size)
-        end
-    end)
+    if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - resizeStart
+        local newWidth = math.clamp(startSize.X + delta.X, 350, 800)
+        local newHeight = math.clamp(startSize.Y + delta.Y, 250, 600)
+        MainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
+    end
+end)
 
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            resizing = false
-            SaveSize(MainFrame.Size)
-        end
-    end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        resizing = false
+    end
+end)
 
     local Sidebar = Instance.new("ScrollingFrame")
     Sidebar.Name = "Sidebar"
