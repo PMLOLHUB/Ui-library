@@ -1794,150 +1794,162 @@ function Library:CreateWindow(WindowName, Config)
                 end
             end)
         end
-        function CategoryElements:CreateDropdown(DropdownText, Options, Callback)
-            local isOpen = false
-            local DropdownContainer = Instance.new('Frame')
+        function CategoryElements:CreateDropdown(DropdownText, Options, Default, Callback)
 
-            DropdownContainer.Parent = CategoryPage
-            DropdownContainer.BackgroundColor3 = Color3.fromRGB(85, 85, 85)
-            DropdownContainer.BackgroundTransparency = GTrans
-            DropdownContainer.Size = UDim2.new(0.95, 0, 0, 35)
-            DropdownContainer.ClipsDescendants = true
-
-            Instance.new('UICorner', DropdownContainer)
-
-            local DropdownBtn = Instance.new('TextButton')
-
-            DropdownBtn.Parent = DropdownContainer
-            DropdownBtn.BackgroundTransparency = 1
-            DropdownBtn.Size = UDim2.new(1, 0, 0, 35)
-            DropdownBtn.Font = Enum.Font.Gotham
-            DropdownBtn.Text = ' ' .. DropdownText .. ' : Select Option'
-            DropdownBtn.TextSize = 14
-            DropdownBtn.TextXAlignment = Enum.TextXAlignment.Left
-            DropdownBtn.TextTruncate = Enum.TextTruncate.AtEnd
-
-            ApplyTextColor(DropdownBtn)
-
-            local ArrowIcon = Instance.new('TextLabel')
-
-            ArrowIcon.Parent = DropdownBtn
-            ArrowIcon.BackgroundTransparency = 1
-            ArrowIcon.Position = UDim2.new(1, -30, 0, 0)
-            ArrowIcon.Size = UDim2.new(0, 30, 1, 0)
-            ArrowIcon.Font = Enum.Font.GothamBold
-            ArrowIcon.Text = '\u{25bc}'
-            ArrowIcon.TextSize = 12
-
-            ApplyTheme(ArrowIcon, 'TextColor3')
-
-            local OptionList = Instance.new('Frame')
-
-            OptionList.Parent = DropdownContainer
-            OptionList.BackgroundColor3 = Color3.fromRGB(75, 75, 75)
-            OptionList.BackgroundTransparency = GTrans
-            OptionList.Position = UDim2.new(0, 0, 0, 35)
-            OptionList.Size = UDim2.new(1, 0, 1, -35)
-
-            local ListLayout = Instance.new('UIListLayout', OptionList)
-
-            ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-            local SearchBox = Instance.new('TextBox')
-
-            SearchBox.Parent = OptionList
-            SearchBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
-            SearchBox.BackgroundTransparency = GTrans
-            SearchBox.BorderSizePixel = 0
-            SearchBox.Size = UDim2.new(1, 0, 0, 30)
-            SearchBox.Font = Enum.Font.Gotham
-            SearchBox.PlaceholderText = 'Search in Dropdown...'
-            SearchBox.Text = ''
-            SearchBox.TextSize = 14
-            SearchBox.TextTruncate = Enum.TextTruncate.AtEnd
-
-            ApplyTextColor(SearchBox)
-
-            local OptionBtns = {}
-
-            local function UpdateSize()
-                local visibleCount = 0
-
-                for _, btn in ipairs(OptionBtns)do
-                    if btn.Visible then
-                        visibleCount = visibleCount + 1
-                    end
-                end
-
-                local targetHeight = isOpen and (65 + (visibleCount * 30)) or 35
-
-                TweenService:Create(DropdownContainer, TweenInfo.new(0.2), {
-                    Size = UDim2.new(0.95, 0, 0, targetHeight),
-                }):Play()
-
-                ArrowIcon.Text = isOpen and '\u{25b2}' or '\u{25bc}'
-            end
-
-            DropdownBtn.MouseButton1Click:Connect(function()
-                isOpen = not isOpen
-                SearchBox.Text = ''
-
-                for _, btn in ipairs(OptionBtns)do
-                    btn.Visible = true
-                end
-
-                UpdateSize()
-            end)
-            SearchBox:GetPropertyChangedSignal('Text'):Connect(function()
-                local query = string.lower(SearchBox.Text or '')
-
-                for _, btn in ipairs(OptionBtns)do
-                    local txt = string.lower(tostring(btn:GetAttribute('OptionText') or btn.Text or ''))
-                    local visible = (query == '') or (string.find(txt, query) ~= nil)
-
-                    btn.Visible = visible
-                end
-
-                UpdateSize()
-            end)
-
-            for _, option in ipairs(Options)do
-                local OptionBtn = Instance.new('TextButton')
-
-                OptionBtn.Parent = OptionList
-                OptionBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-                OptionBtn.BackgroundTransparency = GTrans
-                OptionBtn.BorderSizePixel = 0
-                OptionBtn.Size = UDim2.new(1, 0, 0, 30)
-                OptionBtn.Font = Enum.Font.Gotham
-                OptionBtn.Text = ' ' .. option
-
-                OptionBtn:SetAttribute('OptionText', option)
-
-                OptionBtn.TextXAlignment = Enum.TextXAlignment.Left
-                OptionBtn.TextSize = 14
-
-                ApplyTextColor(OptionBtn)
-                table.insert(OptionBtns, OptionBtn)
-                OptionBtn.MouseButton1Click:Connect(function()
-                    DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. option
-                    isOpen = false
-
-                    UpdateSize()
-
-                    if Callback then
-                        Callback(option)
-                    end
-                end)
-            end
-
-            UpdateSize()
-        end
-
-        return CategoryElements
+    if type(Default) == 'function' then
+        Callback = Default
+        Default = nil
     end
 
-    return WindowElements
-end
+    local isOpen = false
+    local DropdownContainer = Instance.new('Frame')
 
-return Library
+    DropdownContainer.Parent = CategoryPage
+    DropdownContainer.BackgroundColor3 = Color3.fromRGB(85, 85, 85)
+    DropdownContainer.BackgroundTransparency = GTrans
+    DropdownContainer.Size = UDim2.new(0.95, 0, 0, 35)
+    DropdownContainer.ClipsDescendants = true
+
+    Instance.new('UICorner', DropdownContainer)
+
+    local DropdownBtn = Instance.new('TextButton')
+
+    DropdownBtn.Parent = DropdownContainer
+    DropdownBtn.BackgroundTransparency = 1
+    DropdownBtn.Size = UDim2.new(1, 0, 0, 35)
+    DropdownBtn.Font = Enum.Font.Gotham
+    
+    -- ตั้งค่าเริ่มต้นของข้อความ (ถ้ามี Default ให้แสดงค่า Default ถ้าไม่มีให้ขึ้น Select Option)
+    local InitialValue = Default and tostring(Default) or "Select Option"
+    DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. InitialValue
+    
+    DropdownBtn.TextSize = 14
+    DropdownBtn.TextXAlignment = Enum.TextXAlignment.Left
+    DropdownBtn.TextTruncate = Enum.TextTruncate.AtEnd
+
+    ApplyTextColor(DropdownBtn)
+
+    local ArrowIcon = Instance.new('TextLabel')
+
+    ArrowIcon.Parent = DropdownBtn
+    ArrowIcon.BackgroundTransparency = 1
+    ArrowIcon.Position = UDim2.new(1, -30, 0, 0)
+    ArrowIcon.Size = UDim2.new(0, 30, 1, 0)
+    ArrowIcon.Font = Enum.Font.GothamBold
+    ArrowIcon.Text = '\u{25bc}'
+    ArrowIcon.TextSize = 12
+
+    ApplyTheme(ArrowIcon, 'TextColor3')
+
+    local OptionList = Instance.new('Frame')
+
+    OptionList.Parent = DropdownContainer
+    OptionList.BackgroundColor3 = Color3.fromRGB(75, 75, 75)
+    OptionList.BackgroundTransparency = GTrans
+    OptionList.Position = UDim2.new(0, 0, 0, 35)
+    OptionList.Size = UDim2.new(1, 0, 1, -35)
+
+    local ListLayout = Instance.new('UIListLayout', OptionList)
+    ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local SearchBox = Instance.new('TextBox')
+    SearchBox.Parent = OptionList
+    SearchBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
+    SearchBox.BackgroundTransparency = GTrans
+    SearchBox.BorderSizePixel = 0
+    SearchBox.Size = UDim2.new(1, 0, 0, 30)
+    SearchBox.Font = Enum.Font.Gotham
+    SearchBox.PlaceholderText = 'Search in Dropdown...'
+    SearchBox.Text = ''
+    SearchBox.TextSize = 14
+    SearchBox.TextTruncate = Enum.TextTruncate.AtEnd
+
+    ApplyTextColor(SearchBox)
+
+    local OptionBtns = {}
+
+    local function UpdateSize()
+        local visibleCount = 0
+
+        for _, btn in ipairs(OptionBtns)do
+            if btn.Visible then
+                visibleCount = visibleCount + 1
+            end
+        end
+
+        local targetHeight = isOpen and (65 + (visibleCount * 30)) or 35
+
+        TweenService:Create(DropdownContainer, TweenInfo.new(0.2), {
+            Size = UDim2.new(0.95, 0, 0, targetHeight),
+        }):Play()
+
+        ArrowIcon.Text = isOpen and '\u{25b2}' or '\u{25bc}'
+    end
+
+    DropdownBtn.MouseButton1Click:Connect(function()
+        isOpen = not isOpen
+        SearchBox.Text = ''
+
+        for _, btn in ipairs(OptionBtns)do
+            btn.Visible = true
+        end
+
+        UpdateSize()
+    end)
+    
+    SearchBox:GetPropertyChangedSignal('Text'):Connect(function()
+        local query = string.lower(SearchBox.Text or '')
+
+        for _, btn in ipairs(OptionBtns)do
+            local txt = string.lower(tostring(btn:GetAttribute('OptionText') or btn.Text or ''))
+            local visible = (query == '') or (string.find(txt, query) ~= nil)
+
+            btn.Visible = visible
+        end
+
+        UpdateSize()
+    end)
+
+    for _, option in ipairs(Options)do
+        local OptionBtn = Instance.new('TextButton')
+
+        OptionBtn.Parent = OptionList
+        OptionBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        OptionBtn.BackgroundTransparency = GTrans
+        OptionBtn.BorderSizePixel = 0
+        OptionBtn.Size = UDim2.new(1, 0, 0, 30)
+        OptionBtn.Font = Enum.Font.Gotham
+        OptionBtn.Text = ' ' .. option
+
+        OptionBtn:SetAttribute('OptionText', option)
+
+        OptionBtn.TextXAlignment = Enum.TextXAlignment.Left
+        OptionBtn.TextSize = 14
+
+        ApplyTextColor(OptionBtn)
+        table.insert(OptionBtns, OptionBtn)
+        
+        OptionBtn.MouseButton1Click:Connect(function()
+            DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. option
+            isOpen = false
+
+            UpdateSize()
+
+            if Callback then
+                Callback(option)
+            end
+        end)
+    end
+
+    UpdateSize()
+
+    local DropdownAPI = {}
+    function DropdownAPI:Set(value)
+        DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(value)
+        if Callback then
+            Callback(value)
+        end
+    end
+
+    return DropdownAPI
+end
