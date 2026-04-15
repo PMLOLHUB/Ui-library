@@ -1944,13 +1944,20 @@ function Library:CreateWindow(WindowName, Config)
     UpdateSize()
 
     local DropdownAPI = {}
-    function DropdownAPI:Set(value)
-        DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(value)
-        if Callback then
-            Callback(value)
-        end
-    end
-
-    return DropdownAPI
+function DropdownAPI:Set(value)
+	DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(value)
+	if Callback then
+		Callback(value)
+	end
 end
+
+return DropdownAPI
+end 
+
+	return CategoryElements
+end 
+
+	return WindowElements
+end 
+
 return Library
