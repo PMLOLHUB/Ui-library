@@ -1805,166 +1805,214 @@ end)
 end
 
 function CategoryElements:CreateDropdown(DropdownText, Options, Default, Callback)
-if type(Default) == 'function' then
-Callback = Default
-Default = nil
-end
+	if type(Default) == 'function' then
+		Callback = Default
+		Default = nil
+	end
 
-local isOpen = false
-local DropdownContainer = Instance.new('Frame')
+	local isOpen = false
+	local DropdownContainer = Instance.new('Frame')
 
-DropdownContainer.Parent = CategoryPage
-DropdownContainer.BackgroundColor3 = Color3.fromRGB(85, 85, 85)
-DropdownContainer.BackgroundTransparency = GTrans
-DropdownContainer.Size = UDim2.new(0.95, 0, 0, 35)
-DropdownContainer.ClipsDescendants = true
+	DropdownContainer.Parent = CategoryPage
+	DropdownContainer.BackgroundColor3 = Color3.fromRGB(85, 85, 85)
+	DropdownContainer.BackgroundTransparency = GTrans
+	DropdownContainer.Size = UDim2.new(0.95, 0, 0, 35)
+	DropdownContainer.ClipsDescendants = true
 
-Instance.new('UICorner', DropdownContainer)
+	Instance.new('UICorner', DropdownContainer)
 
-local DropdownBtn = Instance.new('TextButton')
+	local DropdownBtn = Instance.new('TextButton')
 
-DropdownBtn.Parent = DropdownContainer
-DropdownBtn.BackgroundTransparency = 1
-DropdownBtn.Size = UDim2.new(1, 0, 0, 35)
-DropdownBtn.Font = Enum.Font.Gotham
+	DropdownBtn.Parent = DropdownContainer
+	DropdownBtn.BackgroundTransparency = 1
+	DropdownBtn.Size = UDim2.new(1, 0, 0, 35)
+	DropdownBtn.Font = Enum.Font.Gotham
 
-if Default then
-DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(Default)
-else
-DropdownBtn.Text = ' ' .. DropdownText .. ' : Select Option'
-end
+	if Default then
+		DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(Default)
+	else
+		DropdownBtn.Text = ' ' .. DropdownText .. ' : Select Option'
+	end
 
-DropdownBtn.TextSize = 14
-DropdownBtn.TextXAlignment = Enum.TextXAlignment.Left
-DropdownBtn.TextTruncate = Enum.TextTruncate.AtEnd
+	DropdownBtn.TextSize = 14
+	DropdownBtn.TextXAlignment = Enum.TextXAlignment.Left
+	DropdownBtn.TextTruncate = Enum.TextTruncate.AtEnd
 
-ApplyTextColor(DropdownBtn)
+	ApplyTextColor(DropdownBtn)
 
-local ArrowIcon = Instance.new('TextLabel')
+	local ArrowIcon = Instance.new('TextLabel')
 
-ArrowIcon.Parent = DropdownBtn
-ArrowIcon.BackgroundTransparency = 1
-ArrowIcon.Position = UDim2.new(1, -30, 0, 0)
-ArrowIcon.Size = UDim2.new(0, 30, 1, 0)
-ArrowIcon.Font = Enum.Font.GothamBold
-ArrowIcon.Text = '\u{25bc}'
-ArrowIcon.TextSize = 12
+	ArrowIcon.Parent = DropdownBtn
+	ArrowIcon.BackgroundTransparency = 1
+	ArrowIcon.Position = UDim2.new(1, -30, 0, 0)
+	ArrowIcon.Size = UDim2.new(0, 30, 1, 0)
+	ArrowIcon.Font = Enum.Font.GothamBold
+	ArrowIcon.Text = '▼'
+	ArrowIcon.TextSize = 12
 
-ApplyTheme(ArrowIcon, 'TextColor3')
+	ApplyTheme(ArrowIcon, 'TextColor3')
 
-local OptionList = Instance.new('Frame')
+	local OptionList = Instance.new('Frame')
 
-OptionList.Parent = DropdownContainer
-OptionList.BackgroundColor3 = Color3.fromRGB(75, 75, 75)
-OptionList.BackgroundTransparency = GTrans
-OptionList.Position = UDim2.new(0, 0, 0, 35)
-OptionList.Size = UDim2.new(1, 0, 1, -35)
+	OptionList.Parent = DropdownContainer
+	OptionList.BackgroundColor3 = Color3.fromRGB(75, 75, 75)
+	OptionList.BackgroundTransparency = GTrans
+	OptionList.Position = UDim2.new(0, 0, 0, 35)
+	OptionList.Size = UDim2.new(1, 0, 1, -35)
 
-local ListLayout = Instance.new('UIListLayout', OptionList)
+	local ListLayout = Instance.new('UIListLayout', OptionList)
+	ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	local SearchBox = Instance.new('TextBox')
 
-local SearchBox = Instance.new('TextBox')
+	SearchBox.Parent = OptionList
+	SearchBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
+	SearchBox.BackgroundTransparency = GTrans
+	SearchBox.BorderSizePixel = 0
+	SearchBox.Size = UDim2.new(1, 0, 0, 30)
+	SearchBox.Font = Enum.Font.Gotham
+	SearchBox.PlaceholderText = 'Search in Dropdown...'
+	SearchBox.Text = ''
+	SearchBox.TextSize = 14
+	SearchBox.TextTruncate = Enum.TextTruncate.AtEnd
 
-SearchBox.Parent = OptionList
-SearchBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
-SearchBox.BackgroundTransparency = GTrans
-SearchBox.BorderSizePixel = 0
-SearchBox.Size = UDim2.new(1, 0, 0, 30)
-SearchBox.Font = Enum.Font.Gotham
-SearchBox.PlaceholderText = 'Search in Dropdown...'
-SearchBox.Text = ''
-SearchBox.TextSize = 14
-SearchBox.TextTruncate = Enum.TextTruncate.AtEnd
+	ApplyTextColor(SearchBox)
 
-ApplyTextColor(SearchBox)
+	local OptionBtns = {}
+	local CurrentValue = Default
 
-local OptionBtns = {}
+	local function UpdateSize()
+		local visibleCount = 0
 
-local function UpdateSize()
-local visibleCount = 0
+		for _, btn in ipairs(OptionBtns) do
+			if btn.Visible then
+				visibleCount = visibleCount + 1
+			end
+		end
 
-for _, btn in ipairs(OptionBtns)do
-if btn.Visible then
-visibleCount = visibleCount + 1
-end
-end
+		local targetHeight = isOpen and (65 + (visibleCount * 30)) or 35
 
-local targetHeight = isOpen and (65 + (visibleCount * 30)) or 35
+		TweenService:Create(DropdownContainer, TweenInfo.new(0.2), {
+			Size = UDim2.new(0.95, 0, 0, targetHeight),
+		}):Play()
 
-TweenService:Create(DropdownContainer, TweenInfo.new(0.2), {
-Size = UDim2.new(0.95, 0, 0, targetHeight),
-}):Play()
+		ArrowIcon.Text = isOpen and '▲' or '▼'
+	end
 
-ArrowIcon.Text = isOpen and '\u{25b2}' or '\u{25bc}'
-end
+	local function AddOption(option)
+		local OptionBtn = Instance.new('TextButton')
 
-DropdownBtn.MouseButton1Click:Connect(function()
-isOpen = not isOpen
-SearchBox.Text = ''
+		OptionBtn.Parent = OptionList
+		OptionBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+		OptionBtn.BackgroundTransparency = GTrans
+		OptionBtn.BorderSizePixel = 0
+		OptionBtn.Size = UDim2.new(1, 0, 0, 30)
+		OptionBtn.Font = Enum.Font.Gotham
+		OptionBtn.Text = ' ' .. tostring(option)
+		OptionBtn:SetAttribute('OptionText', tostring(option))
+		OptionBtn.TextXAlignment = Enum.TextXAlignment.Left
+		OptionBtn.TextSize = 14
 
-for _, btn in ipairs(OptionBtns)do
-btn.Visible = true
-end
+		ApplyTextColor(OptionBtn)
+		table.insert(OptionBtns, OptionBtn)
 
-UpdateSize()
-end)
+		OptionBtn.MouseButton1Click:Connect(function()
+			CurrentValue = option
+			DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(option)
+			isOpen = false
+			UpdateSize()
 
-SearchBox:GetPropertyChangedSignal('Text'):Connect(function()
-local query = string.lower(SearchBox.Text or '')
+			if Callback then
+				Callback(option)
+			end
+		end)
+	end
 
-for _, btn in ipairs(OptionBtns)do
-local txt = string.lower(tostring(btn:GetAttribute('OptionText') or btn.Text or ''))
-local visible = (query == '') or (string.find(txt, query) ~= nil)
+	local function ClearOptions()
+		for _, btn in ipairs(OptionBtns) do
+			if btn then
+				btn:Destroy()
+			end
+		end
+		table.clear(OptionBtns)
+	end
 
-btn.Visible = visible
-end
+	local function RebuildOptions(newOptions)
+		ClearOptions()
 
-UpdateSize()
-end)
+		for _, option in ipairs(newOptions or {}) do
+			AddOption(option)
+		end
 
-for _, option in ipairs(Options)do
-local OptionBtn = Instance.new('TextButton')
+		for _, btn in ipairs(OptionBtns) do
+			btn.Visible = true
+		end
 
-OptionBtn.Parent = OptionList
-OptionBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-OptionBtn.BackgroundTransparency = GTrans
-OptionBtn.BorderSizePixel = 0
-OptionBtn.Size = UDim2.new(1, 0, 0, 30)
-OptionBtn.Font = Enum.Font.Gotham
-OptionBtn.Text = ' ' .. option
+		UpdateSize()
+	end
 
-OptionBtn:SetAttribute('OptionText', option)
+	DropdownBtn.MouseButton1Click:Connect(function()
+		isOpen = not isOpen
+		SearchBox.Text = ''
 
-OptionBtn.TextXAlignment = Enum.TextXAlignment.Left
-OptionBtn.TextSize = 14
+		for _, btn in ipairs(OptionBtns) do
+			btn.Visible = true
+		end
 
-ApplyTextColor(OptionBtn)
-table.insert(OptionBtns, OptionBtn)
+		UpdateSize()
+	end)
 
-OptionBtn.MouseButton1Click:Connect(function()
-DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. option
-isOpen = false
+	SearchBox:GetPropertyChangedSignal('Text'):Connect(function()
+		local query = string.lower(SearchBox.Text or '')
 
-UpdateSize()
+		for _, btn in ipairs(OptionBtns) do
+			local txt = string.lower(tostring(btn:GetAttribute('OptionText') or btn.Text or ''))
+			local visible = (query == '') or (string.find(txt, query) ~= nil)
+			btn.Visible = visible
+		end
 
-if Callback then
-Callback(option)
-end
-end)
-end
+		UpdateSize()
+	end)
 
-UpdateSize()
+	RebuildOptions(Options)
 
-local DropdownAPI = {}
-function DropdownAPI:SetValue(newValue)
-DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(newValue)
-if Callback then
-Callback(newValue)
-end
-end
+	if Default ~= nil then
+		DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(Default)
+	end
 
-return DropdownAPI
+	local DropdownAPI = {}
+
+	function DropdownAPI:SetValue(newValue)
+		CurrentValue = newValue
+		DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(newValue)
+
+		if Callback then
+			Callback(newValue)
+		end
+	end
+
+	function DropdownAPI:Refresh(newOptions)
+		RebuildOptions(newOptions or Options)
+
+		if CurrentValue ~= nil then
+			DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(CurrentValue)
+		else
+			DropdownBtn.Text = ' ' .. DropdownText .. ' : Select Option'
+		end
+	end
+
+	function DropdownAPI:SetOptions(newOptions)
+		Options = newOptions or {}
+		RebuildOptions(Options)
+
+		if CurrentValue ~= nil then
+			DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(CurrentValue)
+		else
+			DropdownBtn.Text = ' ' .. DropdownText .. ' : Select Option'
+		end
+	end
+
+	return DropdownAPI
 end
 
 return CategoryElements
