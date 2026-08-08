@@ -1043,6 +1043,22 @@ elseif typeof(ThemeConfig) == 'Color3' then
 CurrentThemeColor = ThemeConfig
 end
 
+-- ===================== ค่าตั้งต้นของ Settings เพิ่มเติม =====================
+-- สีพื้นหลังหลักของ UI (ปรับสดได้จากเมนู Settings)
+local CurrentBackgroundColor = Config.BackgroundColor or C.BgDeep
+
+-- Running Light (เส้นขอบไล่สีวิ่งรอบ MainFrame)
+local RunningLightEnabled = true
+if Config.RunningLightEnabled ~= nil then RunningLightEnabled = Config.RunningLightEnabled end
+local RunningLightSpeed = Config.RunningLightSpeed or 150
+local CurrentRunningLightColor = Config.RunningLightColor or C.Accent
+
+-- Effect Toggles อื่นๆ ที่แยกเปิด/ปิดได้อิสระ
+local PatternEnabled = true
+if Config.PatternEnabled ~= nil then PatternEnabled = Config.PatternEnabled end
+local BorderEnabled = true
+if Config.BorderEnabled ~= nil then BorderEnabled = Config.BorderEnabled end
+
 -- ThemedElements: ทุก instance ที่ผูกกับ Accent color จะถูกเก็บไว้ที่นี่
 -- เพื่อให้ปรับสีใหม่ (จาก Settings หรือ Rainbow) แล้วอัปเดตทันทีทั้ง UI
 local ThemedElements = {}
@@ -1111,6 +1127,26 @@ end
 end
 end
 
+-- BackgroundElements: ทุก instance ที่ผูกกับสีพื้นหลังหลัก เก็บไว้ปรับสดได้เช่นกัน
+local BackgroundElements = {}
+local function ApplyBackground(instance, property)
+if not instance then return end
+property = property or 'BackgroundColor3'
+SafeSetProperty(instance, property, CurrentBackgroundColor)
+table.insert(BackgroundElements, {
+UpdateFunc = function(color)
+if instance and instance.Parent then
+SafeSetProperty(instance, property, color)
+end
+end,
+})
+end
+
+local function UpdateBackgroundColor(newColor)
+CurrentBackgroundColor = newColor
+for _, data in ipairs(BackgroundElements) do data.UpdateFunc(CurrentBackgroundColor) end
+end
+
 -- ===================== โหลดค่า Config/Theme ที่เคยเซฟไว้ (ก่อนสร้าง UI ใดๆ) =====================
 local savedSize, savedPos, savedFlags, savedTheme = LoadConfig()
 
@@ -1130,6 +1166,24 @@ end
 if savedTheme.TextRainbow ~= nil then
 isTextRainbow = savedTheme.TextRainbow
 end
+if savedTheme.Background then
+CurrentBackgroundColor = Color3.fromRGB(savedTheme.Background[1], savedTheme.Background[2], savedTheme.Background[3])
+end
+if savedTheme.RunningLightEnabled ~= nil then
+RunningLightEnabled = savedTheme.RunningLightEnabled
+end
+if savedTheme.RunningLightSpeed ~= nil then
+RunningLightSpeed = savedTheme.RunningLightSpeed
+end
+if savedTheme.RunningLightColor then
+CurrentRunningLightColor = Color3.fromRGB(savedTheme.RunningLightColor[1], savedTheme.RunningLightColor[2], savedTheme.RunningLightColor[3])
+end
+if savedTheme.PatternEnabled ~= nil then
+PatternEnabled = savedTheme.PatternEnabled
+end
+if savedTheme.BorderEnabled ~= nil then
+BorderEnabled = savedTheme.BorderEnabled
+end
 end
 
 -- อัปเดต ThemeSettings ให้ตรงกับค่าที่กำลังใช้จริง (default หรือที่โหลดมา) เพื่อให้เซฟรอบถัดไปถูกต้อง
@@ -1138,6 +1192,12 @@ ThemeSettings.Text = { math.floor(CurrentTextColor.R * 255), math.floor(CurrentT
 ThemeSettings.Transparency = GTrans
 ThemeSettings.Rainbow = isRainbow
 ThemeSettings.TextRainbow = isTextRainbow
+ThemeSettings.Background = { math.floor(CurrentBackgroundColor.R * 255), math.floor(CurrentBackgroundColor.G * 255), math.floor(CurrentBackgroundColor.B * 255) }
+ThemeSettings.RunningLightEnabled = RunningLightEnabled
+ThemeSettings.RunningLightSpeed = RunningLightSpeed
+ThemeSettings.RunningLightColor = { math.floor(CurrentRunningLightColor.R * 255), math.floor(CurrentRunningLightColor.G * 255), math.floor(CurrentRunningLightColor.B * 255) }
+ThemeSettings.PatternEnabled = PatternEnabled
+ThemeSettings.BorderEnabled = BorderEnabled
 
 -- ===================== Element Icon Helper =====================
 -- ใช้วาดไอคอน lucide-xxx ในตัว element ต่างๆ (เหมือน Rayfield/Fluent)
@@ -1169,7 +1229,7 @@ ScreenGui.DisplayOrder = Config.DisplayOrder or 999
 local MainFrame = Instance.new('Frame')
 MainFrame.Name = 'MainFrame'
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = C.BgDeep          -- ← ดำม่วงเข้ม
+ApplyBackground(MainFrame)                     -- ← พื้นหลัง (ปรับสดได้จาก Settings)
 ApplyGlass(MainFrame)
 MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
 MainFrame.Size = UDim2.new(0, 500, 0, 350)
@@ -1189,6 +1249,7 @@ PatternBg.ImageTransparency = 0.93    -- เบามากให้เห็น
 PatternBg.ImageColor3 = C.Accent      -- tint ม่วง
 PatternBg.ScaleType = Enum.ScaleType.Tile
 PatternBg.TileSize = UDim2.new(0, 200, 0, 200)
+PatternBg.Visible = PatternEnabled
 
 if savedSize then MainFrame.Size = savedSize end
 if savedPos  then MainFrame.Position = savedPos end
@@ -1200,13 +1261,26 @@ local ToggleSettingsVisibility = function() end
 local OpenSettingsFn = function() end
 local CloseSettingsFn = function() end
 
--- stroke ขอบ gradient หมุน
+-- stroke ขอบ gradient หมุน (Running Light)
 local MainStroke = Instance.new('UIStroke', MainFrame)
 MainStroke.Thickness = 2
 MainStroke.Color = C.Accent
+MainStroke.Enabled = BorderEnabled            -- ← เปิด/ปิดขอบ (effect toggle)
 
 local StrokeGradient = Instance.new('UIGradient')
 StrokeGradient.Parent = MainStroke
+
+-- ตั้งค่ากราเดียนต์แบบนิ่ง (ใช้ตอนปิด Running Light) โดยใช้สี Running Light ปัจจุบัน
+local function ApplyRunningLightStatic()
+if StrokeGradient and StrokeGradient.Parent then
+StrokeGradient.Rotation = 0
+StrokeGradient.Color = ColorSequence.new(CurrentRunningLightColor)
+end
+end
+
+if not RunningLightEnabled then
+ApplyRunningLightStatic()
+end
 
 RunService.RenderStepped:Connect(function(dt)
 if isRainbow or isTextRainbow then
@@ -1220,13 +1294,13 @@ CurrentTextColor = rColor
 for _, data in ipairs(TextElements) do data.UpdateFunc(CurrentTextColor) end
 end
 end
-if StrokeGradient and StrokeGradient.Parent then
+if RunningLightEnabled and StrokeGradient and StrokeGradient.Parent then
 local r = StrokeGradient.Rotation
-StrokeGradient.Rotation = (r + dt * 150) % 360
+StrokeGradient.Rotation = (r + dt * RunningLightSpeed) % 360
 StrokeGradient.Color = ColorSequence.new({
 ColorSequenceKeypoint.new(0,   C.BgDeep),
-ColorSequenceKeypoint.new(0.4, CurrentThemeColor),
-ColorSequenceKeypoint.new(0.6, CurrentThemeColor),
+ColorSequenceKeypoint.new(0.4, CurrentRunningLightColor),
+ColorSequenceKeypoint.new(0.6, CurrentRunningLightColor),
 ColorSequenceKeypoint.new(1,   C.BgDeep),
 })
 end
@@ -2226,6 +2300,13 @@ local TextR = math.floor(CurrentTextColor.R * 255 + 0.5)
 local TextG = math.floor(CurrentTextColor.G * 255 + 0.5)
 local TextB = math.floor(CurrentTextColor.B * 255 + 0.5)
 local TransPercent = math.floor(GTrans * 100 + 0.5)
+local BgR = math.floor(CurrentBackgroundColor.R * 255 + 0.5)
+local BgG = math.floor(CurrentBackgroundColor.G * 255 + 0.5)
+local BgB = math.floor(CurrentBackgroundColor.B * 255 + 0.5)
+local RLR = math.floor(CurrentRunningLightColor.R * 255 + 0.5)
+local RLG = math.floor(CurrentRunningLightColor.G * 255 + 0.5)
+local RLB = math.floor(CurrentRunningLightColor.B * 255 + 0.5)
+local RLSpeedValue = math.floor(RunningLightSpeed + 0.5)
 
 local function PersistThemeSettings()
 ThemeSettings.Accent = { AccentR, AccentG, AccentB }
@@ -2233,6 +2314,12 @@ ThemeSettings.Text = { TextR, TextG, TextB }
 ThemeSettings.Transparency = GTrans
 ThemeSettings.Rainbow = isRainbow
 ThemeSettings.TextRainbow = isTextRainbow
+ThemeSettings.Background = { BgR, BgG, BgB }
+ThemeSettings.RunningLightEnabled = RunningLightEnabled
+ThemeSettings.RunningLightSpeed = RunningLightSpeed
+ThemeSettings.RunningLightColor = { RLR, RLG, RLB }
+ThemeSettings.PatternEnabled = PatternEnabled
+ThemeSettings.BorderEnabled = BorderEnabled
 end
 
 SettingsTab:CreateLabel('ปรับแต่งสี Accent', 'lucide-palette')
@@ -2275,6 +2362,60 @@ TransPercent = v
 UpdateGlassTransparency(v / 100)
 end)
 
+-- ===================== สีพื้นหลัง (Background Color) =====================
+SettingsTab:CreateLabel('ปรับแต่งสีพื้นหลัง', 'lucide-square')
+SettingsTab:CreateSlider('พื้นหลัง - Red', nil, 0, 255, BgR, nil, function(v)
+BgR = v
+UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
+end)
+SettingsTab:CreateSlider('พื้นหลัง - Green', nil, 0, 255, BgG, nil, function(v)
+BgG = v
+UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
+end)
+SettingsTab:CreateSlider('พื้นหลัง - Blue', nil, 0, 255, BgB, nil, function(v)
+BgB = v
+UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
+end)
+
+-- ===================== Running Light (เส้นขอบวิ่ง) =====================
+SettingsTab:CreateLabel('Running Light (เส้นขอบวิ่ง)', 'lucide-activity')
+SettingsTab:CreateToggle('เปิดใช้งาน Running Light', 'lucide-flame', RunningLightEnabled, nil, function(state)
+RunningLightEnabled = state
+if not RunningLightEnabled then
+ApplyRunningLightStatic()
+end
+end)
+SettingsTab:CreateSlider('ความเร็ว Running Light', nil, 10, 500, RLSpeedValue, nil, function(v)
+RLSpeedValue = v
+RunningLightSpeed = v
+end)
+SettingsTab:CreateSlider('สี Running Light - Red', nil, 0, 255, RLR, nil, function(v)
+RLR = v
+CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
+if not RunningLightEnabled then ApplyRunningLightStatic() end
+end)
+SettingsTab:CreateSlider('สี Running Light - Green', nil, 0, 255, RLG, nil, function(v)
+RLG = v
+CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
+if not RunningLightEnabled then ApplyRunningLightStatic() end
+end)
+SettingsTab:CreateSlider('สี Running Light - Blue', nil, 0, 255, RLB, nil, function(v)
+RLB = v
+CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
+if not RunningLightEnabled then ApplyRunningLightStatic() end
+end)
+
+-- ===================== Effect Toggles อื่นๆ (เปิด/ปิดอิสระต่อกัน) =====================
+SettingsTab:CreateLabel('เอฟเฟกต์อื่นๆ', 'lucide-wand-2')
+SettingsTab:CreateToggle('พื้นผิว Pattern พื้นหลัง', 'lucide-layout-grid', PatternEnabled, nil, function(state)
+PatternEnabled = state
+if PatternBg then PatternBg.Visible = PatternEnabled end
+end)
+SettingsTab:CreateToggle('แสดงเส้นขอบ (Border)', 'lucide-square', BorderEnabled, nil, function(state)
+BorderEnabled = state
+if MainStroke then MainStroke.Enabled = BorderEnabled end
+end)
+
 SettingsTab:CreateLabel('จัดการการตั้งค่า', 'lucide-save')
 SettingsTab:CreateButton('บันทึกการตั้งค่า', 'lucide-save', function()
 PersistThemeSettings()
@@ -2290,9 +2431,24 @@ TextB = math.floor(C.TextMain.B * 255 + 0.5)
 TransPercent = math.floor(C.GlassTransparency * 100 + 0.5)
 isRainbow = false
 isTextRainbow = false
+BgR = math.floor(C.BgDeep.R * 255 + 0.5)
+BgG = math.floor(C.BgDeep.G * 255 + 0.5)
+BgB = math.floor(C.BgDeep.B * 255 + 0.5)
+RLR = math.floor(C.Accent.R * 255 + 0.5)
+RLG = math.floor(C.Accent.G * 255 + 0.5)
+RLB = math.floor(C.Accent.B * 255 + 0.5)
+RLSpeedValue = 150
+RunningLightSpeed = 150
+RunningLightEnabled = true
+PatternEnabled = true
+BorderEnabled = true
 UpdateThemeColor(C.Accent)
 UpdateTextColor(C.TextMain)
 UpdateGlassTransparency(C.GlassTransparency)
+UpdateBackgroundColor(C.BgDeep)
+CurrentRunningLightColor = C.Accent
+if PatternBg then PatternBg.Visible = true end
+if MainStroke then MainStroke.Enabled = true end
 PersistThemeSettings()
 SaveConfig(MainFrame)
 end)
