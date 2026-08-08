@@ -1445,21 +1445,31 @@ ActionBtn.Parent = CategoryPage
 ActionBtn.BackgroundColor3 = C.BgElement     -- ← ม่วงกลาง
 ActionBtn.BackgroundTransparency = GTrans
 ActionBtn.Size = UDim2.new(0.95, 0, 0, 35)
-ActionBtn.Font = Enum.Font.Gotham
-ActionBtn.Text = ButtonText
-ActionBtn.TextSize = 14
-ActionBtn.TextTruncate = Enum.TextTruncate.AtEnd
+ActionBtn.Text = ''
+ActionBtn.AutoButtonColor = false
 Instance.new('UICorner', ActionBtn).CornerRadius = UDim.new(0, 6)
 -- stroke ม่วงอ่อน
 local bs = Instance.new('UIStroke', ActionBtn)
 bs.Thickness = 1; bs.Color = C.AccentDim
-if TextColor then ActionBtn.TextColor3 = TextColor
-else ApplyTextColor(ActionBtn) end
+
+local BtnLabel = Instance.new('TextLabel')
+BtnLabel.Name = 'ButtonLabel'
+BtnLabel.Parent = ActionBtn
+BtnLabel.BackgroundTransparency = 1
+BtnLabel.Position = UDim2.new(0, 10, 0, 0)
+BtnLabel.Size = UDim2.new(1, -20, 1, 0)
+BtnLabel.Font = Enum.Font.Gotham
+BtnLabel.Text = ButtonText
+BtnLabel.TextSize = 14
+BtnLabel.TextXAlignment = Enum.TextXAlignment.Left
+BtnLabel.TextTruncate = Enum.TextTruncate.AtEnd
+BtnLabel.ZIndex = ActionBtn.ZIndex + 1
+if TextColor then BtnLabel.TextColor3 = TextColor
+else ApplyTextColor(BtnLabel) end
 
 if AddElementIcon(ActionBtn, IconName, 18, 10) then
-ActionBtn.TextXAlignment = Enum.TextXAlignment.Left
-local btnPad = Instance.new('UIPadding', ActionBtn)
-btnPad.PaddingLeft = UDim.new(0, 36)
+BtnLabel.Position = UDim2.new(0, 36, 0, 0)
+BtnLabel.Size = UDim2.new(1, -46, 1, 0)
 end
 
 ActionBtn.MouseButton1Click:Connect(function()
