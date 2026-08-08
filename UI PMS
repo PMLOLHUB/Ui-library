@@ -3,6 +3,9 @@ local HttpService = game:GetService('HttpService')
 local ConfigFileName = 'PMS_Config.json'
 local EnableSave = true
 
+-- เก็บค่า element ที่ตั้ง Flag ไว้ (เช่น Dropdown, Toggle) เพื่อเซฟ/โหลดค่าที่เลือก
+local Flags = {}
+
 local function SaveConfig(frame)
 if not EnableSave or not frame then
 return
@@ -32,6 +35,11 @@ data.PosY = (viewport.Y / 2) - (size.Y / 2)
 else
 data.PosX = pos.X
 data.PosY = pos.Y
+end
+
+data.Flags = {}
+for flagName, flagData in pairs(Flags) do
+data.Flags[flagName] = flagData.Value
 end
 
 local success, json = pcall(function()
@@ -74,10 +82,10 @@ if data.PosX and data.PosY then
 loadedPos = UDim2.new(0, data.PosX, 0, data.PosY)
 end
 
-return loadedSize, loadedPos
+return loadedSize, loadedPos, data.Flags
 end
 
-return nil, nil
+return nil, nil, nil
 end
 
 
@@ -1100,9 +1108,10 @@ PatternBg.ImageColor3 = C.Accent      -- tint ม่วง
 PatternBg.ScaleType = Enum.ScaleType.Tile
 PatternBg.TileSize = UDim2.new(0, 200, 0, 200)
 
-local savedSize, savedPos = LoadConfig()
+local savedSize, savedPos, savedFlags = LoadConfig()
 if savedSize then MainFrame.Size = savedSize end
 if savedPos  then MainFrame.Position = savedPos end
+local SavedFlags = savedFlags or {}
 
 -- stroke ขอบ gradient หมุน
 local MainStroke = Instance.new('UIStroke', MainFrame)
@@ -1424,7 +1433,16 @@ function WindowElements:CreateCategory(CategoryName, IconName)
 		end)
 	end
 
-	function CategoryElements:CreateTextbox(TextboxText, Placeholder, Callback)
+	function CategoryElements:CreateTextbox(TextboxText, Placeholder, Flag, Callback)
+		-- รองรับทั้งแบบเก่า CreateTextbox(Text, Placeholder, Callback)
+		-- และแบบใหม่ CreateTextbox(Text, Placeholder, Flag, Callback)
+		if type(Flag) == 'function' then Callback = Flag; Flag = nil end
+
+		local RestoredText = nil
+		if Flag and SavedFlags[Flag] ~= nil then
+			RestoredText = SavedFlags[Flag]
+		end
+
 		local TextboxContainer = Instance.new('Frame')
 		TextboxContainer.Parent = CategoryPage
 		TextboxContainer.BackgroundColor3 = C.BgCard
@@ -1459,17 +1477,32 @@ function WindowElements:CreateCategory(CategoryName, IconName)
 		TextBox.Font = Enum.Font.Gotham
 		TextBox.PlaceholderText = Placeholder or ''
 		TextBox.PlaceholderColor3 = C.TextDim
-		TextBox.Text = ''
+		TextBox.Text = RestoredText or ''
 		TextBox.TextSize = 12
 		TextBox.TextXAlignment = Enum.TextXAlignment.Left
 		TextBox.TextTruncate = Enum.TextTruncate.AtEnd
 		ApplyTextColor(TextBox)
+		if Flag then
+			Flags[Flag] = { Type = 'Textbox', Value = TextBox.Text }
+		end
 		TextBox.FocusLost:Connect(function()
+			if Flag then
+				Flags[Flag].Value = TextBox.Text
+				SaveConfig(MainFrame)
+			end
 			if Callback then Callback(TextBox.Text) end
 		end)
 	end
 
-	function CategoryElements:CreateNumberTextbox(LabelText, DefaultNumber, Callback)
+	function CategoryElements:CreateNumberTextbox(LabelText, DefaultNumber, Flag, Callback)
+		-- รองรับทั้งแบบเก่า CreateNumberTextbox(Text, DefaultNumber, Callback)
+		-- และแบบใหม่ CreateNumberTextbox(Text, DefaultNumber, Flag, Callback)
+		if type(Flag) == 'function' then Callback = Flag; Flag = nil end
+
+		if Flag and SavedFlags[Flag] ~= nil then
+			DefaultNumber = SavedFlags[Flag]
+		end
+
 		local TextboxContainer = Instance.new('Frame')
 		TextboxContainer.Parent = CategoryPage
 		TextboxContainer.BackgroundColor3 = C.BgCard
@@ -1504,13 +1537,20 @@ function WindowElements:CreateCategory(CategoryName, IconName)
 		TextBox.Font = Enum.Font.Gotham
 		TextBox.PlaceholderText = tostring(DefaultNumber or '')
 		TextBox.PlaceholderColor3 = C.TextDim
-		TextBox.Text = ''
+		TextBox.Text = DefaultNumber and tostring(DefaultNumber) or ''
 		TextBox.TextSize = 12
 		TextBox.TextXAlignment = Enum.TextXAlignment.Left
 		TextBox.TextTruncate = Enum.TextTruncate.AtEnd
 		ApplyTextColor(TextBox)
+		if Flag then
+			Flags[Flag] = { Type = 'NumberTextbox', Value = tonumber(TextBox.Text) }
+		end
 		TextBox.FocusLost:Connect(function()
 			local n = tonumber(TextBox.Text)
+			if Flag then
+				Flags[Flag].Value = n
+				SaveConfig(MainFrame)
+			end
 			if n and Callback then Callback(n)
 			elseif Callback then Callback(nil) end
 		end)
@@ -1549,8 +1589,21 @@ function WindowElements:CreateCategory(CategoryName, IconName)
 		end)
 	end
 
-	function CategoryElements:CreateToggle(ToggleText, DefaultState, Callback)
+	function CategoryElements:CreateToggle(ToggleText, DefaultState, Flag, Callback)
+		-- รองรับทั้งแบบเก่า CreateToggle(Text, DefaultState, Callback)
+		-- และแบบใหม่ CreateToggle(Text, DefaultState, Flag, Callback)
+		if type(Flag) == 'function' then Callback = Flag; Flag = nil end
+
+		if Flag and SavedFlags[Flag] ~= nil then
+			DefaultState = SavedFlags[Flag]
+		end
+
 		local CurrentState = DefaultState or false
+
+		if Flag then
+			Flags[Flag] = { Type = 'Toggle', Value = CurrentState }
+		end
+
 		local ToggleContainer = Instance.new('TextButton')
 		ToggleContainer.Parent = CategoryPage
 		ToggleContainer.BackgroundColor3 = C.BgCard
@@ -1620,12 +1673,29 @@ function WindowElements:CreateCategory(CategoryName, IconName)
 		ToggleContainer.MouseButton1Click:Connect(function()
 			CurrentState = not CurrentState
 			UpdateToggle(true)
+			if Flag then
+				Flags[Flag].Value = CurrentState
+				SaveConfig(MainFrame)
+			end
 		end)
 		UpdateToggle(false)
 	end
 
-	function CategoryElements:CreateSlider(SliderText, Min, Max, Default, Callback)
+	function CategoryElements:CreateSlider(SliderText, Min, Max, Default, Flag, Callback)
+		-- รองรับทั้งแบบเก่า CreateSlider(Text, Min, Max, Default, Callback)
+		-- และแบบใหม่ CreateSlider(Text, Min, Max, Default, Flag, Callback)
+		if type(Flag) == 'function' then Callback = Flag; Flag = nil end
+
+		if Flag and SavedFlags[Flag] ~= nil then
+			Default = SavedFlags[Flag]
+		end
+
 		local CurrentValue = Default or Min
+
+		if Flag then
+			Flags[Flag] = { Type = 'Slider', Value = CurrentValue }
+		end
+
 		local SliderContainer = Instance.new('Frame')
 		SliderContainer.Parent = CategoryPage
 		SliderContainer.BackgroundColor3 = C.BgCard
@@ -1681,6 +1751,7 @@ function WindowElements:CreateCategory(CategoryName, IconName)
 			CurrentValue = math.floor(Min + ((Max - Min) * relativeX))
 			ValueLabel.Text = tostring(CurrentValue)
 			TweenService:Create(SliderFill, TweenInfo.new(0.1), { Size = UDim2.new(relativeX, 0, 1, 0) }):Play()
+			if Flag then Flags[Flag].Value = CurrentValue end
 			if Callback then Callback(CurrentValue) end
 		end
 		SliderBg.InputBegan:Connect(function(input)
@@ -1690,6 +1761,7 @@ function WindowElements:CreateCategory(CategoryName, IconName)
 		end)
 		UserInputService.InputEnded:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				if dragging and Flag then SaveConfig(MainFrame) end
 				dragging = false
 			end
 		end)
@@ -1700,8 +1772,17 @@ function WindowElements:CreateCategory(CategoryName, IconName)
 		end)
 	end
 
-	function CategoryElements:CreateDropdown(DropdownText, Options, Default, Callback)
-		if type(Default) == 'function' then Callback = Default; Default = nil end
+	function CategoryElements:CreateDropdown(DropdownText, Options, Default, Flag, Callback)
+		-- รองรับทั้งแบบเก่า CreateDropdown(Text, Options, Default, Callback)
+		-- และแบบใหม่ CreateDropdown(Text, Options, Default, Flag, Callback)
+		if type(Flag) == 'function' then Callback = Flag; Flag = nil end
+		if type(Default) == 'function' then Callback = Default; Default = nil; Flag = nil end
+
+		-- ถ้ามีค่าที่เคยเซฟไว้สำหรับ Flag นี้ ให้ใช้ค่านั้นแทนค่า Default
+		if Flag and SavedFlags[Flag] ~= nil then
+			Default = SavedFlags[Flag]
+		end
+
 		local isOpen = false
 
 		local DropdownContainer = Instance.new('Frame')
@@ -1766,6 +1847,10 @@ function WindowElements:CreateCategory(CategoryName, IconName)
 		local OptionBtns = {}
 		local CurrentValue = Default
 
+		if Flag then
+			Flags[Flag] = { Type = 'Dropdown', Value = CurrentValue }
+		end
+
 		local function UpdateSize()
 			local visibleCount = 0
 			for _, btn in ipairs(OptionBtns) do
@@ -1796,6 +1881,10 @@ function WindowElements:CreateCategory(CategoryName, IconName)
 				CurrentValue = option
 				DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(option)
 				isOpen = false; UpdateSize()
+				if Flag then
+					Flags[Flag].Value = option
+					SaveConfig(MainFrame)
+				end
 				if Callback then Callback(option) end
 			end)
 		end
@@ -1838,6 +1927,10 @@ function WindowElements:CreateCategory(CategoryName, IconName)
 		function DropdownAPI:SetValue(newValue)
 			CurrentValue = newValue
 			DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(newValue)
+			if Flag then
+				Flags[Flag].Value = newValue
+				SaveConfig(MainFrame)
+			end
 			if Callback then Callback(newValue) end
 		end
 		function DropdownAPI:Refresh(newOptions)
@@ -1861,6 +1954,29 @@ function WindowElements:CreateCategory(CategoryName, IconName)
 	end
 
 	return CategoryElements
+end
+
+-- ===================== Flags API (เหมือนไลบรารีค่ายใหญ่ เช่น Rayfield/Fluent) =====================
+WindowElements.Flags = Flags
+
+function WindowElements:GetFlag(FlagName)
+	local flagData = Flags[FlagName]
+	return flagData and flagData.Value or nil
+end
+
+function WindowElements:SetFlag(FlagName, Value)
+	if Flags[FlagName] then
+		Flags[FlagName].Value = Value
+		SaveConfig(MainFrame)
+	end
+end
+
+function WindowElements:SaveConfiguration()
+	SaveConfig(MainFrame)
+end
+
+function WindowElements:Destroy()
+	ScreenGui:Destroy()
 end
 
 return WindowElements
