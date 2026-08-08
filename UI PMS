@@ -1194,6 +1194,12 @@ if savedSize then MainFrame.Size = savedSize end
 if savedPos  then MainFrame.Position = savedPos end
 local SavedFlags = savedFlags or {}
 
+-- ฟังก์ชันเรียกเปิด/ปิดเมนู Settings (forward declare ไว้ก่อน เพราะปุ่ม gear ถูกสร้างก่อน
+-- แท็บ Settings จริงที่มาสร้างทีหลังผ่าน task.defer ด้านล่างสุดของไฟล์)
+local ToggleSettingsVisibility = function() end
+local OpenSettingsFn = function() end
+local CloseSettingsFn = function() end
+
 -- stroke ขอบ gradient หมุน
 local MainStroke = Instance.new('UIStroke', MainFrame)
 MainStroke.Thickness = 2
@@ -1318,6 +1324,22 @@ TitleLabel.TextTruncate = Enum.TextTruncate.AtEnd
 TitleLabel.ZIndex = 3
 ApplyTextColor(TitleLabel)
 
+-- ===================== ปุ่มเปิด/ปิดเมนู Settings (gear icon มุมขวาบนของ TopBar) =====================
+local SettingsGearBtn = Instance.new('ImageButton')
+SettingsGearBtn.Name = 'SettingsGearBtn'
+SettingsGearBtn.Parent = TopBar
+SettingsGearBtn.BackgroundTransparency = 1
+SettingsGearBtn.Position = UDim2.new(1, -28, 0.5, -10)
+SettingsGearBtn.Size = UDim2.new(0, 20, 0, 20)
+SettingsGearBtn.ZIndex = 4
+if Icons and Icons['lucide-settings'] then
+SettingsGearBtn.Image = Icons['lucide-settings']
+end
+ApplyTextColor(SettingsGearBtn, 'ImageColor3')
+SettingsGearBtn.MouseButton1Click:Connect(function()
+ToggleSettingsVisibility()
+end)
+
 MakeDraggable(TopBar, MainFrame, function()
 SaveConfig(MainFrame)
 end)
@@ -1396,7 +1418,20 @@ ContentContainer.ZIndex = 2
 -- ============================================================
 local WindowElements = {}
 
-function WindowElements:CreateCategory(CategoryName, IconName)
+-- ฟังก์ชันเรียกเปิด/ปิด/toggle เมนู Settings — ใช้ได้ทันทีตั้งแต่ CreateWindow คืนค่ากลับไป
+-- (การ implement จริงจะถูกผูกเข้ากับ ToggleSettingsVisibility/OpenSettingsFn/CloseSettingsFn
+-- ผ่าน task.defer ด้านล่างสุดของไฟล์ ซึ่งทำงานเกือบจะทันทีหลัง CreateWindow คืนค่า)
+function WindowElements:OpenSettings()
+OpenSettingsFn()
+end
+function WindowElements:CloseSettings()
+CloseSettingsFn()
+end
+function WindowElements:ToggleSettings()
+ToggleSettingsVisibility()
+end
+
+function WindowElements:CreateCategory(CategoryName, IconName, Hidden)
 local CategoryElements = {}
 
 -- ปุ่ม category ใน sidebar
@@ -1412,6 +1447,12 @@ CategoryBtn.TextTruncate = Enum.TextTruncate.AtEnd
 CategoryBtn.ZIndex = 3
 Instance.new('UICorner', CategoryBtn).CornerRadius = UDim.new(0, 6)
 ApplyTextColor(CategoryBtn)
+
+-- Hidden = true: ใช้สำหรับแท็บที่ไม่อยากให้โชว์เป็นปุ่มปกติใน sidebar (เช่น Settings)
+-- จะถูกเรียกออกมาแสดงผ่านฟังก์ชัน/ปุ่มอื่นแทน ไม่ใช่การคลิกที่ sidebar
+if Hidden then
+CategoryBtn.Visible = false
+end
 
 if IconName and Icons and Icons[IconName] then
 CategoryBtn.TextXAlignment = Enum.TextXAlignment.Left
@@ -1464,8 +1505,10 @@ BackgroundColor3 = C.AccentDim,        -- ← active = ม่วงหม่น
 }):Play()
 end
 
+if not Hidden then
 CategoryBtn.MouseButton1Click:Connect(SelectTab)
 if isFirstTab then SelectTab(); isFirstTab = false end
+end
 
 -- ============================================================
 -- Elements
@@ -2111,10 +2154,8 @@ end
 return DropdownAPI
 end
 
-return CategoryElements
+return CategoryElements, CategoryPage, CategoryBtn
 end
-
--- ===================== Flags API (เหมือนไลบรารีค่ายใหญ่ เช่น Rayfield/Fluent) =====================
 WindowElements.Flags = Flags
 
 function WindowElements:GetFlag(FlagName)
@@ -2143,7 +2184,39 @@ end
 -- แล้วค่อยเพิ่มแท็บ Settings ต่อท้ายสุด แทนที่จะแทรกเป็นแท็บแรกและถูกเลือกอัตโนมัติ
 if Config.ShowSettingsTab ~= false then
 task.defer(function()
-local SettingsTab = WindowElements:CreateCategory('Settings', 'lucide-settings')
+local SettingsTab, SettingsPage = WindowElements:CreateCategory('Settings', 'lucide-settings', true)
+SettingsPage.Visible = false -- ป้องกันไม่ให้โผล่มาเองไม่ว่ากรณีใด ต้องเรียกผ่าน gear/API เท่านั้น
+
+local SettingsOpen = false
+local PreviousPage = nil
+
+local function ShowSettingsPanel()
+if SettingsOpen then return end
+PreviousPage = nil
+for _, page in pairs(ContentContainer:GetChildren()) do
+if page:IsA('ScrollingFrame') and page ~= SettingsPage and page.Visible then
+PreviousPage = page
+page.Visible = false
+end
+end
+SettingsPage.Visible = true
+SettingsOpen = true
+end
+
+local function HideSettingsPanel()
+if not SettingsOpen then return end
+SettingsPage.Visible = false
+if PreviousPage and PreviousPage.Parent then
+PreviousPage.Visible = true
+end
+SettingsOpen = false
+end
+
+ToggleSettingsVisibility = function()
+if SettingsOpen then HideSettingsPanel() else ShowSettingsPanel() end
+end
+OpenSettingsFn = ShowSettingsPanel
+CloseSettingsFn = HideSettingsPanel
 
 -- ตัวแปรสีปัจจุบันที่ปรับได้สด (เริ่มจากค่าที่ใช้งานอยู่ ซึ่งอาจโหลดมาจาก config เดิม)
 local AccentR = math.floor(CurrentThemeColor.R * 255 + 0.5)
