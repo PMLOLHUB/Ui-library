@@ -937,6 +937,86 @@ end
 end,
 })
 
+-- ============================================================
+-- 🌐 SETTINGS-MENU TRANSLATIONS (English / Thai)
+-- ============================================================
+local Translations = {
+en = {
+Settings = 'Settings',
+AccentHeader = 'Customize Accent Color',
+AccentRed = 'Accent - Red',
+AccentGreen = 'Accent - Green',
+AccentBlue = 'Accent - Blue',
+RainbowAccent = 'Rainbow Accent',
+TextHeader = 'Customize Text Color',
+TextRed = 'Text - Red',
+TextGreen = 'Text - Green',
+TextBlue = 'Text - Blue',
+RainbowText = 'Rainbow Text',
+TransparencyHeader = 'UI Transparency',
+TransparencyLabel = 'Transparency (%)',
+BackgroundHeader = 'Customize Background Color',
+BackgroundRed = 'Background - Red',
+BackgroundGreen = 'Background - Green',
+BackgroundBlue = 'Background - Blue',
+CategoryColorHeader = 'Customize Category Color',
+CategoryColorRed = 'Category - Red',
+CategoryColorGreen = 'Category - Green',
+CategoryColorBlue = 'Category - Blue',
+RunningLightHeader = 'Running Light (Animated Border)',
+RunningLightEnable = 'Enable Running Light',
+RunningLightSpeed = 'Running Light Speed',
+RunningLightRed = 'Running Light Color - Red',
+RunningLightGreen = 'Running Light Color - Green',
+RunningLightBlue = 'Running Light Color - Blue',
+EffectsHeader = 'Other Effects',
+PatternToggle = 'Background Pattern Texture',
+BorderToggle = 'Show Border',
+LanguageHeader = 'Language',
+LanguageLabel = 'Select Language',
+ManageHeader = 'Manage Settings',
+SaveButton = 'Save Settings',
+ResetButton = 'Reset to Default',
+},
+th = {
+Settings = 'ตั้งค่า',
+AccentHeader = 'ปรับแต่งสี Accent',
+AccentRed = 'Accent - Red',
+AccentGreen = 'Accent - Green',
+AccentBlue = 'Accent - Blue',
+RainbowAccent = 'Rainbow Accent',
+TextHeader = 'ปรับแต่งสีข้อความ',
+TextRed = 'Text - Red',
+TextGreen = 'Text - Green',
+TextBlue = 'Text - Blue',
+RainbowText = 'Rainbow ข้อความ',
+TransparencyHeader = 'ความโปร่งแสงของ UI',
+TransparencyLabel = 'ความโปร่งแสง (%)',
+BackgroundHeader = 'ปรับแต่งสีพื้นหลัง',
+BackgroundRed = 'พื้นหลัง - Red',
+BackgroundGreen = 'พื้นหลัง - Green',
+BackgroundBlue = 'พื้นหลัง - Blue',
+CategoryColorHeader = 'ปรับแต่งสีหมวดหมู่ (Category)',
+CategoryColorRed = 'สี Category - Red',
+CategoryColorGreen = 'สี Category - Green',
+CategoryColorBlue = 'สี Category - Blue',
+RunningLightHeader = 'Running Light (เส้นขอบวิ่ง)',
+RunningLightEnable = 'เปิดใช้งาน Running Light',
+RunningLightSpeed = 'ความเร็ว Running Light',
+RunningLightRed = 'สี Running Light - Red',
+RunningLightGreen = 'สี Running Light - Green',
+RunningLightBlue = 'สี Running Light - Blue',
+EffectsHeader = 'เอฟเฟกต์อื่นๆ',
+PatternToggle = 'พื้นผิว Pattern พื้นหลัง',
+BorderToggle = 'แสดงเส้นขอบ (Border)',
+LanguageHeader = 'ภาษา',
+LanguageLabel = 'เลือกภาษา',
+ManageHeader = 'จัดการการตั้งค่า',
+SaveButton = 'บันทึกการตั้งค่า',
+ResetButton = 'รีเซ็ตเป็นค่าเริ่มต้น',
+},
+}
+
 local TweenService = game:GetService('TweenService')
 local UserInputService = game:GetService('UserInputService')
 local RunService = game:GetService('RunService')
@@ -1047,6 +1127,20 @@ end
 -- สีพื้นหลังหลักของ UI (ปรับสดได้จากเมนู Settings)
 local CurrentBackgroundColor = Config.BackgroundColor or C.BgDeep
 
+-- สีของ Category (sidebar tab) เมื่อถูกเลือก (ปรับสดได้จากเมนู Settings)
+local CurrentCategoryColor = Config.CategoryColor or C.AccentDim
+
+-- ภาษาที่ใช้แสดงผลในเมนู Settings ('en' = English, 'th' = Thai) — ค่าเริ่มต้นคือ English
+local CurrentLanguage = 'en'
+if Config.Language then
+local cfgLang = string.lower(tostring(Config.Language))
+if cfgLang == 'th' or cfgLang == 'thai' then
+CurrentLanguage = 'th'
+else
+CurrentLanguage = 'en'
+end
+end
+
 -- Running Light (เส้นขอบไล่สีวิ่งรอบ MainFrame)
 local RunningLightEnabled = true
 if Config.RunningLightEnabled ~= nil then RunningLightEnabled = Config.RunningLightEnabled end
@@ -1147,6 +1241,24 @@ CurrentBackgroundColor = newColor
 for _, data in ipairs(BackgroundElements) do data.UpdateFunc(CurrentBackgroundColor) end
 end
 
+-- CategoryColorElements: เก็บปุ่ม Category ที่ "กำลังถูกเลือกอยู่" ไว้
+-- เพื่อให้ตอนเปลี่ยนสี Category จาก Settings แล้วอัปเดตสีของแท็บที่ Active อยู่ทันที
+local CategoryColorElements = {}
+local function RegisterCategoryColorElement(instance, isSelectedGetter)
+table.insert(CategoryColorElements, {
+UpdateFunc = function(color)
+if instance and instance.Parent and isSelectedGetter() then
+SafeSetProperty(instance, 'BackgroundColor3', color)
+end
+end,
+})
+end
+
+local function UpdateCategoryColor(newColor)
+CurrentCategoryColor = newColor
+for _, data in ipairs(CategoryColorElements) do data.UpdateFunc(CurrentCategoryColor) end
+end
+
 -- ===================== โหลดค่า Config/Theme ที่เคยเซฟไว้ (ก่อนสร้าง UI ใดๆ) =====================
 local savedSize, savedPos, savedFlags, savedTheme = LoadConfig()
 
@@ -1168,6 +1280,17 @@ isTextRainbow = savedTheme.TextRainbow
 end
 if savedTheme.Background then
 CurrentBackgroundColor = Color3.fromRGB(savedTheme.Background[1], savedTheme.Background[2], savedTheme.Background[3])
+end
+if savedTheme.CategoryColor then
+CurrentCategoryColor = Color3.fromRGB(savedTheme.CategoryColor[1], savedTheme.CategoryColor[2], savedTheme.CategoryColor[3])
+end
+if savedTheme.Language then
+local savedLang = string.lower(tostring(savedTheme.Language))
+if savedLang == 'th' or savedLang == 'thai' then
+CurrentLanguage = 'th'
+else
+CurrentLanguage = 'en'
+end
 end
 if savedTheme.RunningLightEnabled ~= nil then
 RunningLightEnabled = savedTheme.RunningLightEnabled
@@ -1193,6 +1316,8 @@ ThemeSettings.Transparency = GTrans
 ThemeSettings.Rainbow = isRainbow
 ThemeSettings.TextRainbow = isTextRainbow
 ThemeSettings.Background = { math.floor(CurrentBackgroundColor.R * 255), math.floor(CurrentBackgroundColor.G * 255), math.floor(CurrentBackgroundColor.B * 255) }
+ThemeSettings.CategoryColor = { math.floor(CurrentCategoryColor.R * 255), math.floor(CurrentCategoryColor.G * 255), math.floor(CurrentCategoryColor.B * 255) }
+ThemeSettings.Language = CurrentLanguage
 ThemeSettings.RunningLightEnabled = RunningLightEnabled
 ThemeSettings.RunningLightSpeed = RunningLightSpeed
 ThemeSettings.RunningLightColor = { math.floor(CurrentRunningLightColor.R * 255), math.floor(CurrentRunningLightColor.G * 255), math.floor(CurrentRunningLightColor.B * 255) }
@@ -1521,6 +1646,13 @@ CategoryBtn.TextTruncate = Enum.TextTruncate.AtEnd
 CategoryBtn.ZIndex = 3
 Instance.new('UICorner', CategoryBtn).CornerRadius = UDim.new(0, 6)
 ApplyTextColor(CategoryBtn)
+CategoryBtn:SetAttribute('CategorySelected', false)
+
+-- ลงทะเบียนปุ่มนี้ไว้ เพื่อให้ปรับสี Category (จาก Settings) แล้วอัปเดตสดได้ทันที
+-- (จะอัปเดตก็ต่อเมื่อปุ่มนี้กำลัง Active/Selected อยู่เท่านั้น)
+RegisterCategoryColorElement(CategoryBtn, function()
+return CategoryBtn:GetAttribute('CategorySelected') == true
+end)
 
 -- Hidden = true: ใช้สำหรับแท็บที่ไม่อยากให้โชว์เป็นปุ่มปกติใน sidebar (เช่น Settings)
 -- จะถูกเรียกออกมาแสดงผ่านฟังก์ชัน/ปุ่มอื่นแทน ไม่ใช่การคลิกที่ sidebar
@@ -1571,11 +1703,13 @@ end
 for _, btn in pairs(Sidebar:GetChildren()) do
 if btn:IsA('TextButton') then
 btn.BackgroundColor3 = C.BgCard    -- ← reset เป็น idle
+btn:SetAttribute('CategorySelected', false)
 end
 end
 CategoryPage.Visible = true
+CategoryBtn:SetAttribute('CategorySelected', true)
 TweenService:Create(CategoryBtn, TweenInfo.new(0.2), {
-BackgroundColor3 = C.AccentDim,        -- ← active = ม่วงหม่น
+BackgroundColor3 = CurrentCategoryColor,        -- ← active = สี Category (ปรับได้จาก Settings)
 }):Play()
 end
 
@@ -2303,6 +2437,9 @@ local TransPercent = math.floor(GTrans * 100 + 0.5)
 local BgR = math.floor(CurrentBackgroundColor.R * 255 + 0.5)
 local BgG = math.floor(CurrentBackgroundColor.G * 255 + 0.5)
 local BgB = math.floor(CurrentBackgroundColor.B * 255 + 0.5)
+local CatR = math.floor(CurrentCategoryColor.R * 255 + 0.5)
+local CatG = math.floor(CurrentCategoryColor.G * 255 + 0.5)
+local CatB = math.floor(CurrentCategoryColor.B * 255 + 0.5)
 local RLR = math.floor(CurrentRunningLightColor.R * 255 + 0.5)
 local RLG = math.floor(CurrentRunningLightColor.G * 255 + 0.5)
 local RLB = math.floor(CurrentRunningLightColor.B * 255 + 0.5)
@@ -2315,6 +2452,8 @@ ThemeSettings.Transparency = GTrans
 ThemeSettings.Rainbow = isRainbow
 ThemeSettings.TextRainbow = isTextRainbow
 ThemeSettings.Background = { BgR, BgG, BgB }
+ThemeSettings.CategoryColor = { CatR, CatG, CatB }
+ThemeSettings.Language = CurrentLanguage
 ThemeSettings.RunningLightEnabled = RunningLightEnabled
 ThemeSettings.RunningLightSpeed = RunningLightSpeed
 ThemeSettings.RunningLightColor = { RLR, RLG, RLB }
@@ -2322,106 +2461,149 @@ ThemeSettings.PatternEnabled = PatternEnabled
 ThemeSettings.BorderEnabled = BorderEnabled
 end
 
-SettingsTab:CreateLabel('ปรับแต่งสี Accent', 'lucide-palette')
-SettingsTab:CreateSlider('Accent - Red', nil, 0, 255, AccentR, nil, function(v)
+-- ล้างเนื้อหาปัจจุบันของหน้า Settings (ไม่แตะ UIListLayout/UIPadding) เพื่อวาดใหม่ตามภาษาที่เลือก
+local function ClearSettingsContent()
+for _, child in ipairs(SettingsPage:GetChildren()) do
+if not (child:IsA('UIListLayout') or child:IsA('UIPadding')) then
+child:Destroy()
+end
+end
+end
+
+-- สร้าง/วาดใหม่เนื้อหาทั้งหมดของหน้า Settings ตามภาษาปัจจุบัน (CurrentLanguage)
+-- เรียกครั้งแรกตอนสร้างแท็บ และเรียกซ้ำทุกครั้งที่ผู้ใช้เปลี่ยนภาษา เพื่อให้ข้อความอัปเดตทันที ไม่ต้องรีสตาร์ท
+local BuildSettingsUI
+BuildSettingsUI = function()
+local T = Translations[CurrentLanguage] or Translations.en
+ClearSettingsContent()
+
+SettingsTab:CreateLabel(T.AccentHeader, 'lucide-palette')
+SettingsTab:CreateSlider(T.AccentRed, nil, 0, 255, AccentR, nil, function(v)
 AccentR = v
 UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
 end)
-SettingsTab:CreateSlider('Accent - Green', nil, 0, 255, AccentG, nil, function(v)
+SettingsTab:CreateSlider(T.AccentGreen, nil, 0, 255, AccentG, nil, function(v)
 AccentG = v
 UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
 end)
-SettingsTab:CreateSlider('Accent - Blue', nil, 0, 255, AccentB, nil, function(v)
+SettingsTab:CreateSlider(T.AccentBlue, nil, 0, 255, AccentB, nil, function(v)
 AccentB = v
 UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
 end)
-SettingsTab:CreateToggle('Rainbow Accent', 'lucide-wand-2', isRainbow, nil, function(state)
+SettingsTab:CreateToggle(T.RainbowAccent, 'lucide-wand-2', isRainbow, nil, function(state)
 isRainbow = state
 end)
 
-SettingsTab:CreateLabel('ปรับแต่งสีข้อความ', 'lucide-baseline')
-SettingsTab:CreateSlider('Text - Red', nil, 0, 255, TextR, nil, function(v)
+SettingsTab:CreateLabel(T.TextHeader, 'lucide-baseline')
+SettingsTab:CreateSlider(T.TextRed, nil, 0, 255, TextR, nil, function(v)
 TextR = v
 UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
 end)
-SettingsTab:CreateSlider('Text - Green', nil, 0, 255, TextG, nil, function(v)
+SettingsTab:CreateSlider(T.TextGreen, nil, 0, 255, TextG, nil, function(v)
 TextG = v
 UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
 end)
-SettingsTab:CreateSlider('Text - Blue', nil, 0, 255, TextB, nil, function(v)
+SettingsTab:CreateSlider(T.TextBlue, nil, 0, 255, TextB, nil, function(v)
 TextB = v
 UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
 end)
-SettingsTab:CreateToggle('Rainbow ข้อความ', 'lucide-wand-2', isTextRainbow, nil, function(state)
+SettingsTab:CreateToggle(T.RainbowText, 'lucide-wand-2', isTextRainbow, nil, function(state)
 isTextRainbow = state
 end)
 
-SettingsTab:CreateLabel('ความโปร่งแสงของ UI', 'lucide-glasses')
-SettingsTab:CreateSlider('ความโปร่งแสง (%)', nil, 0, 90, TransPercent, nil, function(v)
+SettingsTab:CreateLabel(T.TransparencyHeader, 'lucide-glasses')
+SettingsTab:CreateSlider(T.TransparencyLabel, nil, 0, 90, TransPercent, nil, function(v)
 TransPercent = v
 UpdateGlassTransparency(v / 100)
 end)
 
 -- ===================== สีพื้นหลัง (Background Color) =====================
-SettingsTab:CreateLabel('ปรับแต่งสีพื้นหลัง', 'lucide-square')
-SettingsTab:CreateSlider('พื้นหลัง - Red', nil, 0, 255, BgR, nil, function(v)
+SettingsTab:CreateLabel(T.BackgroundHeader, 'lucide-square')
+SettingsTab:CreateSlider(T.BackgroundRed, nil, 0, 255, BgR, nil, function(v)
 BgR = v
 UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
 end)
-SettingsTab:CreateSlider('พื้นหลัง - Green', nil, 0, 255, BgG, nil, function(v)
+SettingsTab:CreateSlider(T.BackgroundGreen, nil, 0, 255, BgG, nil, function(v)
 BgG = v
 UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
 end)
-SettingsTab:CreateSlider('พื้นหลัง - Blue', nil, 0, 255, BgB, nil, function(v)
+SettingsTab:CreateSlider(T.BackgroundBlue, nil, 0, 255, BgB, nil, function(v)
 BgB = v
 UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
 end)
 
+-- ===================== สีของ Category (sidebar tab) =====================
+SettingsTab:CreateLabel(T.CategoryColorHeader, 'lucide-layout-dashboard')
+SettingsTab:CreateSlider(T.CategoryColorRed, nil, 0, 255, CatR, nil, function(v)
+CatR = v
+UpdateCategoryColor(Color3.fromRGB(CatR, CatG, CatB))
+end)
+SettingsTab:CreateSlider(T.CategoryColorGreen, nil, 0, 255, CatG, nil, function(v)
+CatG = v
+UpdateCategoryColor(Color3.fromRGB(CatR, CatG, CatB))
+end)
+SettingsTab:CreateSlider(T.CategoryColorBlue, nil, 0, 255, CatB, nil, function(v)
+CatB = v
+UpdateCategoryColor(Color3.fromRGB(CatR, CatG, CatB))
+end)
+
 -- ===================== Running Light (เส้นขอบวิ่ง) =====================
-SettingsTab:CreateLabel('Running Light (เส้นขอบวิ่ง)', 'lucide-activity')
-SettingsTab:CreateToggle('เปิดใช้งาน Running Light', 'lucide-flame', RunningLightEnabled, nil, function(state)
+SettingsTab:CreateLabel(T.RunningLightHeader, 'lucide-activity')
+SettingsTab:CreateToggle(T.RunningLightEnable, 'lucide-flame', RunningLightEnabled, nil, function(state)
 RunningLightEnabled = state
 if not RunningLightEnabled then
 ApplyRunningLightStatic()
 end
 end)
-SettingsTab:CreateSlider('ความเร็ว Running Light', nil, 10, 500, RLSpeedValue, nil, function(v)
+SettingsTab:CreateSlider(T.RunningLightSpeed, nil, 10, 500, RLSpeedValue, nil, function(v)
 RLSpeedValue = v
 RunningLightSpeed = v
 end)
-SettingsTab:CreateSlider('สี Running Light - Red', nil, 0, 255, RLR, nil, function(v)
+SettingsTab:CreateSlider(T.RunningLightRed, nil, 0, 255, RLR, nil, function(v)
 RLR = v
 CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
 if not RunningLightEnabled then ApplyRunningLightStatic() end
 end)
-SettingsTab:CreateSlider('สี Running Light - Green', nil, 0, 255, RLG, nil, function(v)
+SettingsTab:CreateSlider(T.RunningLightGreen, nil, 0, 255, RLG, nil, function(v)
 RLG = v
 CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
 if not RunningLightEnabled then ApplyRunningLightStatic() end
 end)
-SettingsTab:CreateSlider('สี Running Light - Blue', nil, 0, 255, RLB, nil, function(v)
+SettingsTab:CreateSlider(T.RunningLightBlue, nil, 0, 255, RLB, nil, function(v)
 RLB = v
 CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
 if not RunningLightEnabled then ApplyRunningLightStatic() end
 end)
 
 -- ===================== Effect Toggles อื่นๆ (เปิด/ปิดอิสระต่อกัน) =====================
-SettingsTab:CreateLabel('เอฟเฟกต์อื่นๆ', 'lucide-wand-2')
-SettingsTab:CreateToggle('พื้นผิว Pattern พื้นหลัง', 'lucide-layout-grid', PatternEnabled, nil, function(state)
+SettingsTab:CreateLabel(T.EffectsHeader, 'lucide-wand-2')
+SettingsTab:CreateToggle(T.PatternToggle, 'lucide-layout-grid', PatternEnabled, nil, function(state)
 PatternEnabled = state
 if PatternBg then PatternBg.Visible = PatternEnabled end
 end)
-SettingsTab:CreateToggle('แสดงเส้นขอบ (Border)', 'lucide-square', BorderEnabled, nil, function(state)
+SettingsTab:CreateToggle(T.BorderToggle, 'lucide-square', BorderEnabled, nil, function(state)
 BorderEnabled = state
 if MainStroke then MainStroke.Enabled = BorderEnabled end
 end)
 
-SettingsTab:CreateLabel('จัดการการตั้งค่า', 'lucide-save')
-SettingsTab:CreateButton('บันทึกการตั้งค่า', 'lucide-save', function()
+-- ===================== ภาษา (Language) =====================
+SettingsTab:CreateLabel(T.LanguageHeader, 'lucide-languages')
+SettingsTab:CreateDropdown(T.LanguageLabel, 'lucide-languages', { 'English', 'Thai' }, (CurrentLanguage == 'th' and 'Thai' or 'English'), nil, function(selected)
+if selected == 'Thai' then
+CurrentLanguage = 'th'
+else
+CurrentLanguage = 'en'
+end
+-- วาดหน้า Settings ใหม่ทันทีด้วยภาษาที่เลือก โดยไม่ต้องรีสตาร์ท/รีโหลด
+BuildSettingsUI()
+end)
+
+SettingsTab:CreateLabel(T.ManageHeader, 'lucide-save')
+SettingsTab:CreateButton(T.SaveButton, 'lucide-save', function()
 PersistThemeSettings()
 SaveConfig(MainFrame)
 end)
-SettingsTab:CreateButton('รีเซ็ตเป็นค่าเริ่มต้น', 'lucide-rotate-ccw', function()
+SettingsTab:CreateButton(T.ResetButton, 'lucide-rotate-ccw', function()
 AccentR = math.floor(C.Accent.R * 255 + 0.5)
 AccentG = math.floor(C.Accent.G * 255 + 0.5)
 AccentB = math.floor(C.Accent.B * 255 + 0.5)
@@ -2434,6 +2616,9 @@ isTextRainbow = false
 BgR = math.floor(C.BgDeep.R * 255 + 0.5)
 BgG = math.floor(C.BgDeep.G * 255 + 0.5)
 BgB = math.floor(C.BgDeep.B * 255 + 0.5)
+CatR = math.floor(C.AccentDim.R * 255 + 0.5)
+CatG = math.floor(C.AccentDim.G * 255 + 0.5)
+CatB = math.floor(C.AccentDim.B * 255 + 0.5)
 RLR = math.floor(C.Accent.R * 255 + 0.5)
 RLG = math.floor(C.Accent.G * 255 + 0.5)
 RLB = math.floor(C.Accent.B * 255 + 0.5)
@@ -2442,16 +2627,24 @@ RunningLightSpeed = 150
 RunningLightEnabled = true
 PatternEnabled = true
 BorderEnabled = true
+CurrentLanguage = 'en'
 UpdateThemeColor(C.Accent)
 UpdateTextColor(C.TextMain)
 UpdateGlassTransparency(C.GlassTransparency)
 UpdateBackgroundColor(C.BgDeep)
+UpdateCategoryColor(C.AccentDim)
 CurrentRunningLightColor = C.Accent
 if PatternBg then PatternBg.Visible = true end
 if MainStroke then MainStroke.Enabled = true end
 PersistThemeSettings()
 SaveConfig(MainFrame)
+-- วาดหน้า Settings ใหม่ทันทีตามค่าที่รีเซ็ต (รวมถึงภาษากลับเป็น English)
+BuildSettingsUI()
 end)
+end
+
+-- วาดหน้า Settings ครั้งแรกด้วยภาษาเริ่มต้น (English เว้นแต่ผู้ใช้ตั้ง Config.Language หรือมีค่าที่เคยเซฟไว้)
+BuildSettingsUI()
 end)
 end
 
