@@ -911,15 +911,15 @@ local Icons = {
 }
 
 -- ============================================================
--- 🎨 PURPLE-BLACK THEME PALETTE
+-- 🎨 GRAY GLASS THEME PALETTE (โปร่งแสง)
 -- ============================================================
--- BG_DEEP    = 10,  8,  18   (ดำม่วงเข้มมาก — พื้นหลังหลัก)
--- BG_MID     = 18, 14,  30   (ม่วงดำกลาง — sidebar / topbar)
--- BG_CARD    = 28, 22,  48   (ม่วงเข้ม — card / element)
--- BG_ELEMENT = 40, 32,  65   (ม่วงกลาง — button / toggle bg)
--- ACCENT     = 138, 43, 226  (ม่วงสด — BlueViolet, accent หลัก)
--- ACCENT2    = 180, 90, 255  (ม่วงอ่อน — hover / highlight)
--- TEXT       = 230, 220, 255 (ขาวม่วงอ่อน — text หลัก)
+-- BG_DEEP    = 20, 20, 22    (เทาเข้มมาก — พื้นหลังหลัก, โปร่งแสง)
+-- BG_MID     = 30, 30, 33    (เทาเข้มกลาง — sidebar / topbar, โปร่งแสง)
+-- BG_CARD    = 42, 42, 46    (เทากลาง — card / element, โปร่งแสง)
+-- BG_ELEMENT = 55, 55, 60    (เทาอ่อนกว่า — button / toggle bg, โปร่งแสง)
+-- ACCENT     = 165,165,172   (เทาสว่าง — accent หลัก)
+-- ACCENT2    = 200,200,206   (เทาอ่อน — hover / highlight)
+-- TEXT       = 235,235,238   (ขาวเทา — text หลัก)
 -- ============================================================
 
 setmetatable(Icons, {
@@ -995,27 +995,30 @@ end)
 end
 
 -- ============================================================
--- สีธีมดำม่วง (ค่า RGB สำหรับใช้ทั่วทั้งไฟล์)
+-- สีธีมเทาโปร่งแสง (ค่า RGB สำหรับใช้ทั่วทั้งไฟล์)
 -- ============================================================
 local C = {
--- พื้นหลัง
-BgDeep    = Color3.fromRGB(10,  8,  18),   -- หน้าต่างหลัก
-BgMid     = Color3.fromRGB(18, 14,  30),   -- topbar / sidebar
-BgCard    = Color3.fromRGB(28, 22,  48),   -- card / container
-BgElement = Color3.fromRGB(40, 32,  65),   -- ปุ่ม / toggle
-BgInput   = Color3.fromRGB(22, 17,  38),   -- textbox bg
+-- พื้นหลัง (เทาเข้ม)
+BgDeep    = Color3.fromRGB(20, 20, 22),    -- หน้าต่างหลัก
+BgMid     = Color3.fromRGB(30, 30, 33),    -- topbar / sidebar
+BgCard    = Color3.fromRGB(42, 42, 46),    -- card / container
+BgElement = Color3.fromRGB(55, 55, 60),    -- ปุ่ม / toggle
+BgInput   = Color3.fromRGB(35, 35, 38),    -- textbox bg
 
--- Accent
-Accent    = Color3.fromRGB(138, 43, 226),  -- ม่วง BlueViolet
-AccentHov = Color3.fromRGB(165, 80, 255),  -- ม่วงสว่าง (hover/active)
-AccentDim = Color3.fromRGB(90,  28, 148),  -- ม่วงหม่น (sidebar idle)
+-- Accent (เทาสว่าง)
+Accent    = Color3.fromRGB(165, 165, 172), -- เทาสว่าง
+AccentHov = Color3.fromRGB(200, 200, 206), -- เทาอ่อน (hover/active)
+AccentDim = Color3.fromRGB(90, 90, 96),    -- เทาหม่น (sidebar idle)
 
 -- Text
-TextMain  = Color3.fromRGB(230, 220, 255), -- ขาวม่วงอ่อน
-TextDim   = Color3.fromRGB(160, 145, 200), -- ม่วงซีด (placeholder)
+TextMain  = Color3.fromRGB(235, 235, 238), -- ขาวเทา
+TextDim   = Color3.fromRGB(150, 150, 155), -- เทาซีด (placeholder)
 
 -- ปุ่ม toggle knob
-KnobOff   = Color3.fromRGB(80, 70, 110),
+KnobOff   = Color3.fromRGB(90, 90, 95),
+
+-- ค่าโปร่งแสงเริ่มต้นของพื้นหลัง element ต่างๆ (glass effect)
+GlassTransparency = 0.35,
 }
 
 function Library:CreateWindow(WindowName, Config)
@@ -1025,7 +1028,7 @@ local isFirstTab = true
 
 -- รองรับ ThemeColor config เดิม แต่ default เป็นสี Accent ม่วง
 local ThemeConfig = Config.ThemeColor or C.Accent
-local GTrans = Config.ElementTransparency or 0
+local GTrans = Config.ElementTransparency or C.GlassTransparency
 local isRainbow = false
 local CurrentThemeColor = C.Accent
 
@@ -1155,10 +1158,10 @@ if StrokeGradient and StrokeGradient.Parent then
 local r = StrokeGradient.Rotation
 StrokeGradient.Rotation = (r + dt * 150) % 360
 StrokeGradient.Color = ColorSequence.new({
-ColorSequenceKeypoint.new(0,   Color3.fromRGB(10, 8, 18)),
+ColorSequenceKeypoint.new(0,   C.BgDeep),
 ColorSequenceKeypoint.new(0.4, CurrentThemeColor),
 ColorSequenceKeypoint.new(0.6, CurrentThemeColor),
-ColorSequenceKeypoint.new(1,   Color3.fromRGB(10, 8, 18)),
+ColorSequenceKeypoint.new(1,   C.BgDeep),
 })
 end
 end)
