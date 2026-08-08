@@ -2,92 +2,97 @@ local Library = {}
 local HttpService = game:GetService('HttpService')
 local ConfigFileName = 'PMS_Config.json'
 local EnableSave = true
+
+-- เก็บค่า element ที่ตั้ง Flag ไว้ (เช่น Dropdown, Toggle) เพื่อเซฟ/โหลดค่าที่เลือก
 local Flags = {}
+
+-- เก็บค่าธีม (สี Accent, สี Text, ความโปร่งแสง, Rainbow) เพื่อเซฟ/โหลดจากเมนูตั้งค่า
 local ThemeSettings = {}
 
 local function SaveConfig(frame)
-    if not EnableSave or not frame then
-        return
-    end
-    if not (writefile and readfile and isfile) then
-        return
-    end
-
-    local camera = workspace.CurrentCamera
-    local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
-    local pos = frame.AbsolutePosition
-    local size = frame.AbsoluteSize
-    local outOfBounds = false
-
-    if pos.X < 0 or pos.Y < 0 or (pos.X + size.X) > viewport.X or (pos.Y + size.Y) > viewport.Y then
-        outOfBounds = true
-    end
-
-    local data = {
-        Width = size.X,
-        Height = size.Y,
-    }
-
-    if outOfBounds then
-        data.PosX = (viewport.X / 2) - (size.X / 2)
-        data.PosY = (viewport.Y / 2) - (size.Y / 2)
-    else
-        data.PosX = pos.X
-        data.PosY = pos.Y
-    end
-
-    data.Flags = {}
-
-    for flagName, flagData in pairs(Flags)do
-        data.Flags[flagName] = flagData.Value
-    end
-
-    data.Theme = ThemeSettings
-
-    local success, json = pcall(function()
-        return HttpService:JSONEncode(data)
-    end)
-
-    if success then
-        pcall(function()
-            writefile(ConfigFileName, json)
-        end)
-    end
+if not EnableSave or not frame then
+return
 end
+if not (writefile and readfile and isfile) then
+return
+end
+
+local camera = workspace.CurrentCamera
+local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+local pos = frame.AbsolutePosition
+local size = frame.AbsoluteSize
+local outOfBounds = false
+
+if pos.X < 0 or pos.Y < 0 or (pos.X + size.X) > viewport.X or (pos.Y + size.Y) > viewport.Y then
+outOfBounds = true
+end
+
+local data = {
+Width = size.X,
+Height = size.Y,
+}
+
+if outOfBounds then
+data.PosX = (viewport.X / 2) - (size.X / 2)
+data.PosY = (viewport.Y / 2) - (size.Y / 2)
+else
+data.PosX = pos.X
+data.PosY = pos.Y
+end
+
+data.Flags = {}
+for flagName, flagData in pairs(Flags) do
+data.Flags[flagName] = flagData.Value
+end
+
+data.Theme = ThemeSettings
+
+local success, json = pcall(function()
+return HttpService:JSONEncode(data)
+end)
+
+if success then
+pcall(function()
+writefile(ConfigFileName, json)
+end)
+end
+end
+
 local function LoadConfig()
-    if not EnableSave then
-        return nil, nil
-    end
-    if not (writefile and readfile and isfile) then
-        return nil, nil
-    end
-    if not isfile(ConfigFileName) then
-        return nil, nil
-    end
-
-    local success, content = pcall(readfile, ConfigFileName)
-
-    if not success or not content then
-        return nil, nil
-    end
-
-    local ok, data = pcall(function()
-        return HttpService:JSONDecode(content)
-    end)
-
-    if ok and data and data.Width and data.Height then
-        local loadedSize = UDim2.new(0, data.Width, 0, data.Height)
-        local loadedPos = nil
-
-        if data.PosX and data.PosY then
-            loadedPos = UDim2.new(0, data.PosX, 0, data.PosY)
-        end
-
-        return loadedSize, loadedPos, data.Flags, data.Theme
-    end
-
-    return nil, nil, nil, nil
+if not EnableSave then
+return nil, nil
 end
+if not (writefile and readfile and isfile) then
+return nil, nil
+end
+if not isfile(ConfigFileName) then
+return nil, nil
+end
+
+local success, content = pcall(readfile, ConfigFileName)
+
+if not success or not content then
+return nil, nil
+end
+
+local ok, data = pcall(function()
+return HttpService:JSONDecode(content)
+end)
+
+if ok and data and data.Width and data.Height then
+local loadedSize = UDim2.new(0, data.Width, 0, data.Height)
+local loadedPos = nil
+
+if data.PosX and data.PosY then
+loadedPos = UDim2.new(0, data.PosX, 0, data.PosY)
+end
+
+return loadedSize, loadedPos, data.Flags, data.Theme
+end
+
+return nil, nil, nil, nil
+end
+
 
 local Icons = {
     ['lucide-accessibility'] = 'rbxassetid://10709751939',
@@ -910,2106 +915,1791 @@ local Icons = {
     ['lucide-zoom-out'] = 'rbxassetid://10747384679',
 }
 
+-- ============================================================
+-- 🎨 GRAY GLASS THEME PALETTE (โปร่งแสง)
+-- ============================================================
+-- BG_DEEP    = 20, 20, 22    (เทาเข้มมาก — พื้นหลังหลัก, โปร่งแสง)
+-- BG_MID     = 30, 30, 33    (เทาเข้มกลาง — sidebar / topbar, โปร่งแสง)
+-- BG_CARD    = 42, 42, 46    (เทากลาง — card / element, โปร่งแสง)
+-- BG_ELEMENT = 55, 55, 60    (เทาอ่อนกว่า — button / toggle bg, โปร่งแสง)
+-- ACCENT     = 165,165,172   (เทาสว่าง — accent หลัก)
+-- ACCENT2    = 200,200,206   (เทาอ่อน — hover / highlight)
+-- TEXT       = 235,235,238   (ขาวเทา — text หลัก)
+-- ============================================================
+
 setmetatable(Icons, {
-    __index = function(t, k)
-        local v = rawget(t, 'lucide-' .. k)
-
-        if v then
-            rawset(t, k, v)
-
-            return v
-        end
-    end,
+__index = function(t, k)
+local v = rawget(t, 'lucide-' .. k)
+if v then
+rawset(t, k, v)
+return v
+end
+end,
 })
 
+-- ============================================================
+-- 🌐 SETTINGS-MENU TRANSLATIONS (English / Thai)
+-- ============================================================
 local Translations = {
-    en = {
-        Settings = 'Settings',
-        AccentHeader = 'Customize Accent Color',
-        AccentRed = 'Accent - Red',
-        AccentGreen = 'Accent - Green',
-        AccentBlue = 'Accent - Blue',
-        RainbowAccent = 'Rainbow Accent',
-        TextHeader = 'Customize Text Color',
-        TextRed = 'Text - Red',
-        TextGreen = 'Text - Green',
-        TextBlue = 'Text - Blue',
-        RainbowText = 'Rainbow Text',
-        TransparencyHeader = 'UI Transparency',
-        TransparencyLabel = 'Transparency (%)',
-        BackgroundHeader = 'Customize Background Color',
-        BackgroundRed = 'Background - Red',
-        BackgroundGreen = 'Background - Green',
-        BackgroundBlue = 'Background - Blue',
-        CategoryColorHeader = 'Customize Category Color',
-        CategoryColorRed = 'Category - Red',
-        CategoryColorGreen = 'Category - Green',
-        CategoryColorBlue = 'Category - Blue',
-        RunningLightHeader = 'Running Light (Animated Border)',
-        RunningLightEnable = 'Enable Running Light',
-        RunningLightSpeed = 'Running Light Speed',
-        RunningLightRed = 'Running Light Color - Red',
-        RunningLightGreen = 'Running Light Color - Green',
-        RunningLightBlue = 'Running Light Color - Blue',
-        EffectsHeader = 'Other Effects',
-        PatternToggle = 'Background Pattern Texture',
-        BorderToggle = 'Show Border',
-        LanguageHeader = 'Language',
-        LanguageLabel = 'Select Language',
-        ManageHeader = 'Manage Settings',
-        SaveButton = 'Save Settings',
-        ResetButton = 'Reset to Default',
-    },
-    th = {
-        Settings = '\u{e15}\u{e31}\u{e49}\u{e07}\u{e04}\u{e48}\u{e32}',
-        AccentHeader = '\u{e1b}\u{e23}\u{e31}\u{e1a}\u{e41}\u{e15}\u{e48}\u{e07}\u{e2a}\u{e35} Accent',
-        AccentRed = 'Accent - Red',
-        AccentGreen = 'Accent - Green',
-        AccentBlue = 'Accent - Blue',
-        RainbowAccent = 'Rainbow Accent',
-        TextHeader = '\u{e1b}\u{e23}\u{e31}\u{e1a}\u{e41}\u{e15}\u{e48}\u{e07}\u{e2a}\u{e35}\u{e02}\u{e49}\u{e2d}\u{e04}\u{e27}\u{e32}\u{e21}',
-        TextRed = 'Text - Red',
-        TextGreen = 'Text - Green',
-        TextBlue = 'Text - Blue',
-        RainbowText = 'Rainbow \u{e02}\u{e49}\u{e2d}\u{e04}\u{e27}\u{e32}\u{e21}',
-        TransparencyHeader = '\u{e04}\u{e27}\u{e32}\u{e21}\u{e42}\u{e1b}\u{e23}\u{e48}\u{e07}\u{e41}\u{e2a}\u{e07}\u{e02}\u{e2d}\u{e07} UI',
-        TransparencyLabel = '\u{e04}\u{e27}\u{e32}\u{e21}\u{e42}\u{e1b}\u{e23}\u{e48}\u{e07}\u{e41}\u{e2a}\u{e07} (%)',
-        BackgroundHeader = '\u{e1b}\u{e23}\u{e31}\u{e1a}\u{e41}\u{e15}\u{e48}\u{e07}\u{e2a}\u{e35}\u{e1e}\u{e37}\u{e49}\u{e19}\u{e2b}\u{e25}\u{e31}\u{e07}',
-        BackgroundRed = '\u{e1e}\u{e37}\u{e49}\u{e19}\u{e2b}\u{e25}\u{e31}\u{e07} - Red',
-        BackgroundGreen = '\u{e1e}\u{e37}\u{e49}\u{e19}\u{e2b}\u{e25}\u{e31}\u{e07} - Green',
-        BackgroundBlue = '\u{e1e}\u{e37}\u{e49}\u{e19}\u{e2b}\u{e25}\u{e31}\u{e07} - Blue',
-        CategoryColorHeader = '\u{e1b}\u{e23}\u{e31}\u{e1a}\u{e41}\u{e15}\u{e48}\u{e07}\u{e2a}\u{e35}\u{e2b}\u{e21}\u{e27}\u{e14}\u{e2b}\u{e21}\u{e39}\u{e48} (Category)',
-        CategoryColorRed = '\u{e2a}\u{e35} Category - Red',
-        CategoryColorGreen = '\u{e2a}\u{e35} Category - Green',
-        CategoryColorBlue = '\u{e2a}\u{e35} Category - Blue',
-        RunningLightHeader = 'Running Light (\u{e40}\u{e2a}\u{e49}\u{e19}\u{e02}\u{e2d}\u{e1a}\u{e27}\u{e34}\u{e48}\u{e07})',
-        RunningLightEnable = '\u{e40}\u{e1b}\u{e34}\u{e14}\u{e43}\u{e0a}\u{e49}\u{e07}\u{e32}\u{e19} Running Light',
-        RunningLightSpeed = '\u{e04}\u{e27}\u{e32}\u{e21}\u{e40}\u{e23}\u{e47}\u{e27} Running Light',
-        RunningLightRed = '\u{e2a}\u{e35} Running Light - Red',
-        RunningLightGreen = '\u{e2a}\u{e35} Running Light - Green',
-        RunningLightBlue = '\u{e2a}\u{e35} Running Light - Blue',
-        EffectsHeader = '\u{e40}\u{e2d}\u{e1f}\u{e40}\u{e1f}\u{e01}\u{e15}\u{e4c}\u{e2d}\u{e37}\u{e48}\u{e19}\u{e46}',
-        PatternToggle = '\u{e1e}\u{e37}\u{e49}\u{e19}\u{e1c}\u{e34}\u{e27} Pattern \u{e1e}\u{e37}\u{e49}\u{e19}\u{e2b}\u{e25}\u{e31}\u{e07}',
-        BorderToggle = '\u{e41}\u{e2a}\u{e14}\u{e07}\u{e40}\u{e2a}\u{e49}\u{e19}\u{e02}\u{e2d}\u{e1a} (Border)',
-        LanguageHeader = '\u{e20}\u{e32}\u{e29}\u{e32}',
-        LanguageLabel = '\u{e40}\u{e25}\u{e37}\u{e2d}\u{e01}\u{e20}\u{e32}\u{e29}\u{e32}',
-        ManageHeader = '\u{e08}\u{e31}\u{e14}\u{e01}\u{e32}\u{e23}\u{e01}\u{e32}\u{e23}\u{e15}\u{e31}\u{e49}\u{e07}\u{e04}\u{e48}\u{e32}',
-        SaveButton = '\u{e1a}\u{e31}\u{e19}\u{e17}\u{e36}\u{e01}\u{e01}\u{e32}\u{e23}\u{e15}\u{e31}\u{e49}\u{e07}\u{e04}\u{e48}\u{e32}',
-        ResetButton = '\u{e23}\u{e35}\u{e40}\u{e0b}\u{e47}\u{e15}\u{e40}\u{e1b}\u{e47}\u{e19}\u{e04}\u{e48}\u{e32}\u{e40}\u{e23}\u{e34}\u{e48}\u{e21}\u{e15}\u{e49}\u{e19}',
-    },
+en = {
+Settings = 'Settings',
+AccentHeader = 'Customize Accent Color',
+AccentRed = 'Accent - Red',
+AccentGreen = 'Accent - Green',
+AccentBlue = 'Accent - Blue',
+RainbowAccent = 'Rainbow Accent',
+TextHeader = 'Customize Text Color',
+TextRed = 'Text - Red',
+TextGreen = 'Text - Green',
+TextBlue = 'Text - Blue',
+RainbowText = 'Rainbow Text',
+TransparencyHeader = 'UI Transparency',
+TransparencyLabel = 'Transparency (%)',
+BackgroundHeader = 'Customize Background Color',
+BackgroundRed = 'Background - Red',
+BackgroundGreen = 'Background - Green',
+BackgroundBlue = 'Background - Blue',
+CategoryColorHeader = 'Customize Category Color',
+CategoryActiveSubHeader = 'Category Color (Active / Selected)',
+CategoryActiveRed = 'Category (Active) - Red',
+CategoryActiveGreen = 'Category (Active) - Green',
+CategoryActiveBlue = 'Category (Active) - Blue',
+CategoryIdleSubHeader = 'Category Color (Idle / Not Selected)',
+CategoryIdleRed = 'Category (Idle) - Red',
+CategoryIdleGreen = 'Category (Idle) - Green',
+CategoryIdleBlue = 'Category (Idle) - Blue',
+RunningLightHeader = 'Running Light (Animated Border)',
+RunningLightEnable = 'Enable Running Light',
+RunningLightSpeed = 'Running Light Speed',
+RunningLightRed = 'Running Light Color - Red',
+RunningLightGreen = 'Running Light Color - Green',
+RunningLightBlue = 'Running Light Color - Blue',
+EffectsHeader = 'Other Effects',
+PatternToggle = 'Background Pattern Texture',
+BorderToggle = 'Show Border',
+LanguageHeader = 'Language',
+LanguageLabel = 'Select Language',
+ManageHeader = 'Manage Settings',
+SaveButton = 'Save Settings',
+ResetButton = 'Reset to Default',
+},
+th = {
+Settings = 'ตั้งค่า',
+AccentHeader = 'ปรับแต่งสี Accent',
+AccentRed = 'Accent - Red',
+AccentGreen = 'Accent - Green',
+AccentBlue = 'Accent - Blue',
+RainbowAccent = 'Rainbow Accent',
+TextHeader = 'ปรับแต่งสีข้อความ',
+TextRed = 'Text - Red',
+TextGreen = 'Text - Green',
+TextBlue = 'Text - Blue',
+RainbowText = 'Rainbow ข้อความ',
+TransparencyHeader = 'ความโปร่งแสงของ UI',
+TransparencyLabel = 'ความโปร่งแสง (%)',
+BackgroundHeader = 'ปรับแต่งสีพื้นหลัง',
+BackgroundRed = 'พื้นหลัง - Red',
+BackgroundGreen = 'พื้นหลัง - Green',
+BackgroundBlue = 'พื้นหลัง - Blue',
+CategoryColorHeader = 'ปรับแต่งสีหมวดหมู่ (Category)',
+CategoryActiveSubHeader = 'สี Category (ตอนถูกเลือก / Active)',
+CategoryActiveRed = 'Category (Active) - Red',
+CategoryActiveGreen = 'Category (Active) - Green',
+CategoryActiveBlue = 'Category (Active) - Blue',
+CategoryIdleSubHeader = 'สี Category (ตอนไม่ได้เลือก / Idle)',
+CategoryIdleRed = 'Category (Idle) - Red',
+CategoryIdleGreen = 'Category (Idle) - Green',
+CategoryIdleBlue = 'Category (Idle) - Blue',
+RunningLightHeader = 'Running Light (เส้นขอบวิ่ง)',
+RunningLightEnable = 'เปิดใช้งาน Running Light',
+RunningLightSpeed = 'ความเร็ว Running Light',
+RunningLightRed = 'สี Running Light - Red',
+RunningLightGreen = 'สี Running Light - Green',
+RunningLightBlue = 'สี Running Light - Blue',
+EffectsHeader = 'เอฟเฟกต์อื่นๆ',
+PatternToggle = 'พื้นผิว Pattern พื้นหลัง',
+BorderToggle = 'แสดงเส้นขอบ (Border)',
+LanguageHeader = 'ภาษา',
+LanguageLabel = 'เลือกภาษา',
+ManageHeader = 'จัดการการตั้งค่า',
+SaveButton = 'บันทึกการตั้งค่า',
+ResetButton = 'รีเซ็ตเป็นค่าเริ่มต้น',
+},
 }
+
 local TweenService = game:GetService('TweenService')
 local UserInputService = game:GetService('UserInputService')
 local RunService = game:GetService('RunService')
 local Players = game:GetService('Players')
 local LocalPlayer = Players.LocalPlayer
 local success, possibleCoreGui = pcall(function()
-    return (gethui and gethui())
+return (gethui and gethui())
 end)
 local CoreGui = nil
 
 if success and possibleCoreGui then
-    CoreGui = possibleCoreGui
+CoreGui = possibleCoreGui
 else
-    CoreGui = game:GetService('CoreGui') or (LocalPlayer and LocalPlayer:WaitForChild('PlayerGui'))
+CoreGui = game:GetService('CoreGui') or (LocalPlayer and LocalPlayer:WaitForChild('PlayerGui'))
 end
 
 local function SafeSetProperty(instance, property, value)
-    if not instance then
-        return false
-    end
-
-    local ok = pcall(function()
-        instance[property] = value
-    end)
-
-    if ok then
-        return true
-    end
-    if property == 'TextColor3' and instance:IsA('ImageLabel') then
-        pcall(function()
-            instance.ImageColor3 = value
-        end)
-
-        return true
-    end
-    if property == 'BackgroundColor3' and instance:IsA('ImageLabel') then
-        pcall(function()
-            instance.ImageColor3 = value
-        end)
-
-        return true
-    end
-
-    return false
+if not instance then return false end
+local ok = pcall(function() instance[property] = value end)
+if ok then return true end
+if property == 'TextColor3' and instance:IsA('ImageLabel') then
+pcall(function() instance.ImageColor3 = value end)
+return true
 end
+if property == 'BackgroundColor3' and instance:IsA('ImageLabel') then
+pcall(function() instance.ImageColor3 = value end)
+return true
+end
+return false
+end
+
 local function MakeDraggable(DraggableObject, TargetObject, OnDragEnd)
-    TargetObject = TargetObject or DraggableObject
-
-    local dragging, dragInput, dragStart, startPos
-
-    DraggableObject.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = TargetObject.Position
-
-            local connection
-
-            connection = input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-
-                    connection:Disconnect()
-
-                    if OnDragEnd then
-                        OnDragEnd()
-                    end
-                end
-            end)
-        end
-    end)
-    DraggableObject.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-
-            TargetObject.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
+TargetObject = TargetObject or DraggableObject
+local dragging, dragInput, dragStart, startPos
+DraggableObject.InputBegan:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+dragging = true
+dragStart = input.Position
+startPos = TargetObject.Position
+local connection
+connection = input.Changed:Connect(function()
+if input.UserInputState == Enum.UserInputState.End then
+dragging = false
+connection:Disconnect()
+if OnDragEnd then OnDragEnd() end
+end
+end)
+end
+end)
+DraggableObject.InputChanged:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+dragInput = input
+end
+end)
+UserInputService.InputChanged:Connect(function(input)
+if input == dragInput and dragging then
+local delta = input.Position - dragStart
+TargetObject.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+end)
 end
 
+-- ============================================================
+-- สีธีมเทาโปร่งแสง (ค่า RGB สำหรับใช้ทั่วทั้งไฟล์)
+-- ============================================================
 local C = {
-    BgDeep = Color3.fromRGB(20, 20, 22),
-    BgMid = Color3.fromRGB(30, 30, 33),
-    BgCard = Color3.fromRGB(42, 42, 46),
-    BgElement = Color3.fromRGB(55, 55, 60),
-    BgInput = Color3.fromRGB(35, 35, 38),
-    Accent = Color3.fromRGB(165, 165, 172),
-    AccentHov = Color3.fromRGB(200, 200, 206),
-    AccentDim = Color3.fromRGB(90, 90, 96),
-    TextMain = Color3.fromRGB(235, 235, 238),
-    TextDim = Color3.fromRGB(150, 150, 155),
-    KnobOff = Color3.fromRGB(90, 90, 95),
-    GlassTransparency = 0.35,
+-- พื้นหลัง (เทาเข้ม)
+BgDeep    = Color3.fromRGB(20, 20, 22),    -- หน้าต่างหลัก
+BgMid     = Color3.fromRGB(30, 30, 33),    -- topbar / sidebar
+BgCard    = Color3.fromRGB(42, 42, 46),    -- card / container
+BgElement = Color3.fromRGB(55, 55, 60),    -- ปุ่ม / toggle
+BgInput   = Color3.fromRGB(35, 35, 38),    -- textbox bg
+
+-- Accent (เทาสว่าง)
+Accent    = Color3.fromRGB(165, 165, 172), -- เทาสว่าง
+AccentHov = Color3.fromRGB(200, 200, 206), -- เทาอ่อน (hover/active)
+AccentDim = Color3.fromRGB(90, 90, 96),    -- เทาหม่น (sidebar idle)
+
+-- Text
+TextMain  = Color3.fromRGB(235, 235, 238), -- ขาวเทา
+TextDim   = Color3.fromRGB(150, 150, 155), -- เทาซีด (placeholder)
+
+-- ปุ่ม toggle knob
+KnobOff   = Color3.fromRGB(90, 90, 95),
+
+-- ค่าโปร่งแสงเริ่มต้นของพื้นหลัง element ต่างๆ (glass effect)
+GlassTransparency = 0.35,
 }
 
 function Library:CreateWindow(WindowName, Config)
-    Config = Config or {}
-
-    local ToggleConfig = Config.ToggleConfig or {}
-    local isFirstTab = true
-    local ThemeConfig = Config.ThemeColor or C.Accent
-    local GTrans = Config.ElementTransparency or C.GlassTransparency
-    local isRainbow = false
-    local CurrentThemeColor = C.Accent
-
-    if type(ThemeConfig) == 'string' and string.lower(ThemeConfig) == 'rainbow' then
-        isRainbow = true
-    elseif typeof(ThemeConfig) == 'Color3' then
-        CurrentThemeColor = ThemeConfig
-    end
-
-    local CurrentBackgroundColor = Config.BackgroundColor or C.BgDeep
-    local CurrentCategoryColor = Config.CategoryColor or C.AccentDim
-    local CurrentLanguage = 'en'
-
-    if Config.Language then
-        local cfgLang = string.lower(tostring(Config.Language))
-
-        if cfgLang == 'th' or cfgLang == 'thai' then
-            CurrentLanguage = 'th'
-        else
-            CurrentLanguage = 'en'
-        end
-    end
-
-    local RunningLightEnabled = true
-
-    if Config.RunningLightEnabled ~= nil then
-        RunningLightEnabled = Config.RunningLightEnabled
-    end
-
-    local RunningLightSpeed = Config.RunningLightSpeed or 150
-    local CurrentRunningLightColor = Config.RunningLightColor or C.Accent
-    local PatternEnabled = true
-
-    if Config.PatternEnabled ~= nil then
-        PatternEnabled = Config.PatternEnabled
-    end
-
-    local BorderEnabled = true
-
-    if Config.BorderEnabled ~= nil then
-        BorderEnabled = Config.BorderEnabled
-    end
-
-    local ThemedElements = {}
-
-    local function ApplyTheme(instance, property)
-        if not instance then
-            return
-        end
-
-        property = property or 'BackgroundColor3'
-
-        SafeSetProperty(instance, property, CurrentThemeColor)
-        table.insert(ThemedElements, {
-            UpdateFunc = function(color)
-                if instance and instance.Parent then
-                    SafeSetProperty(instance, property, color)
-                end
-            end,
-        })
-    end
-
-    local TextColorConfig = Config.TextColor or C.TextMain
-    local isTextRainbow = false
-    local CurrentTextColor = C.TextMain
-
-    if type(TextColorConfig) == 'string' and string.lower(TextColorConfig) == 'rainbow' then
-        isTextRainbow = true
-    elseif typeof(TextColorConfig) == 'Color3' then
-        CurrentTextColor = TextColorConfig
-    end
-
-    local TextElements = {}
-
-    local function ApplyTextColor(instance, property)
-        property = property or 'TextColor3'
-
-        if not instance then
-            return
-        end
-
-        SafeSetProperty(instance, property, CurrentTextColor)
-        table.insert(TextElements, {
-            UpdateFunc = function(color)
-                if instance and instance.Parent then
-                    SafeSetProperty(instance, property, color)
-                end
-            end,
-        })
-    end
-
-    local GlassElements = {}
-
-    local function ApplyGlass(instance)
-        if not instance then
-            return
-        end
-
-        instance.BackgroundTransparency = GTrans
-
-        table.insert(GlassElements, instance)
-    end
-    local function UpdateThemeColor(newColor)
-        CurrentThemeColor = newColor
-
-        for _, data in ipairs(ThemedElements)do
-            data.UpdateFunc(CurrentThemeColor)
-        end
-    end
-    local function UpdateTextColor(newColor)
-        CurrentTextColor = newColor
-
-        for _, data in ipairs(TextElements)do
-            data.UpdateFunc(CurrentTextColor)
-        end
-    end
-    local function UpdateGlassTransparency(newTrans)
-        GTrans = math.clamp(newTrans, 0, 1)
-
-        for _, inst in ipairs(GlassElements)do
-            if inst and inst.Parent then
-                pcall(function()
-                    inst.BackgroundTransparency = GTrans
-                end)
-            end
-        end
-    end
-
-    local BackgroundElements = {}
-
-    local function ApplyBackground(instance, property)
-        if not instance then
-            return
-        end
-
-        property = property or 'BackgroundColor3'
-
-        SafeSetProperty(instance, property, CurrentBackgroundColor)
-        table.insert(BackgroundElements, {
-            UpdateFunc = function(color)
-                if instance and instance.Parent then
-                    SafeSetProperty(instance, property, color)
-                end
-            end,
-        })
-    end
-    local function UpdateBackgroundColor(newColor)
-        CurrentBackgroundColor = newColor
-
-        for _, data in ipairs(BackgroundElements)do
-            data.UpdateFunc(CurrentBackgroundColor)
-        end
-    end
-
-    local CategoryColorElements = {}
-
-    local function RegisterCategoryColorElement(instance, isSelectedGetter)
-        table.insert(CategoryColorElements, {
-            UpdateFunc = function(color)
-                if instance and instance.Parent and isSelectedGetter() then
-                    SafeSetProperty(instance, 'BackgroundColor3', color)
-                end
-            end,
-        })
-    end
-    local function UpdateCategoryColor(newColor)
-        CurrentCategoryColor = newColor
-
-        for _, data in ipairs(CategoryColorElements)do
-            data.UpdateFunc(CurrentCategoryColor)
-        end
-    end
-
-    local savedSize, savedPos, savedFlags, savedTheme = LoadConfig()
-
-    if savedTheme then
-        if savedTheme.Accent then
-            CurrentThemeColor = Color3.fromRGB(savedTheme.Accent[1], savedTheme.Accent[2], savedTheme.Accent[3])
-        end
-        if savedTheme.Text then
-            CurrentTextColor = Color3.fromRGB(savedTheme.Text[1], savedTheme.Text[2], savedTheme.Text[3])
-        end
-        if savedTheme.Transparency ~= nil then
-            GTrans = savedTheme.Transparency
-        end
-        if savedTheme.Rainbow ~= nil then
-            isRainbow = savedTheme.Rainbow
-        end
-        if savedTheme.TextRainbow ~= nil then
-            isTextRainbow = savedTheme.TextRainbow
-        end
-        if savedTheme.Background then
-            CurrentBackgroundColor = Color3.fromRGB(savedTheme.Background[1], savedTheme.Background[2], savedTheme.Background[3])
-        end
-        if savedTheme.CategoryColor then
-            CurrentCategoryColor = Color3.fromRGB(savedTheme.CategoryColor[1], savedTheme.CategoryColor[2], savedTheme.CategoryColor[3])
-        end
-        if savedTheme.Language then
-            local savedLang = string.lower(tostring(savedTheme.Language))
-
-            if savedLang == 'th' or savedLang == 'thai' then
-                CurrentLanguage = 'th'
-            else
-                CurrentLanguage = 'en'
-            end
-        end
-        if savedTheme.RunningLightEnabled ~= nil then
-            RunningLightEnabled = savedTheme.RunningLightEnabled
-        end
-        if savedTheme.RunningLightSpeed ~= nil then
-            RunningLightSpeed = savedTheme.RunningLightSpeed
-        end
-        if savedTheme.RunningLightColor then
-            CurrentRunningLightColor = Color3.fromRGB(savedTheme.RunningLightColor[1], savedTheme.RunningLightColor[2], savedTheme.RunningLightColor[3])
-        end
-        if savedTheme.PatternEnabled ~= nil then
-            PatternEnabled = savedTheme.PatternEnabled
-        end
-        if savedTheme.BorderEnabled ~= nil then
-            BorderEnabled = savedTheme.BorderEnabled
-        end
-    end
-
-    ThemeSettings.Accent = {
-        math.floor(CurrentThemeColor.R * 255),
-        math.floor(CurrentThemeColor.G * 255),
-        math.floor(CurrentThemeColor.B * 255),
-    }
-    ThemeSettings.Text = {
-        math.floor(CurrentTextColor.R * 255),
-        math.floor(CurrentTextColor.G * 255),
-        math.floor(CurrentTextColor.B * 255),
-    }
-    ThemeSettings.Transparency = GTrans
-    ThemeSettings.Rainbow = isRainbow
-    ThemeSettings.TextRainbow = isTextRainbow
-    ThemeSettings.Background = {
-        math.floor(CurrentBackgroundColor.R * 255),
-        math.floor(CurrentBackgroundColor.G * 255),
-        math.floor(CurrentBackgroundColor.B * 255),
-    }
-    ThemeSettings.CategoryColor = {
-        math.floor(CurrentCategoryColor.R * 255),
-        math.floor(CurrentCategoryColor.G * 255),
-        math.floor(CurrentCategoryColor.B * 255),
-    }
-    ThemeSettings.Language = CurrentLanguage
-    ThemeSettings.RunningLightEnabled = RunningLightEnabled
-    ThemeSettings.RunningLightSpeed = RunningLightSpeed
-    ThemeSettings.RunningLightColor = {
-        math.floor(CurrentRunningLightColor.R * 255),
-        math.floor(CurrentRunningLightColor.G * 255),
-        math.floor(CurrentRunningLightColor.B * 255),
-    }
-    ThemeSettings.PatternEnabled = PatternEnabled
-    ThemeSettings.BorderEnabled = BorderEnabled
-
-    local function AddElementIcon(parent, iconName, size, xOffset)
-        if not (iconName and Icons and Icons[iconName]) then
-            return nil
-        end
-
-        size = size or 18
-
-        local IconImg = Instance.new('ImageLabel')
-
-        IconImg.Name = 'ElementIcon'
-        IconImg.Parent = parent
-        IconImg.BackgroundTransparency = 1
-        IconImg.Size = UDim2.new(0, size, 0, size)
-        IconImg.Position = UDim2.new(0, xOffset or 8, 0.5, -(size / 2))
-        IconImg.Image = Icons[iconName]
-        IconImg.ZIndex = (parent.ZIndex or 1) + 1
-
-        ApplyTextColor(IconImg, 'ImageColor3')
-
-        return IconImg
-    end
-
-    local ScreenGui = Instance.new('ScreenGui')
-
-    ScreenGui.Name = 'LMG2L_UI'
-    ScreenGui.Parent = CoreGui or (LocalPlayer and LocalPlayer:WaitForChild('PlayerGui'))
-    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.DisplayOrder = Config.DisplayOrder or 999
-
-    local MainFrame = Instance.new('Frame')
-
-    MainFrame.Name = 'MainFrame'
-    MainFrame.Parent = ScreenGui
-
-    ApplyBackground(MainFrame)
-    ApplyGlass(MainFrame)
-
-    MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
-    MainFrame.Size = UDim2.new(0, 500, 0, 350)
-    MainFrame.BorderSizePixel = 0
-    MainFrame.ClipsDescendants = true
-    Instance.new('UICorner', MainFrame).CornerRadius = UDim.new(0, 10)
-
-    local PatternBg = Instance.new('ImageLabel')
-
-    PatternBg.Name = 'Pattern'
-    PatternBg.Parent = MainFrame
-    PatternBg.BackgroundTransparency = 1
-    PatternBg.Size = UDim2.new(1, 0, 1, 0)
-    PatternBg.ZIndex = 0
-    PatternBg.Image = 'rbxassetid://2151741365'
-    PatternBg.ImageTransparency = 0.93
-    PatternBg.ImageColor3 = C.Accent
-    PatternBg.ScaleType = Enum.ScaleType.Tile
-    PatternBg.TileSize = UDim2.new(0, 200, 0, 200)
-    PatternBg.Visible = PatternEnabled
-
-    if savedSize then
-        MainFrame.Size = savedSize
-    end
-    if savedPos then
-        MainFrame.Position = savedPos
-    end
-
-    local SavedFlags = savedFlags or {}
-    local ToggleSettingsVisibility = function() end
-    local OpenSettingsFn = function() end
-    local CloseSettingsFn = function() end
-    local MainStroke = Instance.new('UIStroke', MainFrame)
-
-    MainStroke.Thickness = 2
-    MainStroke.Color = C.Accent
-    MainStroke.Enabled = BorderEnabled
-
-    local StrokeGradient = Instance.new('UIGradient')
-
-    StrokeGradient.Parent = MainStroke
-
-    local function ApplyRunningLightStatic()
-        if StrokeGradient and StrokeGradient.Parent then
-            StrokeGradient.Rotation = 0
-            StrokeGradient.Color = ColorSequence.new(CurrentRunningLightColor)
-        end
-    end
-
-    if not RunningLightEnabled then
-        ApplyRunningLightStatic()
-    end
-
-    RunService.RenderStepped:Connect(function(dt)
-        if isRainbow or isTextRainbow then
-            local rColor = Color3.fromHSV(tick() % 5 / 5, 1, 1)
-
-            if isRainbow then
-                CurrentThemeColor = rColor
-
-                for _, data in ipairs(ThemedElements)do
-                    data.UpdateFunc(CurrentThemeColor)
-                end
-            end
-            if isTextRainbow then
-                CurrentTextColor = rColor
-
-                for _, data in ipairs(TextElements)do
-                    data.UpdateFunc(CurrentTextColor)
-                end
-            end
-        end
-        if RunningLightEnabled and StrokeGradient and StrokeGradient.Parent then
-            local r = StrokeGradient.Rotation
-
-            StrokeGradient.Rotation = (r + dt * RunningLightSpeed) % 360
-            StrokeGradient.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, C.BgDeep),
-                ColorSequenceKeypoint.new(0.4, CurrentRunningLightColor),
-                ColorSequenceKeypoint.new(0.6, CurrentRunningLightColor),
-                ColorSequenceKeypoint.new(1, C.BgDeep),
-            })
-        end
-    end)
-
-    local ToggleBtn = Instance.new('ImageButton')
-
-    ToggleBtn.Name = 'ToggleBtn'
-    ToggleBtn.Parent = ScreenGui
-    ToggleBtn.BackgroundColor3 = C.BgCard
-
-    ApplyGlass(ToggleBtn)
-
-    ToggleBtn.Position = UDim2.new(0, 20, 0, 20)
-    ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
-    ToggleBtn.AutoButtonColor = true
-
-    local _uc = Instance.new('UICorner', ToggleBtn)
-
-    _uc.CornerRadius = UDim.new(1, 0)
-
-    local _us = Instance.new('UIStroke', ToggleBtn)
-
-    _us.Thickness = 2
-    _us.Color = C.Accent
-
-    if ToggleConfig.Image and ToggleConfig.Image ~= '' then
-        ToggleBtn.Image = ToggleConfig.Image
-        ToggleBtn.ImageRectSize = Vector2.new(0, 0)
-    else
-        ToggleBtn.ImageTransparency = 1
-    end
-
-    local ToggleText = Instance.new('TextLabel')
-
-    ToggleText.Parent = ToggleBtn
-    ToggleText.BackgroundTransparency = 1
-    ToggleText.Size = UDim2.new(1, 0, 1, 0)
-    ToggleText.Font = Enum.Font.GothamBold
-    ToggleText.Text = ToggleConfig.Text or (ToggleConfig.Image and '' or 'UI')
-    ToggleText.TextSize = 16
-    ToggleText.TextTruncate = Enum.TextTruncate.AtEnd
-
-    ApplyTextColor(ToggleText)
-    MakeDraggable(ToggleBtn)
-    ToggleBtn.MouseButton1Click:Connect(function()
-        MainFrame.Visible = not MainFrame.Visible
-    end)
-
-    local TopBar = Instance.new('Frame')
-
-    TopBar.Name = 'TopBar'
-    TopBar.Parent = MainFrame
-    TopBar.BackgroundColor3 = C.BgMid
-
-    ApplyGlass(TopBar)
-
-    TopBar.Size = UDim2.new(1, 0, 0, 32)
-    TopBar.ZIndex = 2
-    Instance.new('UICorner', TopBar).CornerRadius = UDim.new(0, 10)
-
-    local TopBarFix = Instance.new('Frame')
-
-    TopBarFix.Parent = TopBar
-    TopBarFix.BackgroundColor3 = C.BgMid
-
-    ApplyGlass(TopBarFix)
-
-    TopBarFix.Position = UDim2.new(0, 0, 0.5, 0)
-    TopBarFix.Size = UDim2.new(1, 0, 0.5, 0)
-    TopBarFix.BorderSizePixel = 0
-    TopBarFix.ZIndex = 2
-
-    local TopBarAccent = Instance.new('Frame')
-
-    TopBarAccent.Parent = TopBar
-    TopBarAccent.BackgroundColor3 = C.Accent
-    TopBarAccent.BorderSizePixel = 0
-    TopBarAccent.Position = UDim2.new(0, 0, 1, -2)
-    TopBarAccent.Size = UDim2.new(1, 0, 0, 2)
-    TopBarAccent.ZIndex = 3
-
-    local TitlePadding = 15
-
-    if Config.Logo and Config.Logo ~= '' then
-        local LogoImg = Instance.new('ImageLabel')
-
-        LogoImg.Parent = TopBar
-        LogoImg.BackgroundTransparency = 1
-        LogoImg.Position = UDim2.new(0, 8, 0, 6)
-        LogoImg.Size = UDim2.new(0, 20, 0, 20)
-        LogoImg.Image = Config.Logo
-        LogoImg.ZIndex = 3
-        TitlePadding = 35
-    end
-
-    local TitleLabel = Instance.new('TextLabel')
-
-    TitleLabel.Parent = TopBar
-    TitleLabel.BackgroundTransparency = 1
-    TitleLabel.Position = UDim2.new(0, TitlePadding, 0, 0)
-    TitleLabel.Size = UDim2.new(1, -TitlePadding - 40, 1, 0)
-    TitleLabel.Text = WindowName or 'LMG2L Library'
-    TitleLabel.Font = Enum.Font.GothamBold
-    TitleLabel.TextSize = 14
-    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    TitleLabel.TextTruncate = Enum.TextTruncate.AtEnd
-    TitleLabel.ZIndex = 3
-
-    ApplyTextColor(TitleLabel)
-
-    local SettingsGearBtn = Instance.new('ImageButton')
-
-    SettingsGearBtn.Name = 'SettingsGearBtn'
-    SettingsGearBtn.Parent = TopBar
-    SettingsGearBtn.BackgroundTransparency = 1
-    SettingsGearBtn.Position = UDim2.new(1, -28, 0.5, -10)
-    SettingsGearBtn.Size = UDim2.new(0, 20, 0, 20)
-    SettingsGearBtn.ZIndex = 4
-
-    if Icons and Icons['lucide-settings'] then
-        SettingsGearBtn.Image = Icons['lucide-settings']
-    end
-
-    ApplyTextColor(SettingsGearBtn, 'ImageColor3')
-    SettingsGearBtn.MouseButton1Click:Connect(function()
-        ToggleSettingsVisibility()
-    end)
-    MakeDraggable(TopBar, MainFrame, function()
-        SaveConfig(MainFrame)
-    end)
-
-    local ResizeBtn = Instance.new('TextButton')
-
-    ResizeBtn.Name = 'ResizeBtn'
-    ResizeBtn.Parent = MainFrame
-    ResizeBtn.BackgroundTransparency = 1
-    ResizeBtn.Position = UDim2.new(1, -20, 1, -20)
-    ResizeBtn.Size = UDim2.new(0, 20, 0, 20)
-    ResizeBtn.Font = Enum.Font.GothamBold
-    ResizeBtn.Text = '\u{25e2}'
-    ResizeBtn.TextSize = 16
-    ResizeBtn.ZIndex = 10
-
-    ApplyTheme(ResizeBtn, 'TextColor3')
-
-    local resizing = false
-    local resizeStart, startSize
-
-    ResizeBtn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            resizing = true
-            resizeStart = input.Position
-            startSize = MainFrame.AbsoluteSize
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - resizeStart
-
-            MainFrame.Size = UDim2.new(0, math.clamp(startSize.X + delta.X, 350, 800), 0, math.clamp(startSize.Y + delta.Y, 250, 600))
-        end
-    end)
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if resizing then
-                resizing = false
-
-                SaveConfig(MainFrame)
-            end
-        end
-    end)
-
-    local Sidebar = Instance.new('ScrollingFrame')
-
-    Sidebar.Name = 'Sidebar'
-    Sidebar.Parent = MainFrame
-    Sidebar.BackgroundColor3 = C.BgMid
-
-    ApplyGlass(Sidebar)
-
-    Sidebar.Position = UDim2.new(0.02, 0, 0.12, 0)
-    Sidebar.Size = UDim2.new(0.25, 0, 0.84, 0)
-    Sidebar.BorderSizePixel = 0
-    Sidebar.ScrollBarThickness = 0
-    Sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
-    Sidebar.ZIndex = 2
-    Instance.new('UICorner', Sidebar).CornerRadius = UDim.new(0, 8)
-
-    local SidebarStroke = Instance.new('UIStroke', Sidebar)
-
-    SidebarStroke.Thickness = 1
-    SidebarStroke.Color = C.AccentDim
-
-    local SidebarList = Instance.new('UIListLayout', Sidebar)
-
-    SidebarList.SortOrder = Enum.SortOrder.LayoutOrder
-    SidebarList.Padding = UDim.new(0, 5)
-    SidebarList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-    local SidebarPadding = Instance.new('UIPadding', Sidebar)
-
-    SidebarPadding.PaddingTop = UDim.new(0, 10)
-
-    SidebarList:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-        Sidebar.CanvasSize = UDim2.new(0, 0, 0, SidebarList.AbsoluteContentSize.Y + 20)
-    end)
-
-    local ContentContainer = Instance.new('Frame')
-
-    ContentContainer.Name = 'ContentContainer'
-    ContentContainer.Parent = MainFrame
-    ContentContainer.BackgroundTransparency = 1
-    ContentContainer.Position = UDim2.new(0.29, 0, 0.12, 0)
-    ContentContainer.Size = UDim2.new(0.69, 0, 0.84, 0)
-    ContentContainer.ZIndex = 2
-
-    local WindowElements = {}
-
-    function WindowElements:OpenSettings()
-        OpenSettingsFn()
-    end
-    function WindowElements:CloseSettings()
-        CloseSettingsFn()
-    end
-    function WindowElements:ToggleSettings()
-        ToggleSettingsVisibility()
-    end
-    function WindowElements:CreateCategory(CategoryName, IconName, Hidden)
-        local CategoryElements = {}
-        local CategoryBtn = Instance.new('TextButton')
-
-        CategoryBtn.Parent = Sidebar
-        CategoryBtn.BackgroundColor3 = C.BgCard
-
-        ApplyGlass(CategoryBtn)
-
-        CategoryBtn.Size = UDim2.new(0.9, 0, 0, 32)
-        CategoryBtn.Font = Enum.Font.GothamBold
-        CategoryBtn.Text = CategoryName
-        CategoryBtn.TextSize = 13
-        CategoryBtn.TextTruncate = Enum.TextTruncate.AtEnd
-        CategoryBtn.ZIndex = 3
-        Instance.new('UICorner', CategoryBtn).CornerRadius = UDim.new(0, 6)
-
-        ApplyTextColor(CategoryBtn)
-        CategoryBtn:SetAttribute('CategorySelected', false)
-        RegisterCategoryColorElement(CategoryBtn, function()
-            return CategoryBtn:GetAttribute('CategorySelected') == true
-        end)
-
-        if Hidden then
-            CategoryBtn.Visible = false
-        end
-        if IconName and Icons and Icons[IconName] then
-            CategoryBtn.TextXAlignment = Enum.TextXAlignment.Left
-
-            local UIPad = Instance.new('UIPadding', CategoryBtn)
-
-            UIPad.PaddingLeft = UDim.new(0, 35)
-
-            local IconImg = Instance.new('ImageLabel')
-
-            IconImg.Parent = CategoryBtn
-            IconImg.BackgroundTransparency = 1
-            IconImg.Position = UDim2.new(0, -25, 0.5, -10)
-            IconImg.Size = UDim2.new(0, 20, 0, 20)
-            IconImg.Image = Icons[IconName]
-
-            ApplyTextColor(IconImg, 'ImageColor3')
-        end
-
-        local CategoryPage = Instance.new('ScrollingFrame')
-
-        CategoryPage.Parent = ContentContainer
-        CategoryPage.BackgroundTransparency = 1
-        CategoryPage.Size = UDim2.new(1, 0, 1, 0)
-        CategoryPage.ScrollBarThickness = 3
-        CategoryPage.ScrollBarImageColor3 = C.AccentDim
-        CategoryPage.Visible = false
-        CategoryPage.CanvasSize = UDim2.new(0, 0, 0, 0)
-        CategoryPage.ZIndex = 3
-
-        local PageLayout = Instance.new('UIListLayout', CategoryPage)
-
-        PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        PageLayout.Padding = UDim.new(0, 5)
-        PageLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-        local PagePadding = Instance.new('UIPadding', CategoryPage)
-
-        PagePadding.PaddingTop = UDim.new(0, 5)
-
-        PageLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-            CategoryPage.CanvasSize = UDim2.new(0, 0, 0, PageLayout.AbsoluteContentSize.Y + 20)
-        end)
-
-        local function SelectTab()
-            for _, page in pairs(ContentContainer:GetChildren())do
-                if page:IsA('ScrollingFrame') then
-                    page.Visible = false
-                end
-            end
-            for _, btn in pairs(Sidebar:GetChildren())do
-                if btn:IsA('TextButton') then
-                    btn.BackgroundColor3 = C.BgCard
-
-                    btn:SetAttribute('CategorySelected', false)
-                end
-            end
-
-            CategoryPage.Visible = true
-
-            CategoryBtn:SetAttribute('CategorySelected', true)
-            TweenService:Create(CategoryBtn, TweenInfo.new(0.2), {BackgroundColor3 = CurrentCategoryColor}):Play()
-        end
-
-        if not Hidden then
-            CategoryBtn.MouseButton1Click:Connect(SelectTab)
-
-            if isFirstTab then
-                SelectTab()
-
-                isFirstTab = false
-            end
-        end
-
-        function CategoryElements:CreateLabel(Text, IconName, TextColor)
-            if typeof(IconName) == 'Color3' then
-                TextColor = IconName
-                IconName = nil
-            end
-
-            local LabelContainer = Instance.new('Frame')
-
-            LabelContainer.Parent = CategoryPage
-            LabelContainer.BackgroundTransparency = 1
-            LabelContainer.Size = UDim2.new(0.95, 0, 0, 25)
-
-            local LabelText = Instance.new('TextLabel')
-
-            LabelText.Parent = LabelContainer
-            LabelText.BackgroundTransparency = 1
-            LabelText.Size = UDim2.new(1, 0, 1, 0)
-            LabelText.Font = Enum.Font.GothamBold
-            LabelText.Text = Text
-            LabelText.TextSize = 14
-            LabelText.TextXAlignment = Enum.TextXAlignment.Left
-            LabelText.TextTruncate = Enum.TextTruncate.AtEnd
-
-            if TextColor then
-                LabelText.TextColor3 = TextColor
-            else
-                ApplyTextColor(LabelText)
-            end
-            if AddElementIcon(LabelContainer, IconName, 16, 0) then
-                LabelText.Position = UDim2.new(0, 22, 0, 0)
-                LabelText.Size = UDim2.new(1, -22, 1, 0)
-            end
-        end
-        function CategoryElements:CreateButton(ButtonText, IconName, TextColor, Callback)
-            if type(IconName) == 'function' then
-                Callback = IconName
-                IconName = nil
-                TextColor = nil
-            end
-            if typeof(IconName) == 'Color3' then
-                Callback = TextColor
-                TextColor = IconName
-                IconName = nil
-            end
-            if type(TextColor) == 'function' then
-                Callback = TextColor
-                TextColor = nil
-            end
-
-            local ActionBtn = Instance.new('TextButton')
-
-            ActionBtn.Parent = CategoryPage
-            ActionBtn.BackgroundColor3 = C.BgElement
-
-            ApplyGlass(ActionBtn)
-
-            ActionBtn.Size = UDim2.new(0.95, 0, 0, 35)
-            ActionBtn.Text = ''
-            ActionBtn.AutoButtonColor = false
-            Instance.new('UICorner', ActionBtn).CornerRadius = UDim.new(0, 6)
-
-            local bs = Instance.new('UIStroke', ActionBtn)
-
-            bs.Thickness = 1
-            bs.Color = C.AccentDim
-
-            local BtnLabel = Instance.new('TextLabel')
-
-            BtnLabel.Name = 'ButtonLabel'
-            BtnLabel.Parent = ActionBtn
-            BtnLabel.BackgroundTransparency = 1
-            BtnLabel.Position = UDim2.new(0, 10, 0, 0)
-            BtnLabel.Size = UDim2.new(1, -20, 1, 0)
-            BtnLabel.Font = Enum.Font.Gotham
-            BtnLabel.Text = ButtonText
-            BtnLabel.TextSize = 14
-            BtnLabel.TextXAlignment = Enum.TextXAlignment.Left
-            BtnLabel.TextTruncate = Enum.TextTruncate.AtEnd
-            BtnLabel.ZIndex = ActionBtn.ZIndex + 1
-
-            if TextColor then
-                BtnLabel.TextColor3 = TextColor
-            else
-                ApplyTextColor(BtnLabel)
-            end
-            if AddElementIcon(ActionBtn, IconName, 18, 10) then
-                BtnLabel.Position = UDim2.new(0, 36, 0, 0)
-                BtnLabel.Size = UDim2.new(1, -46, 1, 0)
-            end
-
-            ActionBtn.MouseButton1Click:Connect(function()
-                TweenService:Create(ActionBtn, TweenInfo.new(0.08), {
-                    BackgroundColor3 = C.Accent,
-                }):Play()
-                task.wait(0.12)
-                TweenService:Create(ActionBtn, TweenInfo.new(0.12), {
-                    BackgroundColor3 = C.BgElement,
-                }):Play()
-
-                if Callback then
-                    Callback()
-                end
-            end)
-        end
-        function CategoryElements:CreateTextbox(TextboxText, IconName, Placeholder, Flag, Callback)
-            if type(Flag) == 'function' then
-                Callback = Flag
-                Flag = nil
-            end
-
-            local RestoredText = nil
-
-            if Flag and SavedFlags[Flag] ~= nil then
-                RestoredText = SavedFlags[Flag]
-            end
-
-            local TextboxContainer = Instance.new('Frame')
-
-            TextboxContainer.Parent = CategoryPage
-            TextboxContainer.BackgroundColor3 = C.BgCard
-
-            ApplyGlass(TextboxContainer)
-
-            TextboxContainer.Size = UDim2.new(0.95, 0, 0, 35)
-            Instance.new('UICorner', TextboxContainer).CornerRadius = UDim.new(0, 6)
-
-            local TextboxLabel = Instance.new('TextLabel')
-
-            TextboxLabel.Parent = TextboxContainer
-            TextboxLabel.BackgroundTransparency = 1
-            TextboxLabel.Position = UDim2.new(0, 10, 0, 0)
-            TextboxLabel.Size = UDim2.new(0.5, 0, 1, 0)
-            TextboxLabel.Font = Enum.Font.Gotham
-            TextboxLabel.Text = TextboxText
-            TextboxLabel.TextSize = 14
-            TextboxLabel.TextXAlignment = Enum.TextXAlignment.Left
-            TextboxLabel.TextTruncate = Enum.TextTruncate.AtEnd
-
-            ApplyTextColor(TextboxLabel)
-
-            if AddElementIcon(TextboxContainer, IconName, 16, 10) then
-                TextboxLabel.Position = UDim2.new(0, 32, 0, 0)
-                TextboxLabel.Size = UDim2.new(0.5, -22, 1, 0)
-            end
-
-            local TextboxBg = Instance.new('Frame')
-
-            TextboxBg.Parent = TextboxContainer
-            TextboxBg.BackgroundColor3 = C.BgInput
-
-            ApplyGlass(TextboxBg)
-
-            TextboxBg.Position = UDim2.new(1, -160, 0.5, -12)
-            TextboxBg.Size = UDim2.new(0, 150, 0, 24)
-            Instance.new('UICorner', TextboxBg).CornerRadius = UDim.new(0, 4)
-
-            local tbs = Instance.new('UIStroke', TextboxBg)
-
-            tbs.Thickness = 1
-            tbs.Color = C.AccentDim
-
-            local TextBox = Instance.new('TextBox')
-
-            TextBox.Parent = TextboxBg
-            TextBox.BackgroundTransparency = 1
-            TextBox.Size = UDim2.new(1, -10, 1, 0)
-            TextBox.Position = UDim2.new(0, 5, 0, 0)
-            TextBox.Font = Enum.Font.Gotham
-            TextBox.PlaceholderText = Placeholder or ''
-            TextBox.PlaceholderColor3 = C.TextDim
-            TextBox.Text = RestoredText or ''
-            TextBox.TextSize = 12
-            TextBox.TextXAlignment = Enum.TextXAlignment.Left
-            TextBox.TextTruncate = Enum.TextTruncate.AtEnd
-
-            ApplyTextColor(TextBox)
-
-            if Flag then
-                Flags[Flag] = {
-                    Type = 'Textbox',
-                    Value = TextBox.Text,
-                }
-            end
-
-            TextBox.FocusLost:Connect(function()
-                if Flag then
-                    Flags[Flag].Value = TextBox.Text
-
-                    SaveConfig(MainFrame)
-                end
-                if Callback then
-                    Callback(TextBox.Text)
-                end
-            end)
-        end
-        function CategoryElements:CreateNumberTextbox(LabelText, IconName, DefaultNumber, Flag, Callback)
-            if type(Flag) == 'function' then
-                Callback = Flag
-                Flag = nil
-            end
-            if Flag and SavedFlags[Flag] ~= nil then
-                DefaultNumber = SavedFlags[Flag]
-            end
-
-            local TextboxContainer = Instance.new('Frame')
-
-            TextboxContainer.Parent = CategoryPage
-            TextboxContainer.BackgroundColor3 = C.BgCard
-
-            ApplyGlass(TextboxContainer)
-
-            TextboxContainer.Size = UDim2.new(0.95, 0, 0, 35)
-            Instance.new('UICorner', TextboxContainer).CornerRadius = UDim.new(0, 6)
-
-            local TextboxLabel = Instance.new('TextLabel')
-
-            TextboxLabel.Parent = TextboxContainer
-            TextboxLabel.BackgroundTransparency = 1
-            TextboxLabel.Position = UDim2.new(0, 10, 0, 0)
-            TextboxLabel.Size = UDim2.new(0.5, 0, 1, 0)
-            TextboxLabel.Font = Enum.Font.Gotham
-            TextboxLabel.Text = LabelText
-            TextboxLabel.TextSize = 14
-            TextboxLabel.TextXAlignment = Enum.TextXAlignment.Left
-            TextboxLabel.TextTruncate = Enum.TextTruncate.AtEnd
-
-            ApplyTextColor(TextboxLabel)
-
-            if AddElementIcon(TextboxContainer, IconName, 16, 10) then
-                TextboxLabel.Position = UDim2.new(0, 32, 0, 0)
-                TextboxLabel.Size = UDim2.new(0.5, -22, 1, 0)
-            end
-
-            local TextboxBg = Instance.new('Frame')
-
-            TextboxBg.Parent = TextboxContainer
-            TextboxBg.BackgroundColor3 = C.BgInput
-
-            ApplyGlass(TextboxBg)
-
-            TextboxBg.Position = UDim2.new(1, -160, 0.5, -12)
-            TextboxBg.Size = UDim2.new(0, 150, 0, 24)
-            Instance.new('UICorner', TextboxBg).CornerRadius = UDim.new(0, 4)
-
-            local tbs = Instance.new('UIStroke', TextboxBg)
-
-            tbs.Thickness = 1
-            tbs.Color = C.AccentDim
-
-            local TextBox = Instance.new('TextBox')
-
-            TextBox.Parent = TextboxBg
-            TextBox.BackgroundTransparency = 1
-            TextBox.Size = UDim2.new(1, -10, 1, 0)
-            TextBox.Position = UDim2.new(0, 5, 0, 0)
-            TextBox.Font = Enum.Font.Gotham
-            TextBox.PlaceholderText = tostring(DefaultNumber or '')
-            TextBox.PlaceholderColor3 = C.TextDim
-            TextBox.Text = DefaultNumber and tostring(DefaultNumber) or ''
-            TextBox.TextSize = 12
-            TextBox.TextXAlignment = Enum.TextXAlignment.Left
-            TextBox.TextTruncate = Enum.TextTruncate.AtEnd
-
-            ApplyTextColor(TextBox)
-
-            if Flag then
-                Flags[Flag] = {
-                    Type = 'NumberTextbox',
-                    Value = tonumber(TextBox.Text),
-                }
-            end
-
-            TextBox.FocusLost:Connect(function()
-                local n = tonumber(TextBox.Text)
-
-                if Flag then
-                    Flags[Flag].Value = n
-
-                    SaveConfig(MainFrame)
-                end
-                if n and Callback then
-                    Callback(n)
-                elseif Callback then
-                    Callback(nil)
-                end
-            end)
-        end
-        function CategoryElements:CreateSearchBar(Placeholder, IconName, Callback)
-            if type(IconName) == 'function' then
-                Callback = IconName
-                IconName = nil
-            end
-
-            IconName = IconName or 'lucide-search'
-
-            local SearchContainer = Instance.new('Frame')
-
-            SearchContainer.Parent = CategoryPage
-            SearchContainer.BackgroundColor3 = C.BgCard
-
-            ApplyGlass(SearchContainer)
-
-            SearchContainer.Size = UDim2.new(0.95, 0, 0, 35)
-            Instance.new('UICorner', SearchContainer).CornerRadius = UDim.new(0, 6)
-
-            local ss = Instance.new('UIStroke', SearchContainer)
-
-            ss.Thickness = 1
-            ss.Color = C.AccentDim
-
-            local SearchIcon = Instance.new('ImageLabel')
-
-            SearchIcon.Parent = SearchContainer
-            SearchIcon.BackgroundTransparency = 1
-            SearchIcon.Position = UDim2.new(0, 10, 0.5, -10)
-            SearchIcon.Size = UDim2.new(0, 20, 0, 20)
-
-            if Icons and Icons[IconName] then
-                SearchIcon.Image = Icons[IconName]
-            end
-
-            ApplyTextColor(SearchIcon, 'ImageColor3')
-
-            local TextBox = Instance.new('TextBox')
-
-            TextBox.Parent = SearchContainer
-            TextBox.BackgroundTransparency = 1
-            TextBox.Size = UDim2.new(1, -40, 1, 0)
-            TextBox.Position = UDim2.new(0, 35, 0, 0)
-            TextBox.Font = Enum.Font.Gotham
-            TextBox.PlaceholderText = Placeholder or 'Search...'
-            TextBox.PlaceholderColor3 = C.TextDim
-            TextBox.Text = ''
-            TextBox.TextSize = 14
-            TextBox.TextXAlignment = Enum.TextXAlignment.Left
-            TextBox.TextTruncate = Enum.TextTruncate.AtEnd
-
-            ApplyTextColor(TextBox)
-            TextBox:GetPropertyChangedSignal('Text'):Connect(function()
-                if Callback then
-                    Callback(TextBox.Text)
-                end
-            end)
-        end
-        function CategoryElements:CreateToggle(ToggleText, IconName, DefaultState, Flag, Callback)
-            if type(IconName) == 'boolean' then
-                Callback = Flag
-                Flag = DefaultState
-                DefaultState = IconName
-                IconName = nil
-            end
-            if type(Flag) == 'function' then
-                Callback = Flag
-                Flag = nil
-            end
-            if Flag and SavedFlags[Flag] ~= nil then
-                DefaultState = SavedFlags[Flag]
-            end
-
-            local CurrentState = DefaultState or false
-
-            if Flag then
-                Flags[Flag] = {
-                    Type = 'Toggle',
-                    Value = CurrentState,
-                }
-            end
-
-            local ToggleContainer = Instance.new('TextButton')
-
-            ToggleContainer.Parent = CategoryPage
-            ToggleContainer.BackgroundColor3 = C.BgCard
-
-            ApplyGlass(ToggleContainer)
-
-            ToggleContainer.Size = UDim2.new(0.95, 0, 0, 35)
-            ToggleContainer.Text = ''
-            ToggleContainer.AutoButtonColor = false
-            Instance.new('UICorner', ToggleContainer).CornerRadius = UDim.new(0, 6)
-
-            local ts = Instance.new('UIStroke', ToggleContainer)
-
-            ts.Thickness = 1
-            ts.Color = C.AccentDim
-
-            local ToggleLabel = Instance.new('TextLabel')
-
-            ToggleLabel.Parent = ToggleContainer
-            ToggleLabel.BackgroundTransparency = 1
-            ToggleLabel.Position = UDim2.new(0, 10, 0, 0)
-            ToggleLabel.Size = UDim2.new(0.7, 0, 1, 0)
-            ToggleLabel.Font = Enum.Font.Gotham
-            ToggleLabel.Text = ToggleText
-            ToggleLabel.TextSize = 14
-            ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-            ToggleLabel.TextTruncate = Enum.TextTruncate.AtEnd
-
-            ApplyTextColor(ToggleLabel)
-
-            if AddElementIcon(ToggleContainer, IconName, 16, 10) then
-                ToggleLabel.Position = UDim2.new(0, 32, 0, 0)
-                ToggleLabel.Size = UDim2.new(0.7, -22, 1, 0)
-            end
-
-            local ToggleBg = Instance.new('Frame')
-
-            ToggleBg.Parent = ToggleContainer
-            ToggleBg.BackgroundColor3 = C.BgInput
-
-            ApplyGlass(ToggleBg)
-
-            ToggleBg.Position = UDim2.new(1, -45, 0.5, -10)
-            ToggleBg.Size = UDim2.new(0, 35, 0, 20)
-            Instance.new('UICorner', ToggleBg).CornerRadius = UDim.new(1, 0)
-
-            local tbs2 = Instance.new('UIStroke', ToggleBg)
-
-            tbs2.Thickness = 1
-            tbs2.Color = C.AccentDim
-
-            local ToggleKnob = Instance.new('Frame')
-
-            ToggleKnob.Parent = ToggleBg
-            ToggleKnob.BackgroundColor3 = C.KnobOff
-            ToggleKnob.Position = UDim2.new(0, 2, 0.5, -8)
-            ToggleKnob.Size = UDim2.new(0, 16, 0, 16)
-            Instance.new('UICorner', ToggleKnob).CornerRadius = UDim.new(1, 0)
-
-            local function UpdateToggle(animate)
-                local goalPos = CurrentState and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-                local goalColor = CurrentState and CurrentThemeColor or C.KnobOff
-                local goalTrack = CurrentState and C.AccentDim or C.BgInput
-
-                if animate then
-                    TweenService:Create(ToggleKnob, TweenInfo.new(0.2), {
-                        Position = goalPos,
-                        BackgroundColor3 = goalColor,
-                    }):Play()
-                    TweenService:Create(ToggleBg, TweenInfo.new(0.2), {BackgroundColor3 = goalTrack}):Play()
-                else
-                    ToggleKnob.Position = goalPos
-                    ToggleKnob.BackgroundColor3 = goalColor
-                    ToggleBg.BackgroundColor3 = goalTrack
-                end
-                if Callback then
-                    Callback(CurrentState)
-                end
-            end
-
-            if isRainbow then
-                table.insert(ThemedElements, {
-                    UpdateFunc = function(color)
-                        if ToggleKnob and ToggleKnob.Parent and CurrentState then
-                            ToggleKnob.BackgroundColor3 = color
-                        end
-                    end,
-                })
-            end
-
-            ToggleContainer.MouseButton1Click:Connect(function()
-                CurrentState = not CurrentState
-
-                UpdateToggle(true)
-
-                if Flag then
-                    Flags[Flag].Value = CurrentState
-
-                    SaveConfig(MainFrame)
-                end
-            end)
-            UpdateToggle(false)
-        end
-        function CategoryElements:CreateSlider(SliderText, IconName, Min, Max, Default, Flag, Callback)
-            if type(IconName) == 'number' then
-                Callback = Flag
-                Flag = Default
-                Default = Max
-                Max = Min
-                Min = IconName
-                IconName = nil
-            end
-            if type(Flag) == 'function' then
-                Callback = Flag
-                Flag = nil
-            end
-            if Flag and SavedFlags[Flag] ~= nil then
-                Default = SavedFlags[Flag]
-            end
-
-            local CurrentValue = Default or Min
-
-            if Flag then
-                Flags[Flag] = {
-                    Type = 'Slider',
-                    Value = CurrentValue,
-                }
-            end
-
-            local SliderContainer = Instance.new('Frame')
-
-            SliderContainer.Parent = CategoryPage
-            SliderContainer.BackgroundColor3 = C.BgCard
-
-            ApplyGlass(SliderContainer)
-
-            SliderContainer.Size = UDim2.new(0.95, 0, 0, 50)
-            Instance.new('UICorner', SliderContainer).CornerRadius = UDim.new(0, 6)
-
-            local sls = Instance.new('UIStroke', SliderContainer)
-
-            sls.Thickness = 1
-            sls.Color = C.AccentDim
-
-            local SliderLabel = Instance.new('TextLabel')
-
-            SliderLabel.Parent = SliderContainer
-            SliderLabel.Position = UDim2.new(0, 10, 0, 5)
-            SliderLabel.BackgroundTransparency = 1
-            SliderLabel.Size = UDim2.new(0.5, 0, 0, 20)
-            SliderLabel.Font = Enum.Font.Gotham
-            SliderLabel.Text = SliderText
-            SliderLabel.TextSize = 14
-            SliderLabel.TextXAlignment = Enum.TextXAlignment.Left
-            SliderLabel.TextTruncate = Enum.TextTruncate.AtEnd
-
-            ApplyTextColor(SliderLabel)
-
-            if AddElementIcon(SliderContainer, IconName, 16, 10) then
-                SliderLabel.Position = UDim2.new(0, 32, 0, 5)
-                SliderLabel.Size = UDim2.new(0.5, -22, 0, 20)
-            end
-
-            local ValueLabel = Instance.new('TextLabel')
-
-            ValueLabel.Parent = SliderContainer
-            ValueLabel.BackgroundTransparency = 1
-            ValueLabel.Position = UDim2.new(1, -60, 0, 5)
-            ValueLabel.Size = UDim2.new(0, 50, 0, 20)
-            ValueLabel.Font = Enum.Font.GothamBold
-            ValueLabel.Text = tostring(CurrentValue)
-            ValueLabel.TextSize = 14
-            ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
-            ValueLabel.TextColor3 = C.AccentHov
-
-            ApplyTextColor(ValueLabel)
-
-            local SliderBg = Instance.new('TextButton')
-
-            SliderBg.Parent = SliderContainer
-            SliderBg.BackgroundColor3 = C.BgInput
-
-            ApplyGlass(SliderBg)
-
-            SliderBg.Position = UDim2.new(0, 10, 1, -15)
-            SliderBg.Size = UDim2.new(1, -20, 0, 6)
-            SliderBg.Text = ''
-            SliderBg.AutoButtonColor = false
-            Instance.new('UICorner', SliderBg).CornerRadius = UDim.new(1, 0)
-
-            local SliderFill = Instance.new('Frame')
-
-            SliderFill.Parent = SliderBg
-            SliderFill.Size = UDim2.new(math.clamp((CurrentValue - Min) / (Max - Min), 0, 1), 0, 1, 0)
-            Instance.new('UICorner', SliderFill).CornerRadius = UDim.new(1, 0)
-
-            ApplyTheme(SliderFill, 'BackgroundColor3')
-
-            local dragging = false
-
-            local function UpdateSlider(input)
-                local relativeX = math.clamp((input.Position.X - SliderBg.AbsolutePosition.X) / SliderBg.AbsoluteSize.X, 0, 1)
-
-                CurrentValue = math.floor(Min + ((Max - Min) * relativeX))
-                ValueLabel.Text = tostring(CurrentValue)
-
-                TweenService:Create(SliderFill, TweenInfo.new(0.1), {
-                    Size = UDim2.new(relativeX, 0, 1, 0),
-                }):Play()
-
-                if Flag then
-                    Flags[Flag].Value = CurrentValue
-                end
-                if Callback then
-                    Callback(CurrentValue)
-                end
-            end
-
-            SliderBg.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                    dragging = true
-
-                    UpdateSlider(input)
-                end
-            end)
-            UserInputService.InputEnded:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                    if dragging and Flag then
-                        SaveConfig(MainFrame)
-                    end
-
-                    dragging = false
-                end
-            end)
-            UserInputService.InputChanged:Connect(function(input)
-                if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                    UpdateSlider(input)
-                end
-            end)
-        end
-        function CategoryElements:CreateDropdown(DropdownText, IconName, Options, Default, Flag, Callback)
-            if type(IconName) == 'table' then
-                Callback = Flag
-                Flag = Default
-                Default = Options
-                Options = IconName
-                IconName = nil
-            end
-            if type(Flag) == 'function' then
-                Callback = Flag
-                Flag = nil
-            end
-            if type(Default) == 'function' then
-                Callback = Default
-                Default = nil
-                Flag = nil
-            end
-            if Flag and SavedFlags[Flag] ~= nil then
-                Default = SavedFlags[Flag]
-            end
-
-            local isOpen = false
-            local DropdownContainer = Instance.new('Frame')
-
-            DropdownContainer.Parent = CategoryPage
-            DropdownContainer.BackgroundColor3 = C.BgCard
-
-            ApplyGlass(DropdownContainer)
-
-            DropdownContainer.Size = UDim2.new(0.95, 0, 0, 35)
-            DropdownContainer.ClipsDescendants = true
-            Instance.new('UICorner', DropdownContainer).CornerRadius = UDim.new(0, 6)
-
-            local dds = Instance.new('UIStroke', DropdownContainer)
-
-            dds.Thickness = 1
-            dds.Color = C.AccentDim
-
-            local IconOffset = 0
-
-            if IconName and Icons and Icons[IconName] then
-                IconOffset = 22
-
-                local DropdownIcon = Instance.new('ImageLabel')
-
-                DropdownIcon.Name = 'ElementIcon'
-                DropdownIcon.Parent = DropdownContainer
-                DropdownIcon.BackgroundTransparency = 1
-                DropdownIcon.Position = UDim2.new(0, 10, 0, 9)
-                DropdownIcon.Size = UDim2.new(0, 16, 0, 16)
-                DropdownIcon.Image = Icons[IconName]
-                DropdownIcon.ZIndex = 3
-
-                ApplyTextColor(DropdownIcon, 'ImageColor3')
-            end
-
-            local DropdownBtn = Instance.new('TextButton')
-
-            DropdownBtn.Parent = DropdownContainer
-            DropdownBtn.BackgroundTransparency = 1
-            DropdownBtn.Size = UDim2.new(1, 0, 0, 35)
-            DropdownBtn.Font = Enum.Font.Gotham
-
-            if Default then
-                DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(Default)
-            else
-                DropdownBtn.Text = ' ' .. DropdownText .. ' : Select Option'
-            end
-
-            DropdownBtn.TextSize = 14
-            DropdownBtn.TextXAlignment = Enum.TextXAlignment.Left
-            DropdownBtn.TextTruncate = Enum.TextTruncate.AtEnd
-
-            ApplyTextColor(DropdownBtn)
-
-            if IconOffset > 0 then
-                local ddPad = Instance.new('UIPadding', DropdownBtn)
-
-                ddPad.PaddingLeft = UDim.new(0, IconOffset)
-            end
-
-            local ArrowIcon = Instance.new('TextLabel')
-
-            ArrowIcon.Parent = DropdownBtn
-            ArrowIcon.BackgroundTransparency = 1
-            ArrowIcon.Position = UDim2.new(1, -30, 0, 0)
-            ArrowIcon.Size = UDim2.new(0, 30, 1, 0)
-            ArrowIcon.Font = Enum.Font.GothamBold
-            ArrowIcon.Text = '\u{25bc}'
-            ArrowIcon.TextSize = 12
-
-            ApplyTheme(ArrowIcon, 'TextColor3')
-
-            local OptionList = Instance.new('Frame')
-
-            OptionList.Parent = DropdownContainer
-            OptionList.BackgroundColor3 = C.BgMid
-
-            ApplyGlass(OptionList)
-
-            OptionList.Position = UDim2.new(0, 0, 0, 35)
-            OptionList.Size = UDim2.new(1, 0, 1, -35)
-
-            local ListLayout = Instance.new('UIListLayout', OptionList)
-
-            ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-            local SearchBox = Instance.new('TextBox')
-
-            SearchBox.Parent = OptionList
-            SearchBox.BackgroundColor3 = C.BgInput
-
-            ApplyGlass(SearchBox)
-
-            SearchBox.BorderSizePixel = 0
-            SearchBox.Size = UDim2.new(1, 0, 0, 30)
-            SearchBox.Font = Enum.Font.Gotham
-            SearchBox.PlaceholderText = 'Search in Dropdown...'
-            SearchBox.PlaceholderColor3 = C.TextDim
-            SearchBox.Text = ''
-            SearchBox.TextSize = 14
-            SearchBox.TextTruncate = Enum.TextTruncate.AtEnd
-
-            ApplyTextColor(SearchBox)
-
-            local OptionBtns = {}
-            local CurrentValue = Default
-
-            if Flag then
-                Flags[Flag] = {
-                    Type = 'Dropdown',
-                    Value = CurrentValue,
-                }
-            end
-
-            local function UpdateSize()
-                local visibleCount = 0
-
-                for _, btn in ipairs(OptionBtns)do
-                    if btn.Visible then
-                        visibleCount = visibleCount + 1
-                    end
-                end
-
-                local targetHeight = isOpen and (65 + (visibleCount * 30)) or 35
-
-                TweenService:Create(DropdownContainer, TweenInfo.new(0.2), {
-                    Size = UDim2.new(0.95, 0, 0, targetHeight),
-                }):Play()
-
-                ArrowIcon.Text = isOpen and '\u{25b2}' or '\u{25bc}'
-            end
-            local function AddOption(option)
-                local OptionBtn = Instance.new('TextButton')
-
-                OptionBtn.Parent = OptionList
-                OptionBtn.BackgroundColor3 = C.BgCard
-
-                ApplyGlass(OptionBtn)
-
-                OptionBtn.BorderSizePixel = 0
-                OptionBtn.Size = UDim2.new(1, 0, 0, 30)
-                OptionBtn.Font = Enum.Font.Gotham
-                OptionBtn.Text = ' ' .. tostring(option)
-
-                OptionBtn:SetAttribute('OptionText', tostring(option))
-
-                OptionBtn.TextXAlignment = Enum.TextXAlignment.Left
-                OptionBtn.TextSize = 14
-
-                ApplyTextColor(OptionBtn)
-                table.insert(OptionBtns, OptionBtn)
-                OptionBtn.MouseButton1Click:Connect(function()
-                    CurrentValue = option
-                    DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(option)
-                    isOpen = false
-
-                    UpdateSize()
-
-                    if Flag then
-                        Flags[Flag].Value = option
-
-                        SaveConfig(MainFrame)
-                    end
-                    if Callback then
-                        Callback(option)
-                    end
-                end)
-            end
-            local function ClearOptions()
-                for _, btn in ipairs(OptionBtns)do
-                    if btn then
-                        btn:Destroy()
-                    end
-                end
-
-                table.clear(OptionBtns)
-            end
-            local function RebuildOptions(newOptions)
-                ClearOptions()
-
-                for _, option in ipairs(newOptions or {})do
-                    AddOption(option)
-                end
-                for _, btn in ipairs(OptionBtns)do
-                    btn.Visible = true
-                end
-
-                UpdateSize()
-            end
-
-            DropdownBtn.MouseButton1Click:Connect(function()
-                isOpen = not isOpen
-                SearchBox.Text = ''
-
-                for _, btn in ipairs(OptionBtns)do
-                    btn.Visible = true
-                end
-
-                UpdateSize()
-            end)
-            SearchBox:GetPropertyChangedSignal('Text'):Connect(function()
-                local query = string.lower(SearchBox.Text or '')
-
-                for _, btn in ipairs(OptionBtns)do
-                    local txt = string.lower(tostring(btn:GetAttribute('OptionText') or btn.Text or ''))
-
-                    btn.Visible = (query == '') or (string.find(txt, query) ~= nil)
-                end
-
-                UpdateSize()
-            end)
-            RebuildOptions(Options)
-
-            if Default ~= nil then
-                DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(Default)
-            end
-
-            local DropdownAPI = {}
-
-            function DropdownAPI:SetValue(newValue)
-                CurrentValue = newValue
-                DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(newValue)
-
-                if Flag then
-                    Flags[Flag].Value = newValue
-
-                    SaveConfig(MainFrame)
-                end
-                if Callback then
-                    Callback(newValue)
-                end
-            end
-            function DropdownAPI:Refresh(newOptions)
-                RebuildOptions(newOptions or Options)
-
-                if CurrentValue ~= nil then
-                    DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(CurrentValue)
-                else
-                    DropdownBtn.Text = ' ' .. DropdownText .. ' : Select Option'
-                end
-            end
-            function DropdownAPI:SetOptions(newOptions)
-                Options = newOptions or {}
-
-                RebuildOptions(Options)
-
-                if CurrentValue ~= nil then
-                    DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(CurrentValue)
-                else
-                    DropdownBtn.Text = ' ' .. DropdownText .. ' : Select Option'
-                end
-            end
-
-            return DropdownAPI
-        end
-
-        return CategoryElements, CategoryPage, CategoryBtn
-    end
-
-    WindowElements.Flags = Flags
-
-    function WindowElements:GetFlag(FlagName)
-        local flagData = Flags[FlagName]
-
-        return flagData and flagData.Value or nil
-    end
-    function WindowElements:SetFlag(FlagName, Value)
-        if Flags[FlagName] then
-            Flags[FlagName].Value = Value
-
-            SaveConfig(MainFrame)
-        end
-    end
-    function WindowElements:SaveConfiguration()
-        SaveConfig(MainFrame)
-    end
-    function WindowElements:Destroy()
-        ScreenGui:Destroy()
-    end
-
-    if Config.ShowSettingsTab ~= false then
-        task.defer(function()
-            local SettingsTab, SettingsPage = WindowElements:CreateCategory('Settings', 'lucide-settings', true)
-
-            SettingsPage.Visible = false
-
-            local SettingsOpen = false
-            local PreviousPage = nil
-
-            local function ShowSettingsPanel()
-                if SettingsOpen then
-                    return
-                end
-
-                PreviousPage = nil
-
-                for _, page in pairs(ContentContainer:GetChildren())do
-                    if page:IsA('ScrollingFrame') and page ~= SettingsPage and page.Visible then
-                        PreviousPage = page
-                        page.Visible = false
-                    end
-                end
-
-                SettingsPage.Visible = true
-                SettingsOpen = true
-            end
-            local function HideSettingsPanel()
-                if not SettingsOpen then
-                    return
-                end
-
-                SettingsPage.Visible = false
-
-                if PreviousPage and PreviousPage.Parent then
-                    PreviousPage.Visible = true
-                end
-
-                SettingsOpen = false
-            end
-
-            ToggleSettingsVisibility = function()
-                if SettingsOpen then
-                    HideSettingsPanel()
-                else
-                    ShowSettingsPanel()
-                end
-            end
-            OpenSettingsFn = ShowSettingsPanel
-            CloseSettingsFn = HideSettingsPanel
-
-            local AccentR = math.floor(CurrentThemeColor.R * 255 + 0.5)
-            local AccentG = math.floor(CurrentThemeColor.G * 255 + 0.5)
-            local AccentB = math.floor(CurrentThemeColor.B * 255 + 0.5)
-            local TextR = math.floor(CurrentTextColor.R * 255 + 0.5)
-            local TextG = math.floor(CurrentTextColor.G * 255 + 0.5)
-            local TextB = math.floor(CurrentTextColor.B * 255 + 0.5)
-            local TransPercent = math.floor(GTrans * 100 + 0.5)
-            local BgR = math.floor(CurrentBackgroundColor.R * 255 + 0.5)
-            local BgG = math.floor(CurrentBackgroundColor.G * 255 + 0.5)
-            local BgB = math.floor(CurrentBackgroundColor.B * 255 + 0.5)
-            local CatR = math.floor(CurrentCategoryColor.R * 255 + 0.5)
-            local CatG = math.floor(CurrentCategoryColor.G * 255 + 0.5)
-            local CatB = math.floor(CurrentCategoryColor.B * 255 + 0.5)
-            local RLR = math.floor(CurrentRunningLightColor.R * 255 + 0.5)
-            local RLG = math.floor(CurrentRunningLightColor.G * 255 + 0.5)
-            local RLB = math.floor(CurrentRunningLightColor.B * 255 + 0.5)
-            local RLSpeedValue = math.floor(RunningLightSpeed + 0.5)
-
-            local function PersistThemeSettings()
-                ThemeSettings.Accent = {AccentR, AccentG, AccentB}
-                ThemeSettings.Text = {TextR, TextG, TextB}
-                ThemeSettings.Transparency = GTrans
-                ThemeSettings.Rainbow = isRainbow
-                ThemeSettings.TextRainbow = isTextRainbow
-                ThemeSettings.Background = {BgR, BgG, BgB}
-                ThemeSettings.CategoryColor = {CatR, CatG, CatB}
-                ThemeSettings.Language = CurrentLanguage
-                ThemeSettings.RunningLightEnabled = RunningLightEnabled
-                ThemeSettings.RunningLightSpeed = RunningLightSpeed
-                ThemeSettings.RunningLightColor = {RLR, RLG, RLB}
-                ThemeSettings.PatternEnabled = PatternEnabled
-                ThemeSettings.BorderEnabled = BorderEnabled
-            end
-            local function ClearSettingsContent()
-                for _, child in ipairs(SettingsPage:GetChildren())do
-                    if not (child:IsA('UIListLayout') or child:IsA('UIPadding')) then
-                        child:Destroy()
-                    end
-                end
-            end
-
-            local BuildSettingsUI
-
-            BuildSettingsUI = function()
-                local T = Translations[CurrentLanguage] or Translations.en
-
-                ClearSettingsContent()
-                SettingsTab:CreateLabel(T.AccentHeader, 'lucide-palette')
-                SettingsTab:CreateSlider(T.AccentRed, nil, 0, 255, AccentR, nil, function(v)
-                    AccentR = v
-
-                    UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
-                end)
-                SettingsTab:CreateSlider(T.AccentGreen, nil, 0, 255, AccentG, nil, function(v)
-                    AccentG = v
-
-                    UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
-                end)
-                SettingsTab:CreateSlider(T.AccentBlue, nil, 0, 255, AccentB, nil, function(v)
-                    AccentB = v
-
-                    UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
-                end)
-                SettingsTab:CreateToggle(T.RainbowAccent, 'lucide-wand-2', isRainbow, nil, function(state)
-                    isRainbow = state
-                end)
-                SettingsTab:CreateLabel(T.TextHeader, 'lucide-baseline')
-                SettingsTab:CreateSlider(T.TextRed, nil, 0, 255, TextR, nil, function(v)
-                    TextR = v
-
-                    UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
-                end)
-                SettingsTab:CreateSlider(T.TextGreen, nil, 0, 255, TextG, nil, function(v)
-                    TextG = v
-
-                    UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
-                end)
-                SettingsTab:CreateSlider(T.TextBlue, nil, 0, 255, TextB, nil, function(v)
-                    TextB = v
-
-                    UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
-                end)
-                SettingsTab:CreateToggle(T.RainbowText, 'lucide-wand-2', isTextRainbow, nil, function(state)
-                    isTextRainbow = state
-                end)
-                SettingsTab:CreateLabel(T.TransparencyHeader, 'lucide-glasses')
-                SettingsTab:CreateSlider(T.TransparencyLabel, nil, 0, 90, TransPercent, nil, function(v)
-                    TransPercent = v
-
-                    UpdateGlassTransparency(v / 100)
-                end)
-                SettingsTab:CreateLabel(T.BackgroundHeader, 'lucide-square')
-                SettingsTab:CreateSlider(T.BackgroundRed, nil, 0, 255, BgR, nil, function(v)
-                    BgR = v
-
-                    UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
-                end)
-                SettingsTab:CreateSlider(T.BackgroundGreen, nil, 0, 255, BgG, nil, function(v)
-                    BgG = v
-
-                    UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
-                end)
-                SettingsTab:CreateSlider(T.BackgroundBlue, nil, 0, 255, BgB, nil, function(v)
-                    BgB = v
-
-                    UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
-                end)
-                SettingsTab:CreateLabel(T.CategoryColorHeader, 'lucide-layout-dashboard')
-                SettingsTab:CreateSlider(T.CategoryColorRed, nil, 0, 255, CatR, nil, function(v)
-                    CatR = v
-
-                    UpdateCategoryColor(Color3.fromRGB(CatR, CatG, CatB))
-                end)
-                SettingsTab:CreateSlider(T.CategoryColorGreen, nil, 0, 255, CatG, nil, function(v)
-                    CatG = v
-
-                    UpdateCategoryColor(Color3.fromRGB(CatR, CatG, CatB))
-                end)
-                SettingsTab:CreateSlider(T.CategoryColorBlue, nil, 0, 255, CatB, nil, function(v)
-                    CatB = v
-
-                    UpdateCategoryColor(Color3.fromRGB(CatR, CatG, CatB))
-                end)
-                SettingsTab:CreateLabel(T.RunningLightHeader, 'lucide-activity')
-                SettingsTab:CreateToggle(T.RunningLightEnable, 'lucide-flame', RunningLightEnabled, nil, function(state)
-                    RunningLightEnabled = state
-
-                    if not RunningLightEnabled then
-                        ApplyRunningLightStatic()
-                    end
-                end)
-                SettingsTab:CreateSlider(T.RunningLightSpeed, nil, 10, 500, RLSpeedValue, nil, function(v)
-                    RLSpeedValue = v
-                    RunningLightSpeed = v
-                end)
-                SettingsTab:CreateSlider(T.RunningLightRed, nil, 0, 255, RLR, nil, function(v)
-                    RLR = v
-                    CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
-
-                    if not RunningLightEnabled then
-                        ApplyRunningLightStatic()
-                    end
-                end)
-                SettingsTab:CreateSlider(T.RunningLightGreen, nil, 0, 255, RLG, nil, function(v)
-                    RLG = v
-                    CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
-
-                    if not RunningLightEnabled then
-                        ApplyRunningLightStatic()
-                    end
-                end)
-                SettingsTab:CreateSlider(T.RunningLightBlue, nil, 0, 255, RLB, nil, function(v)
-                    RLB = v
-                    CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
-
-                    if not RunningLightEnabled then
-                        ApplyRunningLightStatic()
-                    end
-                end)
-                SettingsTab:CreateLabel(T.EffectsHeader, 'lucide-wand-2')
-                SettingsTab:CreateToggle(T.PatternToggle, 'lucide-layout-grid', PatternEnabled, nil, function(state)
-                    PatternEnabled = state
-
-                    if PatternBg then
-                        PatternBg.Visible = PatternEnabled
-                    end
-                end)
-                SettingsTab:CreateToggle(T.BorderToggle, 'lucide-square', BorderEnabled, nil, function(state)
-                    BorderEnabled = state
-
-                    if MainStroke then
-                        MainStroke.Enabled = BorderEnabled
-                    end
-                end)
-                SettingsTab:CreateLabel(T.LanguageHeader, 'lucide-languages')
-                SettingsTab:CreateDropdown(T.LanguageLabel, 'lucide-languages', {
-                    'English',
-                    'Thai',
-                }, (CurrentLanguage == 'th' and 'Thai' or 'English'), nil, function(selected)
-                    if selected == 'Thai' then
-                        CurrentLanguage = 'th'
-                    else
-                        CurrentLanguage = 'en'
-                    end
-
-                    BuildSettingsUI()
-                end)
-                SettingsTab:CreateLabel(T.ManageHeader, 'lucide-save')
-                SettingsTab:CreateButton(T.SaveButton, 'lucide-save', function()
-                    PersistThemeSettings()
-                    SaveConfig(MainFrame)
-                end)
-                SettingsTab:CreateButton(T.ResetButton, 'lucide-rotate-ccw', function()
-                    AccentR = math.floor(C.Accent.R * 255 + 0.5)
-                    AccentG = math.floor(C.Accent.G * 255 + 0.5)
-                    AccentB = math.floor(C.Accent.B * 255 + 0.5)
-                    TextR = math.floor(C.TextMain.R * 255 + 0.5)
-                    TextG = math.floor(C.TextMain.G * 255 + 0.5)
-                    TextB = math.floor(C.TextMain.B * 255 + 0.5)
-                    TransPercent = math.floor(C.GlassTransparency * 100 + 0.5)
-                    isRainbow = false
-                    isTextRainbow = false
-                    BgR = math.floor(C.BgDeep.R * 255 + 0.5)
-                    BgG = math.floor(C.BgDeep.G * 255 + 0.5)
-                    BgB = math.floor(C.BgDeep.B * 255 + 0.5)
-                    CatR = math.floor(C.AccentDim.R * 255 + 0.5)
-                    CatG = math.floor(C.AccentDim.G * 255 + 0.5)
-                    CatB = math.floor(C.AccentDim.B * 255 + 0.5)
-                    RLR = math.floor(C.Accent.R * 255 + 0.5)
-                    RLG = math.floor(C.Accent.G * 255 + 0.5)
-                    RLB = math.floor(C.Accent.B * 255 + 0.5)
-                    RLSpeedValue = 150
-                    RunningLightSpeed = 150
-                    RunningLightEnabled = true
-                    PatternEnabled = true
-                    BorderEnabled = true
-                    CurrentLanguage = 'en'
-
-                    UpdateThemeColor(C.Accent)
-                    UpdateTextColor(C.TextMain)
-                    UpdateGlassTransparency(C.GlassTransparency)
-                    UpdateBackgroundColor(C.BgDeep)
-                    UpdateCategoryColor(C.AccentDim)
-
-                    CurrentRunningLightColor = C.Accent
-
-                    if PatternBg then
-                        PatternBg.Visible = true
-                    end
-                    if MainStroke then
-                        MainStroke.Enabled = true
-                    end
-
-                    PersistThemeSettings()
-                    SaveConfig(MainFrame)
-                    BuildSettingsUI()
-                end)
-            end
-
-            BuildSettingsUI()
-        end)
-    end
-
-    return WindowElements
+Config = Config or {}
+local ToggleConfig = Config.ToggleConfig or {}
+local isFirstTab = true
+
+-- รองรับ ThemeColor config เดิม แต่ default เป็นสี Accent ม่วง
+local ThemeConfig = Config.ThemeColor or C.Accent
+local GTrans = Config.ElementTransparency or C.GlassTransparency
+local isRainbow = false
+local CurrentThemeColor = C.Accent
+
+if type(ThemeConfig) == 'string' and string.lower(ThemeConfig) == 'rainbow' then
+isRainbow = true
+elseif typeof(ThemeConfig) == 'Color3' then
+CurrentThemeColor = ThemeConfig
+end
+
+-- ===================== ค่าตั้งต้นของ Settings เพิ่มเติม =====================
+-- สีพื้นหลังหลักของ UI (ปรับสดได้จากเมนู Settings)
+local CurrentBackgroundColor = Config.BackgroundColor or C.BgDeep
+
+-- สีของ Category (sidebar tab) เมื่อถูกเลือก (Active) และตอนไม่ได้เลือก (Idle) — ปรับสดได้จากเมนู Settings
+local CurrentCategoryColor = Config.CategoryColor or C.AccentDim
+local CurrentCategoryIdleColor = Config.CategoryIdleColor or C.BgCard
+
+-- ภาษาที่ใช้แสดงผลในเมนู Settings ('en' = English, 'th' = Thai) — ค่าเริ่มต้นคือ English
+local CurrentLanguage = 'en'
+if Config.Language then
+local cfgLang = string.lower(tostring(Config.Language))
+if cfgLang == 'th' or cfgLang == 'thai' then
+CurrentLanguage = 'th'
+else
+CurrentLanguage = 'en'
+end
+end
+
+-- Running Light (เส้นขอบไล่สีวิ่งรอบ MainFrame)
+local RunningLightEnabled = true
+if Config.RunningLightEnabled ~= nil then RunningLightEnabled = Config.RunningLightEnabled end
+local RunningLightSpeed = Config.RunningLightSpeed or 150
+local CurrentRunningLightColor = Config.RunningLightColor or C.Accent
+
+-- Effect Toggles อื่นๆ ที่แยกเปิด/ปิดได้อิสระ
+local PatternEnabled = true
+if Config.PatternEnabled ~= nil then PatternEnabled = Config.PatternEnabled end
+local BorderEnabled = true
+if Config.BorderEnabled ~= nil then BorderEnabled = Config.BorderEnabled end
+
+-- ThemedElements: ทุก instance ที่ผูกกับ Accent color จะถูกเก็บไว้ที่นี่
+-- เพื่อให้ปรับสีใหม่ (จาก Settings หรือ Rainbow) แล้วอัปเดตทันทีทั้ง UI
+local ThemedElements = {}
+local function ApplyTheme(instance, property)
+if not instance then return end
+property = property or 'BackgroundColor3'
+SafeSetProperty(instance, property, CurrentThemeColor)
+table.insert(ThemedElements, {
+UpdateFunc = function(color)
+if instance and instance.Parent then
+SafeSetProperty(instance, property, color)
+end
+end,
+})
+end
+
+local TextColorConfig = Config.TextColor or C.TextMain
+local isTextRainbow = false
+local CurrentTextColor = C.TextMain
+if type(TextColorConfig) == 'string' and string.lower(TextColorConfig) == 'rainbow' then
+isTextRainbow = true
+elseif typeof(TextColorConfig) == 'Color3' then
+CurrentTextColor = TextColorConfig
+end
+
+-- TextElements: ทุก instance ที่ผูกกับสี Text หลัก เก็บไว้ปรับสดได้เช่นกัน
+local TextElements = {}
+local function ApplyTextColor(instance, property)
+property = property or 'TextColor3'
+if not instance then return end
+SafeSetProperty(instance, property, CurrentTextColor)
+table.insert(TextElements, {
+UpdateFunc = function(color)
+if instance and instance.Parent then
+SafeSetProperty(instance, property, color)
+end
+end,
+})
+end
+
+-- GlassElements: ทุก instance ที่ใช้ GTrans (โปร่งแสง) เก็บไว้ปรับสดได้
+local GlassElements = {}
+local function ApplyGlass(instance)
+if not instance then return end
+instance.BackgroundTransparency = GTrans
+table.insert(GlassElements, instance)
+end
+
+-- ฟังก์ชันสำหรับ Settings เมนู: อัปเดตค่าสี/โปร่งแสงทั้ง UI แบบสด และคืนค่าปัจจุบัน
+local function UpdateThemeColor(newColor)
+CurrentThemeColor = newColor
+for _, data in ipairs(ThemedElements) do data.UpdateFunc(CurrentThemeColor) end
+end
+
+local function UpdateTextColor(newColor)
+CurrentTextColor = newColor
+for _, data in ipairs(TextElements) do data.UpdateFunc(CurrentTextColor) end
+end
+
+local function UpdateGlassTransparency(newTrans)
+GTrans = math.clamp(newTrans, 0, 1)
+for _, inst in ipairs(GlassElements) do
+if inst and inst.Parent then
+pcall(function() inst.BackgroundTransparency = GTrans end)
+end
+end
+end
+
+-- BackgroundElements: ทุก instance ที่ผูกกับสีพื้นหลังหลัก เก็บไว้ปรับสดได้เช่นกัน
+local BackgroundElements = {}
+local function ApplyBackground(instance, property)
+if not instance then return end
+property = property or 'BackgroundColor3'
+SafeSetProperty(instance, property, CurrentBackgroundColor)
+table.insert(BackgroundElements, {
+UpdateFunc = function(color)
+if instance and instance.Parent then
+SafeSetProperty(instance, property, color)
+end
+end,
+})
+end
+
+local function UpdateBackgroundColor(newColor)
+CurrentBackgroundColor = newColor
+for _, data in ipairs(BackgroundElements) do data.UpdateFunc(CurrentBackgroundColor) end
+end
+
+-- CategoryButtons: เก็บปุ่ม Category ทุกปุ่ม (ทั้งที่ Active และ Idle) ไว้
+-- เพื่อให้ตอนเปลี่ยนสี Category จาก Settings (ไม่ว่าจะสี Active หรือ Idle) อัปเดตสีของทุกปุ่มได้ทันที
+-- ตามสถานะจริง ณ ขณะนั้นของแต่ละปุ่ม
+local CategoryButtons = {}
+local function RegisterCategoryButton(instance, isSelectedGetter)
+table.insert(CategoryButtons, {
+Instance = instance,
+IsSelectedGetter = isSelectedGetter,
+})
+end
+
+local function RefreshCategoryButtonColors()
+for _, data in ipairs(CategoryButtons) do
+if data.Instance and data.Instance.Parent then
+local color = data.IsSelectedGetter() and CurrentCategoryColor or CurrentCategoryIdleColor
+SafeSetProperty(data.Instance, 'BackgroundColor3', color)
+end
+end
+end
+
+local function UpdateCategoryColor(newColor)
+CurrentCategoryColor = newColor
+RefreshCategoryButtonColors()
+end
+
+local function UpdateCategoryIdleColor(newColor)
+CurrentCategoryIdleColor = newColor
+RefreshCategoryButtonColors()
+end
+
+-- ===================== โหลดค่า Config/Theme ที่เคยเซฟไว้ (ก่อนสร้าง UI ใดๆ) =====================
+local savedSize, savedPos, savedFlags, savedTheme = LoadConfig()
+
+if savedTheme then
+if savedTheme.Accent then
+CurrentThemeColor = Color3.fromRGB(savedTheme.Accent[1], savedTheme.Accent[2], savedTheme.Accent[3])
+end
+if savedTheme.Text then
+CurrentTextColor = Color3.fromRGB(savedTheme.Text[1], savedTheme.Text[2], savedTheme.Text[3])
+end
+if savedTheme.Transparency ~= nil then
+GTrans = savedTheme.Transparency
+end
+if savedTheme.Rainbow ~= nil then
+isRainbow = savedTheme.Rainbow
+end
+if savedTheme.TextRainbow ~= nil then
+isTextRainbow = savedTheme.TextRainbow
+end
+if savedTheme.Background then
+CurrentBackgroundColor = Color3.fromRGB(savedTheme.Background[1], savedTheme.Background[2], savedTheme.Background[3])
+end
+if savedTheme.CategoryColor then
+CurrentCategoryColor = Color3.fromRGB(savedTheme.CategoryColor[1], savedTheme.CategoryColor[2], savedTheme.CategoryColor[3])
+end
+if savedTheme.CategoryIdleColor then
+CurrentCategoryIdleColor = Color3.fromRGB(savedTheme.CategoryIdleColor[1], savedTheme.CategoryIdleColor[2], savedTheme.CategoryIdleColor[3])
+end
+if savedTheme.Language then
+local savedLang = string.lower(tostring(savedTheme.Language))
+if savedLang == 'th' or savedLang == 'thai' then
+CurrentLanguage = 'th'
+else
+CurrentLanguage = 'en'
+end
+end
+if savedTheme.RunningLightEnabled ~= nil then
+RunningLightEnabled = savedTheme.RunningLightEnabled
+end
+if savedTheme.RunningLightSpeed ~= nil then
+RunningLightSpeed = savedTheme.RunningLightSpeed
+end
+if savedTheme.RunningLightColor then
+CurrentRunningLightColor = Color3.fromRGB(savedTheme.RunningLightColor[1], savedTheme.RunningLightColor[2], savedTheme.RunningLightColor[3])
+end
+if savedTheme.PatternEnabled ~= nil then
+PatternEnabled = savedTheme.PatternEnabled
+end
+if savedTheme.BorderEnabled ~= nil then
+BorderEnabled = savedTheme.BorderEnabled
+end
+end
+
+-- อัปเดต ThemeSettings ให้ตรงกับค่าที่กำลังใช้จริง (default หรือที่โหลดมา) เพื่อให้เซฟรอบถัดไปถูกต้อง
+ThemeSettings.Accent = { math.floor(CurrentThemeColor.R * 255), math.floor(CurrentThemeColor.G * 255), math.floor(CurrentThemeColor.B * 255) }
+ThemeSettings.Text = { math.floor(CurrentTextColor.R * 255), math.floor(CurrentTextColor.G * 255), math.floor(CurrentTextColor.B * 255) }
+ThemeSettings.Transparency = GTrans
+ThemeSettings.Rainbow = isRainbow
+ThemeSettings.TextRainbow = isTextRainbow
+ThemeSettings.Background = { math.floor(CurrentBackgroundColor.R * 255), math.floor(CurrentBackgroundColor.G * 255), math.floor(CurrentBackgroundColor.B * 255) }
+ThemeSettings.CategoryColor = { math.floor(CurrentCategoryColor.R * 255), math.floor(CurrentCategoryColor.G * 255), math.floor(CurrentCategoryColor.B * 255) }
+ThemeSettings.CategoryIdleColor = { math.floor(CurrentCategoryIdleColor.R * 255), math.floor(CurrentCategoryIdleColor.G * 255), math.floor(CurrentCategoryIdleColor.B * 255) }
+ThemeSettings.Language = CurrentLanguage
+ThemeSettings.RunningLightEnabled = RunningLightEnabled
+ThemeSettings.RunningLightSpeed = RunningLightSpeed
+ThemeSettings.RunningLightColor = { math.floor(CurrentRunningLightColor.R * 255), math.floor(CurrentRunningLightColor.G * 255), math.floor(CurrentRunningLightColor.B * 255) }
+ThemeSettings.PatternEnabled = PatternEnabled
+ThemeSettings.BorderEnabled = BorderEnabled
+
+-- ===================== Element Icon Helper =====================
+-- ใช้วาดไอคอน lucide-xxx ในตัว element ต่างๆ (เหมือน Rayfield/Fluent)
+-- คืนค่า ImageLabel ถ้าวาดสำเร็จ, คืน nil ถ้าไม่มี IconName หรือหาไอคอนไม่เจอ
+local function AddElementIcon(parent, iconName, size, xOffset)
+if not (iconName and Icons and Icons[iconName]) then return nil end
+size = size or 18
+local IconImg = Instance.new('ImageLabel')
+IconImg.Name = 'ElementIcon'
+IconImg.Parent = parent
+IconImg.BackgroundTransparency = 1
+IconImg.Size = UDim2.new(0, size, 0, size)
+IconImg.Position = UDim2.new(0, xOffset or 8, 0.5, -(size / 2))
+IconImg.Image = Icons[iconName]
+IconImg.ZIndex = (parent.ZIndex or 1) + 1
+ApplyTextColor(IconImg, 'ImageColor3')
+return IconImg
+end
+
+-- ===================== ScreenGui =====================
+local ScreenGui = Instance.new('ScreenGui')
+ScreenGui.Name = 'LMG2L_UI'
+ScreenGui.Parent = CoreGui or (LocalPlayer and LocalPlayer:WaitForChild('PlayerGui'))
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.ResetOnSpawn = false
+ScreenGui.DisplayOrder = Config.DisplayOrder or 999
+
+-- ===================== MainFrame =====================
+local MainFrame = Instance.new('Frame')
+MainFrame.Name = 'MainFrame'
+MainFrame.Parent = ScreenGui
+ApplyBackground(MainFrame)                     -- ← พื้นหลัง (ปรับสดได้จาก Settings)
+ApplyGlass(MainFrame)
+MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+MainFrame.Size = UDim2.new(0, 500, 0, 350)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+Instance.new('UICorner', MainFrame).CornerRadius = UDim.new(0, 10)
+
+-- pattern overlay (ลด opacity ให้เบาลง บนพื้นดำม่วง)
+local PatternBg = Instance.new('ImageLabel')
+PatternBg.Name = 'Pattern'
+PatternBg.Parent = MainFrame
+PatternBg.BackgroundTransparency = 1
+PatternBg.Size = UDim2.new(1, 0, 1, 0)
+PatternBg.ZIndex = 0
+PatternBg.Image = 'rbxassetid://2151741365'
+PatternBg.ImageTransparency = 0.93    -- เบามากให้เห็นแค่ texture
+PatternBg.ImageColor3 = C.Accent      -- tint ม่วง
+PatternBg.ScaleType = Enum.ScaleType.Tile
+PatternBg.TileSize = UDim2.new(0, 200, 0, 200)
+PatternBg.Visible = PatternEnabled
+
+if savedSize then MainFrame.Size = savedSize end
+if savedPos  then MainFrame.Position = savedPos end
+local SavedFlags = savedFlags or {}
+
+-- ฟังก์ชันเรียกเปิด/ปิดเมนู Settings (forward declare ไว้ก่อน เพราะปุ่ม gear ถูกสร้างก่อน
+-- แท็บ Settings จริงที่มาสร้างทีหลังผ่าน task.defer ด้านล่างสุดของไฟล์)
+local ToggleSettingsVisibility = function() end
+local OpenSettingsFn = function() end
+local CloseSettingsFn = function() end
+
+-- stroke ขอบ gradient หมุน (Running Light)
+local MainStroke = Instance.new('UIStroke', MainFrame)
+MainStroke.Thickness = 2
+MainStroke.Color = C.Accent
+MainStroke.Enabled = BorderEnabled            -- ← เปิด/ปิดขอบ (effect toggle)
+
+local StrokeGradient = Instance.new('UIGradient')
+StrokeGradient.Parent = MainStroke
+
+-- ตั้งค่ากราเดียนต์แบบนิ่ง (ใช้ตอนปิด Running Light) โดยใช้สี Running Light ปัจจุบัน
+local function ApplyRunningLightStatic()
+if StrokeGradient and StrokeGradient.Parent then
+StrokeGradient.Rotation = 0
+StrokeGradient.Color = ColorSequence.new(CurrentRunningLightColor)
+end
+end
+
+if not RunningLightEnabled then
+ApplyRunningLightStatic()
+end
+
+RunService.RenderStepped:Connect(function(dt)
+if isRainbow or isTextRainbow then
+local rColor = Color3.fromHSV(tick() % 5 / 5, 1, 1)
+if isRainbow then
+CurrentThemeColor = rColor
+for _, data in ipairs(ThemedElements) do data.UpdateFunc(CurrentThemeColor) end
+end
+if isTextRainbow then
+CurrentTextColor = rColor
+for _, data in ipairs(TextElements) do data.UpdateFunc(CurrentTextColor) end
+end
+end
+if RunningLightEnabled and StrokeGradient and StrokeGradient.Parent then
+local r = StrokeGradient.Rotation
+StrokeGradient.Rotation = (r + dt * RunningLightSpeed) % 360
+StrokeGradient.Color = ColorSequence.new({
+ColorSequenceKeypoint.new(0,   C.BgDeep),
+ColorSequenceKeypoint.new(0.4, CurrentRunningLightColor),
+ColorSequenceKeypoint.new(0.6, CurrentRunningLightColor),
+ColorSequenceKeypoint.new(1,   C.BgDeep),
+})
+end
+end)
+
+-- ===================== Toggle Button =====================
+local ToggleBtn = Instance.new('ImageButton')
+ToggleBtn.Name = 'ToggleBtn'
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.BackgroundColor3 = C.BgCard         -- ← ม่วงเข้ม
+ApplyGlass(ToggleBtn)
+ToggleBtn.Position = UDim2.new(0, 20, 0, 20)
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.AutoButtonColor = true
+
+local _uc = Instance.new('UICorner', ToggleBtn)
+_uc.CornerRadius = UDim.new(1, 0)
+local _us = Instance.new('UIStroke', ToggleBtn)
+_us.Thickness = 2
+_us.Color = C.Accent                          -- ← stroke ม่วง
+
+if ToggleConfig.Image and ToggleConfig.Image ~= '' then
+ToggleBtn.Image = ToggleConfig.Image
+ToggleBtn.ImageRectSize = Vector2.new(0, 0)
+else
+ToggleBtn.ImageTransparency = 1
+end
+
+local ToggleText = Instance.new('TextLabel')
+ToggleText.Parent = ToggleBtn
+ToggleText.BackgroundTransparency = 1
+ToggleText.Size = UDim2.new(1, 0, 1, 0)
+ToggleText.Font = Enum.Font.GothamBold
+ToggleText.Text = ToggleConfig.Text or (ToggleConfig.Image and '' or 'UI')
+ToggleText.TextSize = 16
+ToggleText.TextTruncate = Enum.TextTruncate.AtEnd
+ApplyTextColor(ToggleText)
+
+MakeDraggable(ToggleBtn)
+ToggleBtn.MouseButton1Click:Connect(function()
+MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- ===================== TopBar =====================
+local TopBar = Instance.new('Frame')
+TopBar.Name = 'TopBar'
+TopBar.Parent = MainFrame
+TopBar.BackgroundColor3 = C.BgMid             -- ← ม่วงดำ topbar
+ApplyGlass(TopBar)
+TopBar.Size = UDim2.new(1, 0, 0, 32)
+TopBar.ZIndex = 2
+Instance.new('UICorner', TopBar).CornerRadius = UDim.new(0, 10)
+
+-- fix bottom corners
+local TopBarFix = Instance.new('Frame')
+TopBarFix.Parent = TopBar
+TopBarFix.BackgroundColor3 = C.BgMid
+ApplyGlass(TopBarFix)
+TopBarFix.Position = UDim2.new(0, 0, 0.5, 0)
+TopBarFix.Size = UDim2.new(1, 0, 0.5, 0)
+TopBarFix.BorderSizePixel = 0
+TopBarFix.ZIndex = 2
+
+-- เส้นเรืองแสงด้านล่าง topbar
+local TopBarAccent = Instance.new('Frame')
+TopBarAccent.Parent = TopBar
+TopBarAccent.BackgroundColor3 = C.Accent
+TopBarAccent.BorderSizePixel = 0
+TopBarAccent.Position = UDim2.new(0, 0, 1, -2)
+TopBarAccent.Size = UDim2.new(1, 0, 0, 2)
+TopBarAccent.ZIndex = 3
+
+local TitlePadding = 15
+if Config.Logo and Config.Logo ~= '' then
+local LogoImg = Instance.new('ImageLabel')
+LogoImg.Parent = TopBar
+LogoImg.BackgroundTransparency = 1
+LogoImg.Position = UDim2.new(0, 8, 0, 6)
+LogoImg.Size = UDim2.new(0, 20, 0, 20)
+LogoImg.Image = Config.Logo
+LogoImg.ZIndex = 3
+TitlePadding = 35
+end
+
+local TitleLabel = Instance.new('TextLabel')
+TitleLabel.Parent = TopBar
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Position = UDim2.new(0, TitlePadding, 0, 0)
+TitleLabel.Size = UDim2.new(1, -TitlePadding - 40, 1, 0)
+TitleLabel.Text = WindowName or 'LMG2L Library'
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 14
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.TextTruncate = Enum.TextTruncate.AtEnd
+TitleLabel.ZIndex = 3
+ApplyTextColor(TitleLabel)
+
+-- ===================== ปุ่มเปิด/ปิดเมนู Settings (gear icon มุมขวาบนของ TopBar) =====================
+local SettingsGearBtn = Instance.new('ImageButton')
+SettingsGearBtn.Name = 'SettingsGearBtn'
+SettingsGearBtn.Parent = TopBar
+SettingsGearBtn.BackgroundTransparency = 1
+SettingsGearBtn.Position = UDim2.new(1, -28, 0.5, -10)
+SettingsGearBtn.Size = UDim2.new(0, 20, 0, 20)
+SettingsGearBtn.ZIndex = 4
+if Icons and Icons['lucide-settings'] then
+SettingsGearBtn.Image = Icons['lucide-settings']
+end
+ApplyTextColor(SettingsGearBtn, 'ImageColor3')
+SettingsGearBtn.MouseButton1Click:Connect(function()
+ToggleSettingsVisibility()
+end)
+
+MakeDraggable(TopBar, MainFrame, function()
+SaveConfig(MainFrame)
+end)
+
+-- ===================== Resize Button =====================
+local ResizeBtn = Instance.new('TextButton')
+ResizeBtn.Name = 'ResizeBtn'
+ResizeBtn.Parent = MainFrame
+ResizeBtn.BackgroundTransparency = 1
+ResizeBtn.Position = UDim2.new(1, -20, 1, -20)
+ResizeBtn.Size = UDim2.new(0, 20, 0, 20)
+ResizeBtn.Font = Enum.Font.GothamBold
+ResizeBtn.Text = '\u{25e2}'
+ResizeBtn.TextSize = 16
+ResizeBtn.ZIndex = 10
+ApplyTheme(ResizeBtn, 'TextColor3')
+
+local resizing = false
+local resizeStart, startSize
+ResizeBtn.InputBegan:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+resizing = true; resizeStart = input.Position; startSize = MainFrame.AbsoluteSize
+end
+end)
+UserInputService.InputChanged:Connect(function(input)
+if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+local delta = input.Position - resizeStart
+MainFrame.Size = UDim2.new(0, math.clamp(startSize.X + delta.X, 350, 800), 0, math.clamp(startSize.Y + delta.Y, 250, 600))
+end
+end)
+UserInputService.InputEnded:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+if resizing then resizing = false; SaveConfig(MainFrame) end
+end
+end)
+
+-- ===================== Sidebar =====================
+local Sidebar = Instance.new('ScrollingFrame')
+Sidebar.Name = 'Sidebar'
+Sidebar.Parent = MainFrame
+Sidebar.BackgroundColor3 = C.BgMid            -- ← ม่วงดำ sidebar
+ApplyGlass(Sidebar)
+Sidebar.Position = UDim2.new(0.02, 0, 0.12, 0)
+Sidebar.Size = UDim2.new(0.25, 0, 0.84, 0)
+Sidebar.BorderSizePixel = 0
+Sidebar.ScrollBarThickness = 0
+Sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
+Sidebar.ZIndex = 2
+Instance.new('UICorner', Sidebar).CornerRadius = UDim.new(0, 8)
+
+local SidebarStroke = Instance.new('UIStroke', Sidebar)
+SidebarStroke.Thickness = 1
+SidebarStroke.Color = C.AccentDim              -- ← ขอบม่วงหม่น
+
+local SidebarList = Instance.new('UIListLayout', Sidebar)
+SidebarList.SortOrder = Enum.SortOrder.LayoutOrder
+SidebarList.Padding = UDim.new(0, 5)
+SidebarList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local SidebarPadding = Instance.new('UIPadding', Sidebar)
+SidebarPadding.PaddingTop = UDim.new(0, 10)
+
+SidebarList:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
+Sidebar.CanvasSize = UDim2.new(0, 0, 0, SidebarList.AbsoluteContentSize.Y + 20)
+end)
+
+-- ===================== Content Container =====================
+local ContentContainer = Instance.new('Frame')
+ContentContainer.Name = 'ContentContainer'
+ContentContainer.Parent = MainFrame
+ContentContainer.BackgroundTransparency = 1
+ContentContainer.Position = UDim2.new(0.29, 0, 0.12, 0)
+ContentContainer.Size = UDim2.new(0.69, 0, 0.84, 0)
+ContentContainer.ZIndex = 2
+
+-- ============================================================
+local WindowElements = {}
+
+-- ฟังก์ชันเรียกเปิด/ปิด/toggle เมนู Settings — ใช้ได้ทันทีตั้งแต่ CreateWindow คืนค่ากลับไป
+-- (การ implement จริงจะถูกผูกเข้ากับ ToggleSettingsVisibility/OpenSettingsFn/CloseSettingsFn
+-- ผ่าน task.defer ด้านล่างสุดของไฟล์ ซึ่งทำงานเกือบจะทันทีหลัง CreateWindow คืนค่า)
+function WindowElements:OpenSettings()
+OpenSettingsFn()
+end
+function WindowElements:CloseSettings()
+CloseSettingsFn()
+end
+function WindowElements:ToggleSettings()
+ToggleSettingsVisibility()
+end
+
+function WindowElements:CreateCategory(CategoryName, IconName, Hidden)
+local CategoryElements = {}
+
+-- ปุ่ม category ใน sidebar
+local CategoryBtn = Instance.new('TextButton')
+CategoryBtn.Parent = Sidebar
+CategoryBtn.BackgroundColor3 = CurrentCategoryIdleColor  -- ← สี idle (ปรับได้จาก Settings)
+ApplyGlass(CategoryBtn)
+CategoryBtn.Size = UDim2.new(0.9, 0, 0, 32)
+CategoryBtn.Font = Enum.Font.GothamBold
+CategoryBtn.Text = CategoryName
+CategoryBtn.TextSize = 13
+CategoryBtn.TextTruncate = Enum.TextTruncate.AtEnd
+CategoryBtn.ZIndex = 3
+Instance.new('UICorner', CategoryBtn).CornerRadius = UDim.new(0, 6)
+ApplyTextColor(CategoryBtn)
+CategoryBtn:SetAttribute('CategorySelected', false)
+
+-- ลงทะเบียนปุ่มนี้ไว้ เพื่อให้ปรับสี Category (ทั้ง Active และ Idle จาก Settings) แล้วอัปเดตสดได้ทันที
+-- ไม่ว่าปุ่มจะอยู่ในสถานะไหน ณ ขณะนั้น
+RegisterCategoryButton(CategoryBtn, function()
+return CategoryBtn:GetAttribute('CategorySelected') == true
+end)
+
+-- Hidden = true: ใช้สำหรับแท็บที่ไม่อยากให้โชว์เป็นปุ่มปกติใน sidebar (เช่น Settings)
+-- จะถูกเรียกออกมาแสดงผ่านฟังก์ชัน/ปุ่มอื่นแทน ไม่ใช่การคลิกที่ sidebar
+if Hidden then
+CategoryBtn.Visible = false
+end
+
+if IconName and Icons and Icons[IconName] then
+CategoryBtn.TextXAlignment = Enum.TextXAlignment.Left
+local UIPad = Instance.new('UIPadding', CategoryBtn)
+UIPad.PaddingLeft = UDim.new(0, 35)
+local IconImg = Instance.new('ImageLabel')
+IconImg.Parent = CategoryBtn
+IconImg.BackgroundTransparency = 1
+IconImg.Position = UDim2.new(0, -25, 0.5, -10)
+IconImg.Size = UDim2.new(0, 20, 0, 20)
+IconImg.Image = Icons[IconName]
+ApplyTextColor(IconImg, 'ImageColor3')
+end
+
+-- Content page
+local CategoryPage = Instance.new('ScrollingFrame')
+CategoryPage.Parent = ContentContainer
+CategoryPage.BackgroundTransparency = 1
+CategoryPage.Size = UDim2.new(1, 0, 1, 0)
+CategoryPage.ScrollBarThickness = 3
+CategoryPage.ScrollBarImageColor3 = C.AccentDim
+CategoryPage.Visible = false
+CategoryPage.CanvasSize = UDim2.new(0, 0, 0, 0)
+CategoryPage.ZIndex = 3
+
+local PageLayout = Instance.new('UIListLayout', CategoryPage)
+PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+PageLayout.Padding = UDim.new(0, 5)
+PageLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local PagePadding = Instance.new('UIPadding', CategoryPage)
+PagePadding.PaddingTop = UDim.new(0, 5)
+
+PageLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
+CategoryPage.CanvasSize = UDim2.new(0, 0, 0, PageLayout.AbsoluteContentSize.Y + 20)
+end)
+
+local function SelectTab()
+for _, page in pairs(ContentContainer:GetChildren()) do
+if page:IsA('ScrollingFrame') then page.Visible = false end
+end
+for _, btn in pairs(Sidebar:GetChildren()) do
+if btn:IsA('TextButton') then
+btn.BackgroundColor3 = CurrentCategoryIdleColor    -- ← reset เป็น idle (ปรับได้จาก Settings)
+btn:SetAttribute('CategorySelected', false)
+end
+end
+CategoryPage.Visible = true
+CategoryBtn:SetAttribute('CategorySelected', true)
+TweenService:Create(CategoryBtn, TweenInfo.new(0.2), {
+BackgroundColor3 = CurrentCategoryColor,        -- ← active = สี Category (ปรับได้จาก Settings)
+}):Play()
+end
+
+if not Hidden then
+CategoryBtn.MouseButton1Click:Connect(SelectTab)
+if isFirstTab then SelectTab(); isFirstTab = false end
+end
+
+-- ============================================================
+-- Elements
+-- ============================================================
+
+function CategoryElements:CreateLabel(Text, IconName, TextColor)
+-- รองรับแบบเก่า CreateLabel(Text, TextColor) ด้วย (ตรวจว่าอาร์กิวเมนต์ที่ 2 เป็น Color3 หรือไม่)
+if typeof(IconName) == 'Color3' then TextColor = IconName; IconName = nil end
+
+local LabelContainer = Instance.new('Frame')
+LabelContainer.Parent = CategoryPage
+LabelContainer.BackgroundTransparency = 1
+LabelContainer.Size = UDim2.new(0.95, 0, 0, 25)
+local LabelText = Instance.new('TextLabel')
+LabelText.Parent = LabelContainer
+LabelText.BackgroundTransparency = 1
+LabelText.Size = UDim2.new(1, 0, 1, 0)
+LabelText.Font = Enum.Font.GothamBold
+LabelText.Text = Text
+LabelText.TextSize = 14
+LabelText.TextXAlignment = Enum.TextXAlignment.Left
+LabelText.TextTruncate = Enum.TextTruncate.AtEnd
+if TextColor then LabelText.TextColor3 = TextColor
+else ApplyTextColor(LabelText) end
+
+if AddElementIcon(LabelContainer, IconName, 16, 0) then
+LabelText.Position = UDim2.new(0, 22, 0, 0)
+LabelText.Size = UDim2.new(1, -22, 1, 0)
+end
+end
+
+function CategoryElements:CreateButton(ButtonText, IconName, TextColor, Callback)
+-- รองรับแบบเก่า CreateButton(Text, Callback) และ CreateButton(Text, TextColor, Callback)
+if type(IconName) == 'function' then Callback = IconName; IconName = nil; TextColor = nil end
+if typeof(IconName) == 'Color3' then Callback = TextColor; TextColor = IconName; IconName = nil end
+if type(TextColor) == 'function' then Callback = TextColor; TextColor = nil end
+
+local ActionBtn = Instance.new('TextButton')
+ActionBtn.Parent = CategoryPage
+ActionBtn.BackgroundColor3 = C.BgElement     -- ← ม่วงกลาง
+ApplyGlass(ActionBtn)
+ActionBtn.Size = UDim2.new(0.95, 0, 0, 35)
+ActionBtn.Text = ''
+ActionBtn.AutoButtonColor = false
+Instance.new('UICorner', ActionBtn).CornerRadius = UDim.new(0, 6)
+-- stroke ม่วงอ่อน
+local bs = Instance.new('UIStroke', ActionBtn)
+bs.Thickness = 1; bs.Color = C.AccentDim
+
+local BtnLabel = Instance.new('TextLabel')
+BtnLabel.Name = 'ButtonLabel'
+BtnLabel.Parent = ActionBtn
+BtnLabel.BackgroundTransparency = 1
+BtnLabel.Position = UDim2.new(0, 10, 0, 0)
+BtnLabel.Size = UDim2.new(1, -20, 1, 0)
+BtnLabel.Font = Enum.Font.Gotham
+BtnLabel.Text = ButtonText
+BtnLabel.TextSize = 14
+BtnLabel.TextXAlignment = Enum.TextXAlignment.Left
+BtnLabel.TextTruncate = Enum.TextTruncate.AtEnd
+BtnLabel.ZIndex = ActionBtn.ZIndex + 1
+if TextColor then BtnLabel.TextColor3 = TextColor
+else ApplyTextColor(BtnLabel) end
+
+if AddElementIcon(ActionBtn, IconName, 18, 10) then
+BtnLabel.Position = UDim2.new(0, 36, 0, 0)
+BtnLabel.Size = UDim2.new(1, -46, 1, 0)
+end
+
+ActionBtn.MouseButton1Click:Connect(function()
+TweenService:Create(ActionBtn, TweenInfo.new(0.08), { BackgroundColor3 = C.Accent }):Play()
+task.wait(0.12)
+TweenService:Create(ActionBtn, TweenInfo.new(0.12), { BackgroundColor3 = C.BgElement }):Play()
+if Callback then Callback() end
+end)
+end
+
+function CategoryElements:CreateTextbox(TextboxText, IconName, Placeholder, Flag, Callback)
+-- ลำดับใหม่: CreateTextbox(Text, IconName, Placeholder, Flag, Callback)
+-- ถ้าไม่ต้องการไอคอน ให้ใส่ nil แทน IconName
+if type(Flag) == 'function' then Callback = Flag; Flag = nil end
+
+local RestoredText = nil
+if Flag and SavedFlags[Flag] ~= nil then
+RestoredText = SavedFlags[Flag]
+end
+
+local TextboxContainer = Instance.new('Frame')
+TextboxContainer.Parent = CategoryPage
+TextboxContainer.BackgroundColor3 = C.BgCard
+ApplyGlass(TextboxContainer)
+TextboxContainer.Size = UDim2.new(0.95, 0, 0, 35)
+Instance.new('UICorner', TextboxContainer).CornerRadius = UDim.new(0, 6)
+local TextboxLabel = Instance.new('TextLabel')
+TextboxLabel.Parent = TextboxContainer
+TextboxLabel.BackgroundTransparency = 1
+TextboxLabel.Position = UDim2.new(0, 10, 0, 0)
+TextboxLabel.Size = UDim2.new(0.5, 0, 1, 0)
+TextboxLabel.Font = Enum.Font.Gotham
+TextboxLabel.Text = TextboxText
+TextboxLabel.TextSize = 14
+TextboxLabel.TextXAlignment = Enum.TextXAlignment.Left
+TextboxLabel.TextTruncate = Enum.TextTruncate.AtEnd
+ApplyTextColor(TextboxLabel)
+if AddElementIcon(TextboxContainer, IconName, 16, 10) then
+TextboxLabel.Position = UDim2.new(0, 32, 0, 0)
+TextboxLabel.Size = UDim2.new(0.5, -22, 1, 0)
+end
+local TextboxBg = Instance.new('Frame')
+TextboxBg.Parent = TextboxContainer
+TextboxBg.BackgroundColor3 = C.BgInput
+ApplyGlass(TextboxBg)
+TextboxBg.Position = UDim2.new(1, -160, 0.5, -12)
+TextboxBg.Size = UDim2.new(0, 150, 0, 24)
+Instance.new('UICorner', TextboxBg).CornerRadius = UDim.new(0, 4)
+local tbs = Instance.new('UIStroke', TextboxBg)
+tbs.Thickness = 1; tbs.Color = C.AccentDim
+local TextBox = Instance.new('TextBox')
+TextBox.Parent = TextboxBg
+TextBox.BackgroundTransparency = 1
+TextBox.Size = UDim2.new(1, -10, 1, 0)
+TextBox.Position = UDim2.new(0, 5, 0, 0)
+TextBox.Font = Enum.Font.Gotham
+TextBox.PlaceholderText = Placeholder or ''
+TextBox.PlaceholderColor3 = C.TextDim
+TextBox.Text = RestoredText or ''
+TextBox.TextSize = 12
+TextBox.TextXAlignment = Enum.TextXAlignment.Left
+TextBox.TextTruncate = Enum.TextTruncate.AtEnd
+ApplyTextColor(TextBox)
+if Flag then
+Flags[Flag] = { Type = 'Textbox', Value = TextBox.Text }
+end
+TextBox.FocusLost:Connect(function()
+if Flag then
+Flags[Flag].Value = TextBox.Text
+SaveConfig(MainFrame)
+end
+if Callback then Callback(TextBox.Text) end
+end)
+end
+
+function CategoryElements:CreateNumberTextbox(LabelText, IconName, DefaultNumber, Flag, Callback)
+-- ลำดับใหม่: CreateNumberTextbox(Text, IconName, DefaultNumber, Flag, Callback)
+-- ถ้าไม่ต้องการไอคอน ให้ใส่ nil แทน IconName
+if type(Flag) == 'function' then Callback = Flag; Flag = nil end
+
+if Flag and SavedFlags[Flag] ~= nil then
+DefaultNumber = SavedFlags[Flag]
+end
+
+local TextboxContainer = Instance.new('Frame')
+TextboxContainer.Parent = CategoryPage
+TextboxContainer.BackgroundColor3 = C.BgCard
+ApplyGlass(TextboxContainer)
+TextboxContainer.Size = UDim2.new(0.95, 0, 0, 35)
+Instance.new('UICorner', TextboxContainer).CornerRadius = UDim.new(0, 6)
+local TextboxLabel = Instance.new('TextLabel')
+TextboxLabel.Parent = TextboxContainer
+TextboxLabel.BackgroundTransparency = 1
+TextboxLabel.Position = UDim2.new(0, 10, 0, 0)
+TextboxLabel.Size = UDim2.new(0.5, 0, 1, 0)
+TextboxLabel.Font = Enum.Font.Gotham
+TextboxLabel.Text = LabelText
+TextboxLabel.TextSize = 14
+TextboxLabel.TextXAlignment = Enum.TextXAlignment.Left
+TextboxLabel.TextTruncate = Enum.TextTruncate.AtEnd
+ApplyTextColor(TextboxLabel)
+if AddElementIcon(TextboxContainer, IconName, 16, 10) then
+TextboxLabel.Position = UDim2.new(0, 32, 0, 0)
+TextboxLabel.Size = UDim2.new(0.5, -22, 1, 0)
+end
+local TextboxBg = Instance.new('Frame')
+TextboxBg.Parent = TextboxContainer
+TextboxBg.BackgroundColor3 = C.BgInput
+ApplyGlass(TextboxBg)
+TextboxBg.Position = UDim2.new(1, -160, 0.5, -12)
+TextboxBg.Size = UDim2.new(0, 150, 0, 24)
+Instance.new('UICorner', TextboxBg).CornerRadius = UDim.new(0, 4)
+local tbs = Instance.new('UIStroke', TextboxBg)
+tbs.Thickness = 1; tbs.Color = C.AccentDim
+local TextBox = Instance.new('TextBox')
+TextBox.Parent = TextboxBg
+TextBox.BackgroundTransparency = 1
+TextBox.Size = UDim2.new(1, -10, 1, 0)
+TextBox.Position = UDim2.new(0, 5, 0, 0)
+TextBox.Font = Enum.Font.Gotham
+TextBox.PlaceholderText = tostring(DefaultNumber or '')
+TextBox.PlaceholderColor3 = C.TextDim
+TextBox.Text = DefaultNumber and tostring(DefaultNumber) or ''
+TextBox.TextSize = 12
+TextBox.TextXAlignment = Enum.TextXAlignment.Left
+TextBox.TextTruncate = Enum.TextTruncate.AtEnd
+ApplyTextColor(TextBox)
+if Flag then
+Flags[Flag] = { Type = 'NumberTextbox', Value = tonumber(TextBox.Text) }
+end
+TextBox.FocusLost:Connect(function()
+local n = tonumber(TextBox.Text)
+if Flag then
+Flags[Flag].Value = n
+SaveConfig(MainFrame)
+end
+if n and Callback then Callback(n)
+elseif Callback then Callback(nil) end
+end)
+end
+
+function CategoryElements:CreateSearchBar(Placeholder, IconName, Callback)
+-- รองรับแบบเก่า CreateSearchBar(Placeholder, Callback) ด้วย
+if type(IconName) == 'function' then Callback = IconName; IconName = nil end
+IconName = IconName or 'lucide-search'
+
+local SearchContainer = Instance.new('Frame')
+SearchContainer.Parent = CategoryPage
+SearchContainer.BackgroundColor3 = C.BgCard
+ApplyGlass(SearchContainer)
+SearchContainer.Size = UDim2.new(0.95, 0, 0, 35)
+Instance.new('UICorner', SearchContainer).CornerRadius = UDim.new(0, 6)
+local ss = Instance.new('UIStroke', SearchContainer)
+ss.Thickness = 1; ss.Color = C.AccentDim
+local SearchIcon = Instance.new('ImageLabel')
+SearchIcon.Parent = SearchContainer
+SearchIcon.BackgroundTransparency = 1
+SearchIcon.Position = UDim2.new(0, 10, 0.5, -10)
+SearchIcon.Size = UDim2.new(0, 20, 0, 20)
+if Icons and Icons[IconName] then SearchIcon.Image = Icons[IconName] end
+ApplyTextColor(SearchIcon, 'ImageColor3')
+local TextBox = Instance.new('TextBox')
+TextBox.Parent = SearchContainer
+TextBox.BackgroundTransparency = 1
+TextBox.Size = UDim2.new(1, -40, 1, 0)
+TextBox.Position = UDim2.new(0, 35, 0, 0)
+TextBox.Font = Enum.Font.Gotham
+TextBox.PlaceholderText = Placeholder or 'Search...'
+TextBox.PlaceholderColor3 = C.TextDim
+TextBox.Text = ''
+TextBox.TextSize = 14
+TextBox.TextXAlignment = Enum.TextXAlignment.Left
+TextBox.TextTruncate = Enum.TextTruncate.AtEnd
+ApplyTextColor(TextBox)
+TextBox:GetPropertyChangedSignal('Text'):Connect(function()
+if Callback then Callback(TextBox.Text) end
+end)
+end
+
+function CategoryElements:CreateToggle(ToggleText, IconName, DefaultState, Flag, Callback)
+-- ลำดับใหม่: CreateToggle(Text, IconName, DefaultState, Flag, Callback)
+-- ตรวจจับอัตโนมัติถ้าเรียกแบบเก่าที่ไม่มี IconName: CreateToggle(Text, DefaultState, Flag, Callback)
+if type(IconName) == 'boolean' then
+Callback = Flag; Flag = DefaultState; DefaultState = IconName; IconName = nil
+end
+if type(Flag) == 'function' then Callback = Flag; Flag = nil end
+
+if Flag and SavedFlags[Flag] ~= nil then
+DefaultState = SavedFlags[Flag]
+end
+
+local CurrentState = DefaultState or false
+
+if Flag then
+Flags[Flag] = { Type = 'Toggle', Value = CurrentState }
+end
+
+local ToggleContainer = Instance.new('TextButton')
+ToggleContainer.Parent = CategoryPage
+ToggleContainer.BackgroundColor3 = C.BgCard
+ApplyGlass(ToggleContainer)
+ToggleContainer.Size = UDim2.new(0.95, 0, 0, 35)
+ToggleContainer.Text = ''
+ToggleContainer.AutoButtonColor = false
+Instance.new('UICorner', ToggleContainer).CornerRadius = UDim.new(0, 6)
+local ts = Instance.new('UIStroke', ToggleContainer)
+ts.Thickness = 1; ts.Color = C.AccentDim
+
+local ToggleLabel = Instance.new('TextLabel')
+ToggleLabel.Parent = ToggleContainer
+ToggleLabel.BackgroundTransparency = 1
+ToggleLabel.Position = UDim2.new(0, 10, 0, 0)
+ToggleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+ToggleLabel.Font = Enum.Font.Gotham
+ToggleLabel.Text = ToggleText
+ToggleLabel.TextSize = 14
+ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+ToggleLabel.TextTruncate = Enum.TextTruncate.AtEnd
+ApplyTextColor(ToggleLabel)
+if AddElementIcon(ToggleContainer, IconName, 16, 10) then
+ToggleLabel.Position = UDim2.new(0, 32, 0, 0)
+ToggleLabel.Size = UDim2.new(0.7, -22, 1, 0)
+end
+
+-- Track bg
+local ToggleBg = Instance.new('Frame')
+ToggleBg.Parent = ToggleContainer
+ToggleBg.BackgroundColor3 = C.BgInput       -- ← ม่วงดำ track
+ApplyGlass(ToggleBg)
+ToggleBg.Position = UDim2.new(1, -45, 0.5, -10)
+ToggleBg.Size = UDim2.new(0, 35, 0, 20)
+Instance.new('UICorner', ToggleBg).CornerRadius = UDim.new(1, 0)
+local tbs2 = Instance.new('UIStroke', ToggleBg)
+tbs2.Thickness = 1; tbs2.Color = C.AccentDim
+
+local ToggleKnob = Instance.new('Frame')
+ToggleKnob.Parent = ToggleBg
+ToggleKnob.BackgroundColor3 = C.KnobOff      -- ← ม่วงหม่น off
+ToggleKnob.Position = UDim2.new(0, 2, 0.5, -8)
+ToggleKnob.Size = UDim2.new(0, 16, 0, 16)
+Instance.new('UICorner', ToggleKnob).CornerRadius = UDim.new(1, 0)
+
+local function UpdateToggle(animate)
+local goalPos   = CurrentState and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+local goalColor = CurrentState and CurrentThemeColor or C.KnobOff
+local goalTrack = CurrentState and C.AccentDim or C.BgInput
+if animate then
+TweenService:Create(ToggleKnob, TweenInfo.new(0.2), { Position = goalPos, BackgroundColor3 = goalColor }):Play()
+TweenService:Create(ToggleBg,   TweenInfo.new(0.2), { BackgroundColor3 = goalTrack }):Play()
+else
+ToggleKnob.Position = goalPos
+ToggleKnob.BackgroundColor3 = goalColor
+ToggleBg.BackgroundColor3 = goalTrack
+end
+if Callback then Callback(CurrentState) end
+end
+
+if isRainbow then
+table.insert(ThemedElements, {
+UpdateFunc = function(color)
+if ToggleKnob and ToggleKnob.Parent and CurrentState then
+ToggleKnob.BackgroundColor3 = color
+end
+end,
+})
+end
+
+ToggleContainer.MouseButton1Click:Connect(function()
+CurrentState = not CurrentState
+UpdateToggle(true)
+if Flag then
+Flags[Flag].Value = CurrentState
+SaveConfig(MainFrame)
+end
+end)
+UpdateToggle(false)
+end
+
+function CategoryElements:CreateSlider(SliderText, IconName, Min, Max, Default, Flag, Callback)
+-- ลำดับใหม่: CreateSlider(Text, IconName, Min, Max, Default, Flag, Callback)
+-- ตรวจจับอัตโนมัติถ้าเรียกแบบเก่าที่ไม่มี IconName: CreateSlider(Text, Min, Max, Default, Flag, Callback)
+if type(IconName) == 'number' then
+Callback = Flag; Flag = Default; Default = Max; Max = Min; Min = IconName; IconName = nil
+end
+if type(Flag) == 'function' then Callback = Flag; Flag = nil end
+
+if Flag and SavedFlags[Flag] ~= nil then
+Default = SavedFlags[Flag]
+end
+
+local CurrentValue = Default or Min
+
+if Flag then
+Flags[Flag] = { Type = 'Slider', Value = CurrentValue }
+end
+
+local SliderContainer = Instance.new('Frame')
+SliderContainer.Parent = CategoryPage
+SliderContainer.BackgroundColor3 = C.BgCard
+ApplyGlass(SliderContainer)
+SliderContainer.Size = UDim2.new(0.95, 0, 0, 50)
+Instance.new('UICorner', SliderContainer).CornerRadius = UDim.new(0, 6)
+local sls = Instance.new('UIStroke', SliderContainer)
+sls.Thickness = 1; sls.Color = C.AccentDim
+
+local SliderLabel = Instance.new('TextLabel')
+SliderLabel.Parent = SliderContainer
+SliderLabel.Position = UDim2.new(0, 10, 0, 5)
+SliderLabel.BackgroundTransparency = 1
+SliderLabel.Size = UDim2.new(0.5, 0, 0, 20)
+SliderLabel.Font = Enum.Font.Gotham
+SliderLabel.Text = SliderText
+SliderLabel.TextSize = 14
+SliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+SliderLabel.TextTruncate = Enum.TextTruncate.AtEnd
+ApplyTextColor(SliderLabel)
+if AddElementIcon(SliderContainer, IconName, 16, 10) then
+SliderLabel.Position = UDim2.new(0, 32, 0, 5)
+SliderLabel.Size = UDim2.new(0.5, -22, 0, 20)
+end
+
+local ValueLabel = Instance.new('TextLabel')
+ValueLabel.Parent = SliderContainer
+ValueLabel.BackgroundTransparency = 1
+ValueLabel.Position = UDim2.new(1, -60, 0, 5)
+ValueLabel.Size = UDim2.new(0, 50, 0, 20)
+ValueLabel.Font = Enum.Font.GothamBold
+ValueLabel.Text = tostring(CurrentValue)
+ValueLabel.TextSize = 14
+ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+ValueLabel.TextColor3 = C.AccentHov           -- ← ค่าตัวเลข = ม่วงสว่าง
+ApplyTextColor(ValueLabel)
+
+local SliderBg = Instance.new('TextButton')
+SliderBg.Parent = SliderContainer
+SliderBg.BackgroundColor3 = C.BgInput
+ApplyGlass(SliderBg)
+SliderBg.Position = UDim2.new(0, 10, 1, -15)
+SliderBg.Size = UDim2.new(1, -20, 0, 6)
+SliderBg.Text = ''
+SliderBg.AutoButtonColor = false
+Instance.new('UICorner', SliderBg).CornerRadius = UDim.new(1, 0)
+
+local SliderFill = Instance.new('Frame')
+SliderFill.Parent = SliderBg
+SliderFill.Size = UDim2.new(math.clamp((CurrentValue - Min) / (Max - Min), 0, 1), 0, 1, 0)
+Instance.new('UICorner', SliderFill).CornerRadius = UDim.new(1, 0)
+ApplyTheme(SliderFill, 'BackgroundColor3')    -- ← fill = Accent ม่วง
+
+local dragging = false
+local function UpdateSlider(input)
+local relativeX = math.clamp((input.Position.X - SliderBg.AbsolutePosition.X) / SliderBg.AbsoluteSize.X, 0, 1)
+CurrentValue = math.floor(Min + ((Max - Min) * relativeX))
+ValueLabel.Text = tostring(CurrentValue)
+TweenService:Create(SliderFill, TweenInfo.new(0.1), { Size = UDim2.new(relativeX, 0, 1, 0) }):Play()
+if Flag then Flags[Flag].Value = CurrentValue end
+if Callback then Callback(CurrentValue) end
+end
+SliderBg.InputBegan:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+dragging = true; UpdateSlider(input)
+end
+end)
+UserInputService.InputEnded:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+if dragging and Flag then SaveConfig(MainFrame) end
+dragging = false
+end
+end)
+UserInputService.InputChanged:Connect(function(input)
+if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+UpdateSlider(input)
+end
+end)
+end
+
+function CategoryElements:CreateDropdown(DropdownText, IconName, Options, Default, Flag, Callback)
+-- ลำดับใหม่: CreateDropdown(Text, IconName, Options, Default, Flag, Callback)
+-- ตรวจจับอัตโนมัติถ้าเรียกแบบเก่าที่ไม่มี IconName: CreateDropdown(Text, Options, Default, Flag, Callback)
+if type(IconName) == 'table' then
+Callback = Flag; Flag = Default; Default = Options; Options = IconName; IconName = nil
+end
+if type(Flag) == 'function' then Callback = Flag; Flag = nil end
+if type(Default) == 'function' then Callback = Default; Default = nil; Flag = nil end
+
+-- ถ้ามีค่าที่เคยเซฟไว้สำหรับ Flag นี้ ให้ใช้ค่านั้นแทนค่า Default
+if Flag and SavedFlags[Flag] ~= nil then
+Default = SavedFlags[Flag]
+end
+
+local isOpen = false
+
+local DropdownContainer = Instance.new('Frame')
+DropdownContainer.Parent = CategoryPage
+DropdownContainer.BackgroundColor3 = C.BgCard
+ApplyGlass(DropdownContainer)
+DropdownContainer.Size = UDim2.new(0.95, 0, 0, 35)
+DropdownContainer.ClipsDescendants = true
+Instance.new('UICorner', DropdownContainer).CornerRadius = UDim.new(0, 6)
+local dds = Instance.new('UIStroke', DropdownContainer)
+dds.Thickness = 1; dds.Color = C.AccentDim
+
+local IconOffset = 0
+if IconName and Icons and Icons[IconName] then
+IconOffset = 22
+local DropdownIcon = Instance.new('ImageLabel')
+DropdownIcon.Name = 'ElementIcon'
+DropdownIcon.Parent = DropdownContainer
+DropdownIcon.BackgroundTransparency = 1
+DropdownIcon.Position = UDim2.new(0, 10, 0, 9)
+DropdownIcon.Size = UDim2.new(0, 16, 0, 16)
+DropdownIcon.Image = Icons[IconName]
+DropdownIcon.ZIndex = 3
+ApplyTextColor(DropdownIcon, 'ImageColor3')
+end
+
+local DropdownBtn = Instance.new('TextButton')
+DropdownBtn.Parent = DropdownContainer
+DropdownBtn.BackgroundTransparency = 1
+DropdownBtn.Size = UDim2.new(1, 0, 0, 35)
+DropdownBtn.Font = Enum.Font.Gotham
+if Default then
+DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(Default)
+else
+DropdownBtn.Text = ' ' .. DropdownText .. ' : Select Option'
+end
+DropdownBtn.TextSize = 14
+DropdownBtn.TextXAlignment = Enum.TextXAlignment.Left
+DropdownBtn.TextTruncate = Enum.TextTruncate.AtEnd
+ApplyTextColor(DropdownBtn)
+if IconOffset > 0 then
+local ddPad = Instance.new('UIPadding', DropdownBtn)
+ddPad.PaddingLeft = UDim.new(0, IconOffset)
+end
+
+local ArrowIcon = Instance.new('TextLabel')
+ArrowIcon.Parent = DropdownBtn
+ArrowIcon.BackgroundTransparency = 1
+ArrowIcon.Position = UDim2.new(1, -30, 0, 0)
+ArrowIcon.Size = UDim2.new(0, 30, 1, 0)
+ArrowIcon.Font = Enum.Font.GothamBold
+ArrowIcon.Text = '▼'
+ArrowIcon.TextSize = 12
+ApplyTheme(ArrowIcon, 'TextColor3')
+
+local OptionList = Instance.new('Frame')
+OptionList.Parent = DropdownContainer
+OptionList.BackgroundColor3 = C.BgMid
+ApplyGlass(OptionList)
+OptionList.Position = UDim2.new(0, 0, 0, 35)
+OptionList.Size = UDim2.new(1, 0, 1, -35)
+
+local ListLayout = Instance.new('UIListLayout', OptionList)
+ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local SearchBox = Instance.new('TextBox')
+SearchBox.Parent = OptionList
+SearchBox.BackgroundColor3 = C.BgInput
+ApplyGlass(SearchBox)
+SearchBox.BorderSizePixel = 0
+SearchBox.Size = UDim2.new(1, 0, 0, 30)
+SearchBox.Font = Enum.Font.Gotham
+SearchBox.PlaceholderText = 'Search in Dropdown...'
+SearchBox.PlaceholderColor3 = C.TextDim
+SearchBox.Text = ''
+SearchBox.TextSize = 14
+SearchBox.TextTruncate = Enum.TextTruncate.AtEnd
+ApplyTextColor(SearchBox)
+
+local OptionBtns = {}
+local CurrentValue = Default
+
+if Flag then
+Flags[Flag] = { Type = 'Dropdown', Value = CurrentValue }
+end
+
+local function UpdateSize()
+local visibleCount = 0
+for _, btn in ipairs(OptionBtns) do
+if btn.Visible then visibleCount = visibleCount + 1 end
+end
+local targetHeight = isOpen and (65 + (visibleCount * 30)) or 35
+TweenService:Create(DropdownContainer, TweenInfo.new(0.2), {
+Size = UDim2.new(0.95, 0, 0, targetHeight),
+}):Play()
+ArrowIcon.Text = isOpen and '▲' or '▼'
+end
+
+local function AddOption(option)
+local OptionBtn = Instance.new('TextButton')
+OptionBtn.Parent = OptionList
+OptionBtn.BackgroundColor3 = C.BgCard
+ApplyGlass(OptionBtn)
+OptionBtn.BorderSizePixel = 0
+OptionBtn.Size = UDim2.new(1, 0, 0, 30)
+OptionBtn.Font = Enum.Font.Gotham
+OptionBtn.Text = ' ' .. tostring(option)
+OptionBtn:SetAttribute('OptionText', tostring(option))
+OptionBtn.TextXAlignment = Enum.TextXAlignment.Left
+OptionBtn.TextSize = 14
+ApplyTextColor(OptionBtn)
+table.insert(OptionBtns, OptionBtn)
+OptionBtn.MouseButton1Click:Connect(function()
+CurrentValue = option
+DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(option)
+isOpen = false; UpdateSize()
+if Flag then
+Flags[Flag].Value = option
+SaveConfig(MainFrame)
+end
+if Callback then Callback(option) end
+end)
+end
+
+local function ClearOptions()
+for _, btn in ipairs(OptionBtns) do
+if btn then btn:Destroy() end
+end
+table.clear(OptionBtns)
+end
+
+local function RebuildOptions(newOptions)
+ClearOptions()
+for _, option in ipairs(newOptions or {}) do AddOption(option) end
+for _, btn in ipairs(OptionBtns) do btn.Visible = true end
+UpdateSize()
+end
+
+DropdownBtn.MouseButton1Click:Connect(function()
+isOpen = not isOpen; SearchBox.Text = ''
+for _, btn in ipairs(OptionBtns) do btn.Visible = true end
+UpdateSize()
+end)
+
+SearchBox:GetPropertyChangedSignal('Text'):Connect(function()
+local query = string.lower(SearchBox.Text or '')
+for _, btn in ipairs(OptionBtns) do
+local txt = string.lower(tostring(btn:GetAttribute('OptionText') or btn.Text or ''))
+btn.Visible = (query == '') or (string.find(txt, query) ~= nil)
+end
+UpdateSize()
+end)
+
+RebuildOptions(Options)
+if Default ~= nil then
+DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(Default)
+end
+
+local DropdownAPI = {}
+function DropdownAPI:SetValue(newValue)
+CurrentValue = newValue
+DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(newValue)
+if Flag then
+Flags[Flag].Value = newValue
+SaveConfig(MainFrame)
+end
+if Callback then Callback(newValue) end
+end
+function DropdownAPI:Refresh(newOptions)
+RebuildOptions(newOptions or Options)
+if CurrentValue ~= nil then
+DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(CurrentValue)
+else
+DropdownBtn.Text = ' ' .. DropdownText .. ' : Select Option'
+end
+end
+function DropdownAPI:SetOptions(newOptions)
+Options = newOptions or {}
+RebuildOptions(Options)
+if CurrentValue ~= nil then
+DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(CurrentValue)
+else
+DropdownBtn.Text = ' ' .. DropdownText .. ' : Select Option'
+end
+end
+return DropdownAPI
+end
+
+return CategoryElements, CategoryPage, CategoryBtn
+end
+WindowElements.Flags = Flags
+
+function WindowElements:GetFlag(FlagName)
+local flagData = Flags[FlagName]
+return flagData and flagData.Value or nil
+end
+
+function WindowElements:SetFlag(FlagName, Value)
+if Flags[FlagName] then
+Flags[FlagName].Value = Value
+SaveConfig(MainFrame)
+end
+end
+
+function WindowElements:SaveConfiguration()
+SaveConfig(MainFrame)
+end
+
+function WindowElements:Destroy()
+ScreenGui:Destroy()
+end
+
+-- ===================== แถบตั้งค่า UI (Settings Tab) =====================
+-- สร้างอัตโนมัติทุกครั้งที่เปิดหน้าต่าง เว้นแต่ตั้ง Config.ShowSettingsTab = false
+-- ใช้ task.defer เพื่อรอให้สคริปต์ผู้ใช้สร้างแท็บของตัวเองให้ครบก่อน (แบบ synchronous)
+-- แล้วค่อยเพิ่มแท็บ Settings ต่อท้ายสุด แทนที่จะแทรกเป็นแท็บแรกและถูกเลือกอัตโนมัติ
+if Config.ShowSettingsTab ~= false then
+task.defer(function()
+local SettingsTab, SettingsPage = WindowElements:CreateCategory('Settings', 'lucide-settings', true)
+SettingsPage.Visible = false -- ป้องกันไม่ให้โผล่มาเองไม่ว่ากรณีใด ต้องเรียกผ่าน gear/API เท่านั้น
+
+local SettingsOpen = false
+local PreviousPage = nil
+
+local function ShowSettingsPanel()
+if SettingsOpen then return end
+PreviousPage = nil
+for _, page in pairs(ContentContainer:GetChildren()) do
+if page:IsA('ScrollingFrame') and page ~= SettingsPage and page.Visible then
+PreviousPage = page
+page.Visible = false
+end
+end
+SettingsPage.Visible = true
+SettingsOpen = true
+end
+
+local function HideSettingsPanel()
+if not SettingsOpen then return end
+SettingsPage.Visible = false
+if PreviousPage and PreviousPage.Parent then
+PreviousPage.Visible = true
+end
+SettingsOpen = false
+end
+
+ToggleSettingsVisibility = function()
+if SettingsOpen then HideSettingsPanel() else ShowSettingsPanel() end
+end
+OpenSettingsFn = ShowSettingsPanel
+CloseSettingsFn = HideSettingsPanel
+
+-- ตัวแปรสีปัจจุบันที่ปรับได้สด (เริ่มจากค่าที่ใช้งานอยู่ ซึ่งอาจโหลดมาจาก config เดิม)
+local AccentR = math.floor(CurrentThemeColor.R * 255 + 0.5)
+local AccentG = math.floor(CurrentThemeColor.G * 255 + 0.5)
+local AccentB = math.floor(CurrentThemeColor.B * 255 + 0.5)
+local TextR = math.floor(CurrentTextColor.R * 255 + 0.5)
+local TextG = math.floor(CurrentTextColor.G * 255 + 0.5)
+local TextB = math.floor(CurrentTextColor.B * 255 + 0.5)
+local TransPercent = math.floor(GTrans * 100 + 0.5)
+local BgR = math.floor(CurrentBackgroundColor.R * 255 + 0.5)
+local BgG = math.floor(CurrentBackgroundColor.G * 255 + 0.5)
+local BgB = math.floor(CurrentBackgroundColor.B * 255 + 0.5)
+local CatR = math.floor(CurrentCategoryColor.R * 255 + 0.5)
+local CatG = math.floor(CurrentCategoryColor.G * 255 + 0.5)
+local CatB = math.floor(CurrentCategoryColor.B * 255 + 0.5)
+local IdleCatR = math.floor(CurrentCategoryIdleColor.R * 255 + 0.5)
+local IdleCatG = math.floor(CurrentCategoryIdleColor.G * 255 + 0.5)
+local IdleCatB = math.floor(CurrentCategoryIdleColor.B * 255 + 0.5)
+local RLR = math.floor(CurrentRunningLightColor.R * 255 + 0.5)
+local RLG = math.floor(CurrentRunningLightColor.G * 255 + 0.5)
+local RLB = math.floor(CurrentRunningLightColor.B * 255 + 0.5)
+local RLSpeedValue = math.floor(RunningLightSpeed + 0.5)
+
+local function PersistThemeSettings()
+ThemeSettings.Accent = { AccentR, AccentG, AccentB }
+ThemeSettings.Text = { TextR, TextG, TextB }
+ThemeSettings.Transparency = GTrans
+ThemeSettings.Rainbow = isRainbow
+ThemeSettings.TextRainbow = isTextRainbow
+ThemeSettings.Background = { BgR, BgG, BgB }
+ThemeSettings.CategoryColor = { CatR, CatG, CatB }
+ThemeSettings.CategoryIdleColor = { IdleCatR, IdleCatG, IdleCatB }
+ThemeSettings.Language = CurrentLanguage
+ThemeSettings.RunningLightEnabled = RunningLightEnabled
+ThemeSettings.RunningLightSpeed = RunningLightSpeed
+ThemeSettings.RunningLightColor = { RLR, RLG, RLB }
+ThemeSettings.PatternEnabled = PatternEnabled
+ThemeSettings.BorderEnabled = BorderEnabled
+end
+
+-- ล้างเนื้อหาปัจจุบันของหน้า Settings (ไม่แตะ UIListLayout/UIPadding) เพื่อวาดใหม่ตามภาษาที่เลือก
+local function ClearSettingsContent()
+for _, child in ipairs(SettingsPage:GetChildren()) do
+if not (child:IsA('UIListLayout') or child:IsA('UIPadding')) then
+child:Destroy()
+end
+end
+end
+
+-- สร้าง/วาดใหม่เนื้อหาทั้งหมดของหน้า Settings ตามภาษาปัจจุบัน (CurrentLanguage)
+-- เรียกครั้งแรกตอนสร้างแท็บ และเรียกซ้ำทุกครั้งที่ผู้ใช้เปลี่ยนภาษา เพื่อให้ข้อความอัปเดตทันที ไม่ต้องรีสตาร์ท
+local BuildSettingsUI
+BuildSettingsUI = function()
+local T = Translations[CurrentLanguage] or Translations.en
+ClearSettingsContent()
+
+SettingsTab:CreateLabel(T.AccentHeader, 'lucide-palette')
+SettingsTab:CreateSlider(T.AccentRed, nil, 0, 255, AccentR, nil, function(v)
+AccentR = v
+UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
+end)
+SettingsTab:CreateSlider(T.AccentGreen, nil, 0, 255, AccentG, nil, function(v)
+AccentG = v
+UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
+end)
+SettingsTab:CreateSlider(T.AccentBlue, nil, 0, 255, AccentB, nil, function(v)
+AccentB = v
+UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
+end)
+SettingsTab:CreateToggle(T.RainbowAccent, 'lucide-wand-2', isRainbow, nil, function(state)
+isRainbow = state
+end)
+
+SettingsTab:CreateLabel(T.TextHeader, 'lucide-baseline')
+SettingsTab:CreateSlider(T.TextRed, nil, 0, 255, TextR, nil, function(v)
+TextR = v
+UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
+end)
+SettingsTab:CreateSlider(T.TextGreen, nil, 0, 255, TextG, nil, function(v)
+TextG = v
+UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
+end)
+SettingsTab:CreateSlider(T.TextBlue, nil, 0, 255, TextB, nil, function(v)
+TextB = v
+UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
+end)
+SettingsTab:CreateToggle(T.RainbowText, 'lucide-wand-2', isTextRainbow, nil, function(state)
+isTextRainbow = state
+end)
+
+SettingsTab:CreateLabel(T.TransparencyHeader, 'lucide-glasses')
+SettingsTab:CreateSlider(T.TransparencyLabel, nil, 0, 90, TransPercent, nil, function(v)
+TransPercent = v
+UpdateGlassTransparency(v / 100)
+end)
+
+-- ===================== สีพื้นหลัง (Background Color) =====================
+SettingsTab:CreateLabel(T.BackgroundHeader, 'lucide-square')
+SettingsTab:CreateSlider(T.BackgroundRed, nil, 0, 255, BgR, nil, function(v)
+BgR = v
+UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
+end)
+SettingsTab:CreateSlider(T.BackgroundGreen, nil, 0, 255, BgG, nil, function(v)
+BgG = v
+UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
+end)
+SettingsTab:CreateSlider(T.BackgroundBlue, nil, 0, 255, BgB, nil, function(v)
+BgB = v
+UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
+end)
+
+-- ===================== สีของ Category (sidebar tab) — ครอบคลุมทั้งตอน Active และ Idle =====================
+SettingsTab:CreateLabel(T.CategoryColorHeader, 'lucide-layout-dashboard')
+
+SettingsTab:CreateLabel(T.CategoryActiveSubHeader, 'lucide-check-circle')
+SettingsTab:CreateSlider(T.CategoryActiveRed, nil, 0, 255, CatR, nil, function(v)
+CatR = v
+UpdateCategoryColor(Color3.fromRGB(CatR, CatG, CatB))
+end)
+SettingsTab:CreateSlider(T.CategoryActiveGreen, nil, 0, 255, CatG, nil, function(v)
+CatG = v
+UpdateCategoryColor(Color3.fromRGB(CatR, CatG, CatB))
+end)
+SettingsTab:CreateSlider(T.CategoryActiveBlue, nil, 0, 255, CatB, nil, function(v)
+CatB = v
+UpdateCategoryColor(Color3.fromRGB(CatR, CatG, CatB))
+end)
+
+SettingsTab:CreateLabel(T.CategoryIdleSubHeader, 'lucide-circle')
+SettingsTab:CreateSlider(T.CategoryIdleRed, nil, 0, 255, IdleCatR, nil, function(v)
+IdleCatR = v
+UpdateCategoryIdleColor(Color3.fromRGB(IdleCatR, IdleCatG, IdleCatB))
+end)
+SettingsTab:CreateSlider(T.CategoryIdleGreen, nil, 0, 255, IdleCatG, nil, function(v)
+IdleCatG = v
+UpdateCategoryIdleColor(Color3.fromRGB(IdleCatR, IdleCatG, IdleCatB))
+end)
+SettingsTab:CreateSlider(T.CategoryIdleBlue, nil, 0, 255, IdleCatB, nil, function(v)
+IdleCatB = v
+UpdateCategoryIdleColor(Color3.fromRGB(IdleCatR, IdleCatG, IdleCatB))
+end)
+
+-- ===================== Running Light (เส้นขอบวิ่ง) =====================
+SettingsTab:CreateLabel(T.RunningLightHeader, 'lucide-activity')
+SettingsTab:CreateToggle(T.RunningLightEnable, 'lucide-flame', RunningLightEnabled, nil, function(state)
+RunningLightEnabled = state
+if not RunningLightEnabled then
+ApplyRunningLightStatic()
+end
+end)
+SettingsTab:CreateSlider(T.RunningLightSpeed, nil, 10, 500, RLSpeedValue, nil, function(v)
+RLSpeedValue = v
+RunningLightSpeed = v
+end)
+SettingsTab:CreateSlider(T.RunningLightRed, nil, 0, 255, RLR, nil, function(v)
+RLR = v
+CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
+if not RunningLightEnabled then ApplyRunningLightStatic() end
+end)
+SettingsTab:CreateSlider(T.RunningLightGreen, nil, 0, 255, RLG, nil, function(v)
+RLG = v
+CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
+if not RunningLightEnabled then ApplyRunningLightStatic() end
+end)
+SettingsTab:CreateSlider(T.RunningLightBlue, nil, 0, 255, RLB, nil, function(v)
+RLB = v
+CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
+if not RunningLightEnabled then ApplyRunningLightStatic() end
+end)
+
+-- ===================== Effect Toggles อื่นๆ (เปิด/ปิดอิสระต่อกัน) =====================
+SettingsTab:CreateLabel(T.EffectsHeader, 'lucide-wand-2')
+SettingsTab:CreateToggle(T.PatternToggle, 'lucide-layout-grid', PatternEnabled, nil, function(state)
+PatternEnabled = state
+if PatternBg then PatternBg.Visible = PatternEnabled end
+end)
+SettingsTab:CreateToggle(T.BorderToggle, 'lucide-square', BorderEnabled, nil, function(state)
+BorderEnabled = state
+if MainStroke then MainStroke.Enabled = BorderEnabled end
+end)
+
+-- ===================== ภาษา (Language) =====================
+SettingsTab:CreateLabel(T.LanguageHeader, 'lucide-languages')
+SettingsTab:CreateDropdown(T.LanguageLabel, 'lucide-languages', { 'English', 'Thai' }, (CurrentLanguage == 'th' and 'Thai' or 'English'), nil, function(selected)
+if selected == 'Thai' then
+CurrentLanguage = 'th'
+else
+CurrentLanguage = 'en'
+end
+-- วาดหน้า Settings ใหม่ทันทีด้วยภาษาที่เลือก โดยไม่ต้องรีสตาร์ท/รีโหลด
+BuildSettingsUI()
+end)
+
+SettingsTab:CreateLabel(T.ManageHeader, 'lucide-save')
+SettingsTab:CreateButton(T.SaveButton, 'lucide-save', function()
+PersistThemeSettings()
+SaveConfig(MainFrame)
+end)
+SettingsTab:CreateButton(T.ResetButton, 'lucide-rotate-ccw', function()
+AccentR = math.floor(C.Accent.R * 255 + 0.5)
+AccentG = math.floor(C.Accent.G * 255 + 0.5)
+AccentB = math.floor(C.Accent.B * 255 + 0.5)
+TextR = math.floor(C.TextMain.R * 255 + 0.5)
+TextG = math.floor(C.TextMain.G * 255 + 0.5)
+TextB = math.floor(C.TextMain.B * 255 + 0.5)
+TransPercent = math.floor(C.GlassTransparency * 100 + 0.5)
+isRainbow = false
+isTextRainbow = false
+BgR = math.floor(C.BgDeep.R * 255 + 0.5)
+BgG = math.floor(C.BgDeep.G * 255 + 0.5)
+BgB = math.floor(C.BgDeep.B * 255 + 0.5)
+CatR = math.floor(C.AccentDim.R * 255 + 0.5)
+CatG = math.floor(C.AccentDim.G * 255 + 0.5)
+CatB = math.floor(C.AccentDim.B * 255 + 0.5)
+IdleCatR = math.floor(C.BgCard.R * 255 + 0.5)
+IdleCatG = math.floor(C.BgCard.G * 255 + 0.5)
+IdleCatB = math.floor(C.BgCard.B * 255 + 0.5)
+RLR = math.floor(C.Accent.R * 255 + 0.5)
+RLG = math.floor(C.Accent.G * 255 + 0.5)
+RLB = math.floor(C.Accent.B * 255 + 0.5)
+RLSpeedValue = 150
+RunningLightSpeed = 150
+RunningLightEnabled = true
+PatternEnabled = true
+BorderEnabled = true
+CurrentLanguage = 'en'
+UpdateThemeColor(C.Accent)
+UpdateTextColor(C.TextMain)
+UpdateGlassTransparency(C.GlassTransparency)
+UpdateBackgroundColor(C.BgDeep)
+UpdateCategoryColor(C.AccentDim)
+UpdateCategoryIdleColor(C.BgCard)
+CurrentRunningLightColor = C.Accent
+if PatternBg then PatternBg.Visible = true end
+if MainStroke then MainStroke.Enabled = true end
+PersistThemeSettings()
+SaveConfig(MainFrame)
+-- วาดหน้า Settings ใหม่ทันทีตามค่าที่รีเซ็ต (รวมถึงภาษากลับเป็น English)
+BuildSettingsUI()
+end)
+end
+
+-- วาดหน้า Settings ครั้งแรกด้วยภาษาเริ่มต้น (English เว้นแต่ผู้ใช้ตั้ง Config.Language หรือมีค่าที่เคยเซฟไว้)
+BuildSettingsUI()
+end)
+end
+
+return WindowElements
 end
 
 return Library
