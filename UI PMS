@@ -6,6 +6,9 @@ local EnableSave = true
 -- เก็บค่า element ที่ตั้ง Flag ไว้ (เช่น Dropdown, Toggle) เพื่อเซฟ/โหลดค่าที่เลือก
 local Flags = {}
 
+-- เก็บค่าธีม (สี Accent, สี Text, ความโปร่งแสง, Rainbow) เพื่อเซฟ/โหลดจากเมนูตั้งค่า
+local ThemeSettings = {}
+
 local function SaveConfig(frame)
 if not EnableSave or not frame then
 return
@@ -41,6 +44,8 @@ data.Flags = {}
 for flagName, flagData in pairs(Flags) do
 data.Flags[flagName] = flagData.Value
 end
+
+data.Theme = ThemeSettings
 
 local success, json = pcall(function()
 return HttpService:JSONEncode(data)
@@ -82,10 +87,10 @@ if data.PosX and data.PosY then
 loadedPos = UDim2.new(0, data.PosX, 0, data.PosY)
 end
 
-return loadedSize, loadedPos, data.Flags
+return loadedSize, loadedPos, data.Flags, data.Theme
 end
 
-return nil, nil, nil
+return nil, nil, nil, nil
 end
 
 
@@ -1038,11 +1043,13 @@ elseif typeof(ThemeConfig) == 'Color3' then
 CurrentThemeColor = ThemeConfig
 end
 
+-- ThemedElements: ทุก instance ที่ผูกกับ Accent color จะถูกเก็บไว้ที่นี่
+-- เพื่อให้ปรับสีใหม่ (จาก Settings หรือ Rainbow) แล้วอัปเดตทันทีทั้ง UI
 local ThemedElements = {}
 local function ApplyTheme(instance, property)
 if not instance then return end
+property = property or 'BackgroundColor3'
 SafeSetProperty(instance, property, CurrentThemeColor)
-if isRainbow then
 table.insert(ThemedElements, {
 UpdateFunc = function(color)
 if instance and instance.Parent then
@@ -1050,7 +1057,6 @@ SafeSetProperty(instance, property, color)
 end
 end,
 })
-end
 end
 
 local TextColorConfig = Config.TextColor or C.TextMain
@@ -1062,12 +1068,12 @@ elseif typeof(TextColorConfig) == 'Color3' then
 CurrentTextColor = TextColorConfig
 end
 
+-- TextElements: ทุก instance ที่ผูกกับสี Text หลัก เก็บไว้ปรับสดได้เช่นกัน
 local TextElements = {}
 local function ApplyTextColor(instance, property)
 property = property or 'TextColor3'
 if not instance then return end
 SafeSetProperty(instance, property, CurrentTextColor)
-if isTextRainbow then
 table.insert(TextElements, {
 UpdateFunc = function(color)
 if instance and instance.Parent then
@@ -1076,7 +1082,62 @@ end
 end,
 })
 end
+
+-- GlassElements: ทุก instance ที่ใช้ GTrans (โปร่งแสง) เก็บไว้ปรับสดได้
+local GlassElements = {}
+local function ApplyGlass(instance)
+if not instance then return end
+instance.BackgroundTransparency = GTrans
+table.insert(GlassElements, instance)
 end
+
+-- ฟังก์ชันสำหรับ Settings เมนู: อัปเดตค่าสี/โปร่งแสงทั้ง UI แบบสด และคืนค่าปัจจุบัน
+local function UpdateThemeColor(newColor)
+CurrentThemeColor = newColor
+for _, data in ipairs(ThemedElements) do data.UpdateFunc(CurrentThemeColor) end
+end
+
+local function UpdateTextColor(newColor)
+CurrentTextColor = newColor
+for _, data in ipairs(TextElements) do data.UpdateFunc(CurrentTextColor) end
+end
+
+local function UpdateGlassTransparency(newTrans)
+GTrans = math.clamp(newTrans, 0, 1)
+for _, inst in ipairs(GlassElements) do
+if inst and inst.Parent then
+pcall(function() inst.BackgroundTransparency = GTrans end)
+end
+end
+end
+
+-- ===================== โหลดค่า Config/Theme ที่เคยเซฟไว้ (ก่อนสร้าง UI ใดๆ) =====================
+local savedSize, savedPos, savedFlags, savedTheme = LoadConfig()
+
+if savedTheme then
+if savedTheme.Accent then
+CurrentThemeColor = Color3.fromRGB(savedTheme.Accent[1], savedTheme.Accent[2], savedTheme.Accent[3])
+end
+if savedTheme.Text then
+CurrentTextColor = Color3.fromRGB(savedTheme.Text[1], savedTheme.Text[2], savedTheme.Text[3])
+end
+if savedTheme.Transparency ~= nil then
+GTrans = savedTheme.Transparency
+end
+if savedTheme.Rainbow ~= nil then
+isRainbow = savedTheme.Rainbow
+end
+if savedTheme.TextRainbow ~= nil then
+isTextRainbow = savedTheme.TextRainbow
+end
+end
+
+-- อัปเดต ThemeSettings ให้ตรงกับค่าที่กำลังใช้จริง (default หรือที่โหลดมา) เพื่อให้เซฟรอบถัดไปถูกต้อง
+ThemeSettings.Accent = { math.floor(CurrentThemeColor.R * 255), math.floor(CurrentThemeColor.G * 255), math.floor(CurrentThemeColor.B * 255) }
+ThemeSettings.Text = { math.floor(CurrentTextColor.R * 255), math.floor(CurrentTextColor.G * 255), math.floor(CurrentTextColor.B * 255) }
+ThemeSettings.Transparency = GTrans
+ThemeSettings.Rainbow = isRainbow
+ThemeSettings.TextRainbow = isTextRainbow
 
 -- ===================== Element Icon Helper =====================
 -- ใช้วาดไอคอน lucide-xxx ในตัว element ต่างๆ (เหมือน Rayfield/Fluent)
@@ -1109,7 +1170,7 @@ local MainFrame = Instance.new('Frame')
 MainFrame.Name = 'MainFrame'
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = C.BgDeep          -- ← ดำม่วงเข้ม
-MainFrame.BackgroundTransparency = GTrans
+ApplyGlass(MainFrame)
 MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
 MainFrame.Size = UDim2.new(0, 500, 0, 350)
 MainFrame.BorderSizePixel = 0
@@ -1129,7 +1190,6 @@ PatternBg.ImageColor3 = C.Accent      -- tint ม่วง
 PatternBg.ScaleType = Enum.ScaleType.Tile
 PatternBg.TileSize = UDim2.new(0, 200, 0, 200)
 
-local savedSize, savedPos, savedFlags = LoadConfig()
 if savedSize then MainFrame.Size = savedSize end
 if savedPos  then MainFrame.Position = savedPos end
 local SavedFlags = savedFlags or {}
@@ -1171,7 +1231,7 @@ local ToggleBtn = Instance.new('ImageButton')
 ToggleBtn.Name = 'ToggleBtn'
 ToggleBtn.Parent = ScreenGui
 ToggleBtn.BackgroundColor3 = C.BgCard         -- ← ม่วงเข้ม
-ToggleBtn.BackgroundTransparency = GTrans
+ApplyGlass(ToggleBtn)
 ToggleBtn.Position = UDim2.new(0, 20, 0, 20)
 ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
 ToggleBtn.AutoButtonColor = true
@@ -1209,7 +1269,7 @@ local TopBar = Instance.new('Frame')
 TopBar.Name = 'TopBar'
 TopBar.Parent = MainFrame
 TopBar.BackgroundColor3 = C.BgMid             -- ← ม่วงดำ topbar
-TopBar.BackgroundTransparency = GTrans
+ApplyGlass(TopBar)
 TopBar.Size = UDim2.new(1, 0, 0, 32)
 TopBar.ZIndex = 2
 Instance.new('UICorner', TopBar).CornerRadius = UDim.new(0, 10)
@@ -1218,7 +1278,7 @@ Instance.new('UICorner', TopBar).CornerRadius = UDim.new(0, 10)
 local TopBarFix = Instance.new('Frame')
 TopBarFix.Parent = TopBar
 TopBarFix.BackgroundColor3 = C.BgMid
-TopBarFix.BackgroundTransparency = GTrans
+ApplyGlass(TopBarFix)
 TopBarFix.Position = UDim2.new(0, 0, 0.5, 0)
 TopBarFix.Size = UDim2.new(1, 0, 0.5, 0)
 TopBarFix.BorderSizePixel = 0
@@ -1299,7 +1359,7 @@ local Sidebar = Instance.new('ScrollingFrame')
 Sidebar.Name = 'Sidebar'
 Sidebar.Parent = MainFrame
 Sidebar.BackgroundColor3 = C.BgMid            -- ← ม่วงดำ sidebar
-Sidebar.BackgroundTransparency = GTrans
+ApplyGlass(Sidebar)
 Sidebar.Position = UDim2.new(0.02, 0, 0.12, 0)
 Sidebar.Size = UDim2.new(0.25, 0, 0.84, 0)
 Sidebar.BorderSizePixel = 0
@@ -1343,7 +1403,7 @@ local CategoryElements = {}
 local CategoryBtn = Instance.new('TextButton')
 CategoryBtn.Parent = Sidebar
 CategoryBtn.BackgroundColor3 = C.BgCard       -- ← ม่วงเข้ม idle
-CategoryBtn.BackgroundTransparency = GTrans
+ApplyGlass(CategoryBtn)
 CategoryBtn.Size = UDim2.new(0.9, 0, 0, 32)
 CategoryBtn.Font = Enum.Font.GothamBold
 CategoryBtn.Text = CategoryName
@@ -1446,7 +1506,7 @@ if type(TextColor) == 'function' then Callback = TextColor; TextColor = nil end
 local ActionBtn = Instance.new('TextButton')
 ActionBtn.Parent = CategoryPage
 ActionBtn.BackgroundColor3 = C.BgElement     -- ← ม่วงกลาง
-ActionBtn.BackgroundTransparency = GTrans
+ApplyGlass(ActionBtn)
 ActionBtn.Size = UDim2.new(0.95, 0, 0, 35)
 ActionBtn.Text = ''
 ActionBtn.AutoButtonColor = false
@@ -1496,7 +1556,7 @@ end
 local TextboxContainer = Instance.new('Frame')
 TextboxContainer.Parent = CategoryPage
 TextboxContainer.BackgroundColor3 = C.BgCard
-TextboxContainer.BackgroundTransparency = GTrans
+ApplyGlass(TextboxContainer)
 TextboxContainer.Size = UDim2.new(0.95, 0, 0, 35)
 Instance.new('UICorner', TextboxContainer).CornerRadius = UDim.new(0, 6)
 local TextboxLabel = Instance.new('TextLabel')
@@ -1517,7 +1577,7 @@ end
 local TextboxBg = Instance.new('Frame')
 TextboxBg.Parent = TextboxContainer
 TextboxBg.BackgroundColor3 = C.BgInput
-TextboxBg.BackgroundTransparency = GTrans
+ApplyGlass(TextboxBg)
 TextboxBg.Position = UDim2.new(1, -160, 0.5, -12)
 TextboxBg.Size = UDim2.new(0, 150, 0, 24)
 Instance.new('UICorner', TextboxBg).CornerRadius = UDim.new(0, 4)
@@ -1560,7 +1620,7 @@ end
 local TextboxContainer = Instance.new('Frame')
 TextboxContainer.Parent = CategoryPage
 TextboxContainer.BackgroundColor3 = C.BgCard
-TextboxContainer.BackgroundTransparency = GTrans
+ApplyGlass(TextboxContainer)
 TextboxContainer.Size = UDim2.new(0.95, 0, 0, 35)
 Instance.new('UICorner', TextboxContainer).CornerRadius = UDim.new(0, 6)
 local TextboxLabel = Instance.new('TextLabel')
@@ -1581,7 +1641,7 @@ end
 local TextboxBg = Instance.new('Frame')
 TextboxBg.Parent = TextboxContainer
 TextboxBg.BackgroundColor3 = C.BgInput
-TextboxBg.BackgroundTransparency = GTrans
+ApplyGlass(TextboxBg)
 TextboxBg.Position = UDim2.new(1, -160, 0.5, -12)
 TextboxBg.Size = UDim2.new(0, 150, 0, 24)
 Instance.new('UICorner', TextboxBg).CornerRadius = UDim.new(0, 4)
@@ -1622,7 +1682,7 @@ IconName = IconName or 'lucide-search'
 local SearchContainer = Instance.new('Frame')
 SearchContainer.Parent = CategoryPage
 SearchContainer.BackgroundColor3 = C.BgCard
-SearchContainer.BackgroundTransparency = GTrans
+ApplyGlass(SearchContainer)
 SearchContainer.Size = UDim2.new(0.95, 0, 0, 35)
 Instance.new('UICorner', SearchContainer).CornerRadius = UDim.new(0, 6)
 local ss = Instance.new('UIStroke', SearchContainer)
@@ -1673,7 +1733,7 @@ end
 local ToggleContainer = Instance.new('TextButton')
 ToggleContainer.Parent = CategoryPage
 ToggleContainer.BackgroundColor3 = C.BgCard
-ToggleContainer.BackgroundTransparency = GTrans
+ApplyGlass(ToggleContainer)
 ToggleContainer.Size = UDim2.new(0.95, 0, 0, 35)
 ToggleContainer.Text = ''
 ToggleContainer.AutoButtonColor = false
@@ -1701,7 +1761,7 @@ end
 local ToggleBg = Instance.new('Frame')
 ToggleBg.Parent = ToggleContainer
 ToggleBg.BackgroundColor3 = C.BgInput       -- ← ม่วงดำ track
-ToggleBg.BackgroundTransparency = GTrans
+ApplyGlass(ToggleBg)
 ToggleBg.Position = UDim2.new(1, -45, 0.5, -10)
 ToggleBg.Size = UDim2.new(0, 35, 0, 20)
 Instance.new('UICorner', ToggleBg).CornerRadius = UDim.new(1, 0)
@@ -1772,7 +1832,7 @@ end
 local SliderContainer = Instance.new('Frame')
 SliderContainer.Parent = CategoryPage
 SliderContainer.BackgroundColor3 = C.BgCard
-SliderContainer.BackgroundTransparency = GTrans
+ApplyGlass(SliderContainer)
 SliderContainer.Size = UDim2.new(0.95, 0, 0, 50)
 Instance.new('UICorner', SliderContainer).CornerRadius = UDim.new(0, 6)
 local sls = Instance.new('UIStroke', SliderContainer)
@@ -1809,7 +1869,7 @@ ApplyTextColor(ValueLabel)
 local SliderBg = Instance.new('TextButton')
 SliderBg.Parent = SliderContainer
 SliderBg.BackgroundColor3 = C.BgInput
-SliderBg.BackgroundTransparency = GTrans
+ApplyGlass(SliderBg)
 SliderBg.Position = UDim2.new(0, 10, 1, -15)
 SliderBg.Size = UDim2.new(1, -20, 0, 6)
 SliderBg.Text = ''
@@ -1868,7 +1928,7 @@ local isOpen = false
 local DropdownContainer = Instance.new('Frame')
 DropdownContainer.Parent = CategoryPage
 DropdownContainer.BackgroundColor3 = C.BgCard
-DropdownContainer.BackgroundTransparency = GTrans
+ApplyGlass(DropdownContainer)
 DropdownContainer.Size = UDim2.new(0.95, 0, 0, 35)
 DropdownContainer.ClipsDescendants = true
 Instance.new('UICorner', DropdownContainer).CornerRadius = UDim.new(0, 6)
@@ -1921,7 +1981,7 @@ ApplyTheme(ArrowIcon, 'TextColor3')
 local OptionList = Instance.new('Frame')
 OptionList.Parent = DropdownContainer
 OptionList.BackgroundColor3 = C.BgMid
-OptionList.BackgroundTransparency = GTrans
+ApplyGlass(OptionList)
 OptionList.Position = UDim2.new(0, 0, 0, 35)
 OptionList.Size = UDim2.new(1, 0, 1, -35)
 
@@ -1931,7 +1991,7 @@ ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 local SearchBox = Instance.new('TextBox')
 SearchBox.Parent = OptionList
 SearchBox.BackgroundColor3 = C.BgInput
-SearchBox.BackgroundTransparency = GTrans
+ApplyGlass(SearchBox)
 SearchBox.BorderSizePixel = 0
 SearchBox.Size = UDim2.new(1, 0, 0, 30)
 SearchBox.Font = Enum.Font.Gotham
@@ -1965,7 +2025,7 @@ local function AddOption(option)
 local OptionBtn = Instance.new('TextButton')
 OptionBtn.Parent = OptionList
 OptionBtn.BackgroundColor3 = C.BgCard
-OptionBtn.BackgroundTransparency = GTrans
+ApplyGlass(OptionBtn)
 OptionBtn.BorderSizePixel = 0
 OptionBtn.Size = UDim2.new(1, 0, 0, 30)
 OptionBtn.Font = Enum.Font.Gotham
@@ -2075,6 +2135,95 @@ end
 
 function WindowElements:Destroy()
 ScreenGui:Destroy()
+end
+
+-- ===================== แถบตั้งค่า UI (Settings Tab) =====================
+-- สร้างอัตโนมัติทุกครั้งที่เปิดหน้าต่าง เว้นแต่ตั้ง Config.ShowSettingsTab = false
+-- ใช้ task.defer เพื่อรอให้สคริปต์ผู้ใช้สร้างแท็บของตัวเองให้ครบก่อน (แบบ synchronous)
+-- แล้วค่อยเพิ่มแท็บ Settings ต่อท้ายสุด แทนที่จะแทรกเป็นแท็บแรกและถูกเลือกอัตโนมัติ
+if Config.ShowSettingsTab ~= false then
+task.defer(function()
+local SettingsTab = WindowElements:CreateCategory('Settings', 'lucide-settings')
+
+-- ตัวแปรสีปัจจุบันที่ปรับได้สด (เริ่มจากค่าที่ใช้งานอยู่ ซึ่งอาจโหลดมาจาก config เดิม)
+local AccentR = math.floor(CurrentThemeColor.R * 255 + 0.5)
+local AccentG = math.floor(CurrentThemeColor.G * 255 + 0.5)
+local AccentB = math.floor(CurrentThemeColor.B * 255 + 0.5)
+local TextR = math.floor(CurrentTextColor.R * 255 + 0.5)
+local TextG = math.floor(CurrentTextColor.G * 255 + 0.5)
+local TextB = math.floor(CurrentTextColor.B * 255 + 0.5)
+local TransPercent = math.floor(GTrans * 100 + 0.5)
+
+local function PersistThemeSettings()
+ThemeSettings.Accent = { AccentR, AccentG, AccentB }
+ThemeSettings.Text = { TextR, TextG, TextB }
+ThemeSettings.Transparency = GTrans
+ThemeSettings.Rainbow = isRainbow
+ThemeSettings.TextRainbow = isTextRainbow
+end
+
+SettingsTab:CreateLabel('ปรับแต่งสี Accent', 'lucide-palette')
+SettingsTab:CreateSlider('Accent - Red', nil, 0, 255, AccentR, nil, function(v)
+AccentR = v
+UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
+end)
+SettingsTab:CreateSlider('Accent - Green', nil, 0, 255, AccentG, nil, function(v)
+AccentG = v
+UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
+end)
+SettingsTab:CreateSlider('Accent - Blue', nil, 0, 255, AccentB, nil, function(v)
+AccentB = v
+UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
+end)
+SettingsTab:CreateToggle('Rainbow Accent', 'lucide-wand-2', isRainbow, nil, function(state)
+isRainbow = state
+end)
+
+SettingsTab:CreateLabel('ปรับแต่งสีข้อความ', 'lucide-baseline')
+SettingsTab:CreateSlider('Text - Red', nil, 0, 255, TextR, nil, function(v)
+TextR = v
+UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
+end)
+SettingsTab:CreateSlider('Text - Green', nil, 0, 255, TextG, nil, function(v)
+TextG = v
+UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
+end)
+SettingsTab:CreateSlider('Text - Blue', nil, 0, 255, TextB, nil, function(v)
+TextB = v
+UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
+end)
+SettingsTab:CreateToggle('Rainbow ข้อความ', 'lucide-wand-2', isTextRainbow, nil, function(state)
+isTextRainbow = state
+end)
+
+SettingsTab:CreateLabel('ความโปร่งแสงของ UI', 'lucide-glasses')
+SettingsTab:CreateSlider('ความโปร่งแสง (%)', nil, 0, 90, TransPercent, nil, function(v)
+TransPercent = v
+UpdateGlassTransparency(v / 100)
+end)
+
+SettingsTab:CreateLabel('จัดการการตั้งค่า', 'lucide-save')
+SettingsTab:CreateButton('บันทึกการตั้งค่า', 'lucide-save', function()
+PersistThemeSettings()
+SaveConfig(MainFrame)
+end)
+SettingsTab:CreateButton('รีเซ็ตเป็นค่าเริ่มต้น', 'lucide-rotate-ccw', function()
+AccentR = math.floor(C.Accent.R * 255 + 0.5)
+AccentG = math.floor(C.Accent.G * 255 + 0.5)
+AccentB = math.floor(C.Accent.B * 255 + 0.5)
+TextR = math.floor(C.TextMain.R * 255 + 0.5)
+TextG = math.floor(C.TextMain.G * 255 + 0.5)
+TextB = math.floor(C.TextMain.B * 255 + 0.5)
+TransPercent = math.floor(C.GlassTransparency * 100 + 0.5)
+isRainbow = false
+isTextRainbow = false
+UpdateThemeColor(C.Accent)
+UpdateTextColor(C.TextMain)
+UpdateGlassTransparency(C.GlassTransparency)
+PersistThemeSettings()
+SaveConfig(MainFrame)
+end)
+end)
 end
 
 return WindowElements
