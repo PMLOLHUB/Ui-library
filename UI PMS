@@ -1901,14 +1901,31 @@ TopBar.ZIndex = 2
 Instance.new('UICorner', TopBar).CornerRadius = UDim.new(0, 10)
 
 -- fix bottom corners
-local TopBarFix = Instance.new('Frame')
-TopBarFix.Parent = TopBar
-TopBarFix.BackgroundColor3 = C.BgMid
-ApplyGlass(TopBarFix)
-TopBarFix.Position = UDim2.new(0, 0, 0.5, 0)
-TopBarFix.Size = UDim2.new(1, 0, 0.5, 0)
-TopBarFix.BorderSizePixel = 0
-TopBarFix.ZIndex = 2
+-- เดิม: ใช้เฟรมเดียวคลุมครึ่งล่างทั้งแถบ แล้วสั่ง ApplyGlass ซ้ำ (ค่า GTrans เดียวกับ TopBar)
+-- เพราะเฟรมนี้เป็นลูกของ TopBar จึงวาดทับอยู่บน TopBar ที่โปร่งแสงอยู่แล้ว ทำให้ครึ่งล่าง
+-- โดนความโปร่งแสงซ้อนกัน 2 ชั้น (เข้มกว่าครึ่งบน) กลายเป็นแถบสีเข้มไม่เท่ากันพาดผ่านแนวไอคอนตั้งค่า
+-- แก้โดยคลุมเฉพาะ "มุมโค้ง" ด้วยแพตช์ทึบเล็กๆ (เท่ารัศมี UICorner) แทนการคลุมเต็มความกว้าง
+-- และไม่เรียก ApplyGlass เพื่อไม่ให้ซ้อนความโปร่งแสงอีกชั้น
+local CornerFixSize = 10
+local TopBarFixLeft = Instance.new('Frame')
+TopBarFixLeft.Name = 'TopBarFixLeft'
+TopBarFixLeft.Parent = TopBar
+TopBarFixLeft.BackgroundColor3 = C.BgMid
+TopBarFixLeft.BackgroundTransparency = 0
+TopBarFixLeft.Position = UDim2.new(0, 0, 1, -CornerFixSize)
+TopBarFixLeft.Size = UDim2.new(0, CornerFixSize, 0, CornerFixSize)
+TopBarFixLeft.BorderSizePixel = 0
+TopBarFixLeft.ZIndex = 2
+
+local TopBarFixRight = Instance.new('Frame')
+TopBarFixRight.Name = 'TopBarFixRight'
+TopBarFixRight.Parent = TopBar
+TopBarFixRight.BackgroundColor3 = C.BgMid
+TopBarFixRight.BackgroundTransparency = 0
+TopBarFixRight.Position = UDim2.new(1, -CornerFixSize, 1, -CornerFixSize)
+TopBarFixRight.Size = UDim2.new(0, CornerFixSize, 0, CornerFixSize)
+TopBarFixRight.BorderSizePixel = 0
+TopBarFixRight.ZIndex = 2
 
 -- เส้นเรืองแสงด้านล่าง topbar — ผูกกับสี Accent แบบสด (เดิมค้างเป็นสีเทาตายตัว ไม่ตรงกับสี Accent ที่ปรับใน Settings
 -- ทำให้ดูเหมือนมีสองสีไม่ตรงกันที่แถบด้านบนใกล้ไอคอนตั้งค่า)
