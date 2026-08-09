@@ -943,6 +943,8 @@ end,
 local Translations = {
 en = {
 Settings = 'Settings',
+PresetHeader = 'Preset Themes',
+PresetLabel = 'Choose a Preset Theme',
 AccentHeader = 'Customize Accent Color',
 AccentRed = 'Accent - Red',
 AccentGreen = 'Accent - Green',
@@ -1002,6 +1004,8 @@ ResetButton = 'Reset to Default',
 },
 th = {
 Settings = 'ตั้งค่า',
+PresetHeader = 'ธีมสำเร็จรูป',
+PresetLabel = 'เลือกธีมสำเร็จรูป',
 AccentHeader = 'ปรับแต่งสี Accent',
 AccentRed = 'Accent - Red',
 AccentGreen = 'Accent - Green',
@@ -1148,6 +1152,73 @@ KnobOff   = Color3.fromRGB(90, 90, 95),
 
 -- ค่าโปร่งแสงเริ่มต้นของพื้นหลัง element ต่างๆ (glass effect)
 GlassTransparency = 0.35,
+}
+
+-- ============================================================
+-- 🎨 ธีมสำเร็จรูป (Preset Themes) — เลือกใช้ได้จากเมนู Settings
+-- แต่ละธีมกำหนดค่าสีของทุกจุดที่ปรับได้ (Accent, Text, พื้นหลัง, Category, ปุ่ม, Dropdown, Element, Running Light)
+-- ============================================================
+local PresetThemes = {
+Green = {
+Accent             = Color3.fromRGB(76, 175, 80),
+Text               = Color3.fromRGB(235, 245, 238),
+Background         = Color3.fromRGB(18, 26, 20),
+CategoryColor      = Color3.fromRGB(46, 125, 50),
+CategoryIdleColor  = Color3.fromRGB(30, 44, 32),
+ButtonColor        = Color3.fromRGB(38, 60, 40),
+DropdownColor      = Color3.fromRGB(30, 44, 32),
+DropdownListColor  = Color3.fromRGB(24, 36, 26),
+ElementColor       = Color3.fromRGB(30, 44, 32),
+RunningLightColor  = Color3.fromRGB(76, 175, 80),
+},
+Red = {
+Accent             = Color3.fromRGB(220, 60, 60),
+Text               = Color3.fromRGB(245, 235, 235),
+Background         = Color3.fromRGB(26, 18, 18),
+CategoryColor      = Color3.fromRGB(150, 40, 40),
+CategoryIdleColor  = Color3.fromRGB(44, 30, 30),
+ButtonColor        = Color3.fromRGB(60, 38, 38),
+DropdownColor      = Color3.fromRGB(44, 30, 30),
+DropdownListColor  = Color3.fromRGB(36, 24, 24),
+ElementColor       = Color3.fromRGB(44, 30, 30),
+RunningLightColor  = Color3.fromRGB(220, 60, 60),
+},
+Black = {
+Accent             = Color3.fromRGB(180, 180, 185),
+Text               = Color3.fromRGB(230, 230, 230),
+Background         = Color3.fromRGB(10, 10, 10),
+CategoryColor      = Color3.fromRGB(70, 70, 75),
+CategoryIdleColor  = Color3.fromRGB(28, 28, 30),
+ButtonColor        = Color3.fromRGB(35, 35, 38),
+DropdownColor      = Color3.fromRGB(28, 28, 30),
+DropdownListColor  = Color3.fromRGB(18, 18, 20),
+ElementColor       = Color3.fromRGB(28, 28, 30),
+RunningLightColor  = Color3.fromRGB(180, 180, 185),
+},
+White = {
+Accent             = Color3.fromRGB(80, 80, 90),
+Text               = Color3.fromRGB(25, 25, 28),
+Background         = Color3.fromRGB(245, 245, 247),
+CategoryColor      = Color3.fromRGB(210, 210, 215),
+CategoryIdleColor  = Color3.fromRGB(225, 225, 230),
+ButtonColor        = Color3.fromRGB(235, 235, 238),
+DropdownColor      = Color3.fromRGB(225, 225, 230),
+DropdownListColor  = Color3.fromRGB(215, 215, 220),
+ElementColor       = Color3.fromRGB(230, 230, 234),
+RunningLightColor  = Color3.fromRGB(80, 80, 90),
+},
+Blue = {
+Accent             = Color3.fromRGB(66, 133, 244),
+Text               = Color3.fromRGB(230, 238, 245),
+Background         = Color3.fromRGB(14, 20, 30),
+CategoryColor      = Color3.fromRGB(40, 90, 160),
+CategoryIdleColor  = Color3.fromRGB(26, 36, 50),
+ButtonColor        = Color3.fromRGB(30, 45, 65),
+DropdownColor      = Color3.fromRGB(26, 36, 50),
+DropdownListColor  = Color3.fromRGB(20, 28, 40),
+ElementColor       = Color3.fromRGB(26, 36, 50),
+RunningLightColor  = Color3.fromRGB(66, 133, 244),
+},
 }
 
 function Library:CreateWindow(WindowName, Config)
@@ -2665,10 +2736,55 @@ end
 
 -- สร้าง/วาดใหม่เนื้อหาทั้งหมดของหน้า Settings ตามภาษาปัจจุบัน (CurrentLanguage)
 -- เรียกครั้งแรกตอนสร้างแท็บ และเรียกซ้ำทุกครั้งที่ผู้ใช้เปลี่ยนภาษา เพื่อให้ข้อความอัปเดตทันที ไม่ต้องรีสตาร์ท
+local ApplyPresetTheme
 local BuildSettingsUI
+
+-- นำธีมสำเร็จรูป (Green/Red/Black/White/Blue) มาใช้กับทุกจุดสีที่ปรับได้พร้อมกัน แบบสดทันที
+ApplyPresetTheme = function(presetName)
+local preset = PresetThemes[presetName]
+if not preset then return end
+
+isRainbow = false
+isTextRainbow = false
+
+UpdateThemeColor(preset.Accent)
+UpdateTextColor(preset.Text)
+UpdateBackgroundColor(preset.Background)
+UpdateCategoryColor(preset.CategoryColor)
+UpdateCategoryIdleColor(preset.CategoryIdleColor)
+UpdateButtonColor(preset.ButtonColor)
+UpdateDropdownColor(preset.DropdownColor)
+UpdateDropdownListColor(preset.DropdownListColor)
+UpdateElementColor(preset.ElementColor)
+CurrentRunningLightColor = preset.RunningLightColor
+if not RunningLightEnabled then
+ApplyRunningLightStatic()
+end
+
+-- ซิงก์ตัวแปร slider ทั้งหมดให้ตรงกับธีมที่เลือก เพื่อให้ตอนวาด Settings ใหม่ค่าที่แสดงถูกต้อง
+AccentR, AccentG, AccentB = math.floor(preset.Accent.R * 255 + 0.5), math.floor(preset.Accent.G * 255 + 0.5), math.floor(preset.Accent.B * 255 + 0.5)
+TextR, TextG, TextB = math.floor(preset.Text.R * 255 + 0.5), math.floor(preset.Text.G * 255 + 0.5), math.floor(preset.Text.B * 255 + 0.5)
+BgR, BgG, BgB = math.floor(preset.Background.R * 255 + 0.5), math.floor(preset.Background.G * 255 + 0.5), math.floor(preset.Background.B * 255 + 0.5)
+CatR, CatG, CatB = math.floor(preset.CategoryColor.R * 255 + 0.5), math.floor(preset.CategoryColor.G * 255 + 0.5), math.floor(preset.CategoryColor.B * 255 + 0.5)
+IdleCatR, IdleCatG, IdleCatB = math.floor(preset.CategoryIdleColor.R * 255 + 0.5), math.floor(preset.CategoryIdleColor.G * 255 + 0.5), math.floor(preset.CategoryIdleColor.B * 255 + 0.5)
+ButtonR, ButtonG, ButtonB = math.floor(preset.ButtonColor.R * 255 + 0.5), math.floor(preset.ButtonColor.G * 255 + 0.5), math.floor(preset.ButtonColor.B * 255 + 0.5)
+DropR, DropG, DropB = math.floor(preset.DropdownColor.R * 255 + 0.5), math.floor(preset.DropdownColor.G * 255 + 0.5), math.floor(preset.DropdownColor.B * 255 + 0.5)
+DropListR, DropListG, DropListB = math.floor(preset.DropdownListColor.R * 255 + 0.5), math.floor(preset.DropdownListColor.G * 255 + 0.5), math.floor(preset.DropdownListColor.B * 255 + 0.5)
+ElemR, ElemG, ElemB = math.floor(preset.ElementColor.R * 255 + 0.5), math.floor(preset.ElementColor.G * 255 + 0.5), math.floor(preset.ElementColor.B * 255 + 0.5)
+RLR, RLG, RLB = math.floor(preset.RunningLightColor.R * 255 + 0.5), math.floor(preset.RunningLightColor.G * 255 + 0.5), math.floor(preset.RunningLightColor.B * 255 + 0.5)
+
+-- วาดหน้า Settings ใหม่ทันที เพื่อให้ slider ทุกตัวแสดงค่าตรงกับธีมที่เพิ่งเลือก
+BuildSettingsUI()
+end
 BuildSettingsUI = function()
 local T = Translations[CurrentLanguage] or Translations.en
 ClearSettingsContent()
+
+-- ===================== ธีมสำเร็จรูป (Preset Themes) =====================
+SettingsTab:CreateLabel(T.PresetHeader, 'lucide-palette')
+SettingsTab:CreateDropdown(T.PresetLabel, 'lucide-palette', { 'Green', 'Red', 'Black', 'White', 'Blue' }, nil, nil, function(selected)
+ApplyPresetTheme(selected)
+end)
 
 SettingsTab:CreateLabel(T.AccentHeader, 'lucide-palette')
 SettingsTab:CreateSlider(T.AccentRed, nil, 0, 255, AccentR, nil, function(v)
