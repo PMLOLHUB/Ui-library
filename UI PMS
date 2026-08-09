@@ -968,6 +968,23 @@ CategoryIdleSubHeader = 'Category Color (Idle / Not Selected)',
 CategoryIdleRed = 'Category (Idle) - Red',
 CategoryIdleGreen = 'Category (Idle) - Green',
 CategoryIdleBlue = 'Category (Idle) - Blue',
+SurfaceHeader = 'Customize Surface Colors (Buttons, Dropdowns, Cards)',
+ButtonColorSubHeader = 'Button Color',
+ButtonRed = 'Button - Red',
+ButtonGreen = 'Button - Green',
+ButtonBlue = 'Button - Blue',
+DropdownColorSubHeader = 'Dropdown Color (Closed Box)',
+DropdownRed = 'Dropdown - Red',
+DropdownGreen = 'Dropdown - Green',
+DropdownBlue = 'Dropdown - Blue',
+DropdownListSubHeader = 'Dropdown Color (Expanded List)',
+DropdownListRed = 'Dropdown List - Red',
+DropdownListGreen = 'Dropdown List - Green',
+DropdownListBlue = 'Dropdown List - Blue',
+ElementColorSubHeader = 'Other Elements (Textbox, Toggle, Slider, Search Bar, Category Page)',
+ElementRed = 'Element - Red',
+ElementGreen = 'Element - Green',
+ElementBlue = 'Element - Blue',
 RunningLightHeader = 'Running Light (Animated Border)',
 RunningLightEnable = 'Enable Running Light',
 RunningLightSpeed = 'Running Light Speed',
@@ -1010,6 +1027,23 @@ CategoryIdleSubHeader = 'สี Category (ตอนไม่ได้เลื�
 CategoryIdleRed = 'Category (Idle) - Red',
 CategoryIdleGreen = 'Category (Idle) - Green',
 CategoryIdleBlue = 'Category (Idle) - Blue',
+SurfaceHeader = 'ปรับแต่งสีพื้นผิว (ปุ่ม, Dropdown, การ์ด)',
+ButtonColorSubHeader = 'สีปุ่ม (Button)',
+ButtonRed = 'Button - Red',
+ButtonGreen = 'Button - Green',
+ButtonBlue = 'Button - Blue',
+DropdownColorSubHeader = 'สี Dropdown (กล่องตอนปิด)',
+DropdownRed = 'Dropdown - Red',
+DropdownGreen = 'Dropdown - Green',
+DropdownBlue = 'Dropdown - Blue',
+DropdownListSubHeader = 'สี Dropdown (รายการตอนกางออก)',
+DropdownListRed = 'Dropdown List - Red',
+DropdownListGreen = 'Dropdown List - Green',
+DropdownListBlue = 'Dropdown List - Blue',
+ElementColorSubHeader = 'Element อื่นๆ (Textbox, Toggle, Slider, Search Bar, หน้า Category)',
+ElementRed = 'Element - Red',
+ElementGreen = 'Element - Green',
+ElementBlue = 'Element - Blue',
 RunningLightHeader = 'Running Light (เส้นขอบวิ่ง)',
 RunningLightEnable = 'เปิดใช้งาน Running Light',
 RunningLightSpeed = 'ความเร็ว Running Light',
@@ -1141,6 +1175,19 @@ local CurrentBackgroundColor = Config.BackgroundColor or C.BgDeep
 local CurrentCategoryColor = Config.CategoryColor or C.AccentDim
 local CurrentCategoryIdleColor = Config.CategoryIdleColor or C.BgCard
 
+-- สีพื้นผิว (Surface) ที่ใช้ร่วมกันของ element ประเภท "การ์ด" ทั่วไป: Textbox, Toggle, Slider,
+-- SearchBar, กล่อง Dropdown ตอนปิด, ตัวเลือกใน Dropdown, และพื้นหลังของหน้า Category/Content
+local CurrentElementColor = Config.ElementColor or C.BgCard
+
+-- สีของปุ่ม (Button) โดยเฉพาะ — แยกต่างหากจาก Element ทั่วไป
+local CurrentButtonColor = Config.ButtonColor or C.BgElement
+
+-- สีของกล่อง Dropdown ตอนปิด — แยกต่างหากจาก Element ทั่วไป
+local CurrentDropdownColor = Config.DropdownColor or C.BgCard
+
+-- สีของรายการ Dropdown ตอนกางออก (Option List panel) — แยกจากกล่อง Dropdown ตอนปิด
+local CurrentDropdownListColor = Config.DropdownListColor or C.BgMid
+
 -- ภาษาที่ใช้แสดงผลในเมนู Settings ('en' = English, 'th' = Thai) — ค่าเริ่มต้นคือ English
 local CurrentLanguage = 'en'
 if Config.Language then
@@ -1252,6 +1299,87 @@ CurrentBackgroundColor = newColor
 for _, data in ipairs(BackgroundElements) do data.UpdateFunc(CurrentBackgroundColor) end
 end
 
+-- ElementElements: การ์ดทั่วไป (Textbox / Toggle / Slider / SearchBar / กล่อง Dropdown / ตัวเลือก Dropdown /
+-- พื้นหลังหน้า Category-Content) ที่ผูกกับ CurrentElementColor เก็บไว้ปรับสดได้
+local ElementElements = {}
+local function ApplyElementColor(instance, property)
+if not instance then return end
+property = property or 'BackgroundColor3'
+SafeSetProperty(instance, property, CurrentElementColor)
+table.insert(ElementElements, {
+UpdateFunc = function(color)
+if instance and instance.Parent then
+SafeSetProperty(instance, property, color)
+end
+end,
+})
+end
+
+local function UpdateElementColor(newColor)
+CurrentElementColor = newColor
+for _, data in ipairs(ElementElements) do data.UpdateFunc(CurrentElementColor) end
+end
+
+-- ButtonElements: ปุ่ม (CreateButton) ที่ผูกกับ CurrentButtonColor เก็บไว้ปรับสดได้
+local ButtonElements = {}
+local function ApplyButtonColor(instance, property)
+if not instance then return end
+property = property or 'BackgroundColor3'
+SafeSetProperty(instance, property, CurrentButtonColor)
+table.insert(ButtonElements, {
+UpdateFunc = function(color)
+if instance and instance.Parent then
+SafeSetProperty(instance, property, color)
+end
+end,
+})
+end
+
+local function UpdateButtonColor(newColor)
+CurrentButtonColor = newColor
+for _, data in ipairs(ButtonElements) do data.UpdateFunc(CurrentButtonColor) end
+end
+
+-- DropdownElements: กล่อง Dropdown ตอนปิด ที่ผูกกับ CurrentDropdownColor เก็บไว้ปรับสดได้
+local DropdownElements = {}
+local function ApplyDropdownColor(instance, property)
+if not instance then return end
+property = property or 'BackgroundColor3'
+SafeSetProperty(instance, property, CurrentDropdownColor)
+table.insert(DropdownElements, {
+UpdateFunc = function(color)
+if instance and instance.Parent then
+SafeSetProperty(instance, property, color)
+end
+end,
+})
+end
+
+local function UpdateDropdownColor(newColor)
+CurrentDropdownColor = newColor
+for _, data in ipairs(DropdownElements) do data.UpdateFunc(CurrentDropdownColor) end
+end
+
+-- DropdownListElements: แผงรายการ Dropdown ตอนกางออก ที่ผูกกับ CurrentDropdownListColor เก็บไว้ปรับสดได้
+local DropdownListElements = {}
+local function ApplyDropdownListColor(instance, property)
+if not instance then return end
+property = property or 'BackgroundColor3'
+SafeSetProperty(instance, property, CurrentDropdownListColor)
+table.insert(DropdownListElements, {
+UpdateFunc = function(color)
+if instance and instance.Parent then
+SafeSetProperty(instance, property, color)
+end
+end,
+})
+end
+
+local function UpdateDropdownListColor(newColor)
+CurrentDropdownListColor = newColor
+for _, data in ipairs(DropdownListElements) do data.UpdateFunc(CurrentDropdownListColor) end
+end
+
 -- CategoryButtons: เก็บปุ่ม Category ทุกปุ่ม (ทั้งที่ Active และ Idle) ไว้
 -- เพื่อให้ตอนเปลี่ยนสี Category จาก Settings (ไม่ว่าจะสี Active หรือ Idle) อัปเดตสีของทุกปุ่มได้ทันที
 -- ตามสถานะจริง ณ ขณะนั้นของแต่ละปุ่ม
@@ -1310,6 +1438,18 @@ end
 if savedTheme.CategoryIdleColor then
 CurrentCategoryIdleColor = Color3.fromRGB(savedTheme.CategoryIdleColor[1], savedTheme.CategoryIdleColor[2], savedTheme.CategoryIdleColor[3])
 end
+if savedTheme.ElementColor then
+CurrentElementColor = Color3.fromRGB(savedTheme.ElementColor[1], savedTheme.ElementColor[2], savedTheme.ElementColor[3])
+end
+if savedTheme.ButtonColor then
+CurrentButtonColor = Color3.fromRGB(savedTheme.ButtonColor[1], savedTheme.ButtonColor[2], savedTheme.ButtonColor[3])
+end
+if savedTheme.DropdownColor then
+CurrentDropdownColor = Color3.fromRGB(savedTheme.DropdownColor[1], savedTheme.DropdownColor[2], savedTheme.DropdownColor[3])
+end
+if savedTheme.DropdownListColor then
+CurrentDropdownListColor = Color3.fromRGB(savedTheme.DropdownListColor[1], savedTheme.DropdownListColor[2], savedTheme.DropdownListColor[3])
+end
 if savedTheme.Language then
 local savedLang = string.lower(tostring(savedTheme.Language))
 if savedLang == 'th' or savedLang == 'thai' then
@@ -1344,6 +1484,10 @@ ThemeSettings.TextRainbow = isTextRainbow
 ThemeSettings.Background = { math.floor(CurrentBackgroundColor.R * 255), math.floor(CurrentBackgroundColor.G * 255), math.floor(CurrentBackgroundColor.B * 255) }
 ThemeSettings.CategoryColor = { math.floor(CurrentCategoryColor.R * 255), math.floor(CurrentCategoryColor.G * 255), math.floor(CurrentCategoryColor.B * 255) }
 ThemeSettings.CategoryIdleColor = { math.floor(CurrentCategoryIdleColor.R * 255), math.floor(CurrentCategoryIdleColor.G * 255), math.floor(CurrentCategoryIdleColor.B * 255) }
+ThemeSettings.ElementColor = { math.floor(CurrentElementColor.R * 255), math.floor(CurrentElementColor.G * 255), math.floor(CurrentElementColor.B * 255) }
+ThemeSettings.ButtonColor = { math.floor(CurrentButtonColor.R * 255), math.floor(CurrentButtonColor.G * 255), math.floor(CurrentButtonColor.B * 255) }
+ThemeSettings.DropdownColor = { math.floor(CurrentDropdownColor.R * 255), math.floor(CurrentDropdownColor.G * 255), math.floor(CurrentDropdownColor.B * 255) }
+ThemeSettings.DropdownListColor = { math.floor(CurrentDropdownListColor.R * 255), math.floor(CurrentDropdownListColor.G * 255), math.floor(CurrentDropdownListColor.B * 255) }
 ThemeSettings.Language = CurrentLanguage
 ThemeSettings.RunningLightEnabled = RunningLightEnabled
 ThemeSettings.RunningLightSpeed = RunningLightSpeed
@@ -1703,7 +1847,9 @@ end
 -- Content page
 local CategoryPage = Instance.new('ScrollingFrame')
 CategoryPage.Parent = ContentContainer
-CategoryPage.BackgroundTransparency = 1
+ApplyElementColor(CategoryPage)               -- ← พื้นหลังของหน้า Category/Content (ปรับได้จาก Settings)
+ApplyGlass(CategoryPage)
+Instance.new('UICorner', CategoryPage).CornerRadius = UDim.new(0, 8)
 CategoryPage.Size = UDim2.new(1, 0, 1, 0)
 CategoryPage.ScrollBarThickness = 3
 CategoryPage.ScrollBarImageColor3 = C.AccentDim
@@ -1783,7 +1929,7 @@ if type(TextColor) == 'function' then Callback = TextColor; TextColor = nil end
 
 local ActionBtn = Instance.new('TextButton')
 ActionBtn.Parent = CategoryPage
-ActionBtn.BackgroundColor3 = C.BgElement     -- ← ม่วงกลาง
+ApplyButtonColor(ActionBtn)                  -- ← สีปุ่ม (ปรับได้จาก Settings)
 ApplyGlass(ActionBtn)
 ActionBtn.Size = UDim2.new(0.95, 0, 0, 35)
 ActionBtn.Text = ''
@@ -1816,7 +1962,7 @@ end
 ActionBtn.MouseButton1Click:Connect(function()
 TweenService:Create(ActionBtn, TweenInfo.new(0.08), { BackgroundColor3 = C.Accent }):Play()
 task.wait(0.12)
-TweenService:Create(ActionBtn, TweenInfo.new(0.12), { BackgroundColor3 = C.BgElement }):Play()
+TweenService:Create(ActionBtn, TweenInfo.new(0.12), { BackgroundColor3 = CurrentButtonColor }):Play()
 if Callback then Callback() end
 end)
 end
@@ -1833,7 +1979,7 @@ end
 
 local TextboxContainer = Instance.new('Frame')
 TextboxContainer.Parent = CategoryPage
-TextboxContainer.BackgroundColor3 = C.BgCard
+ApplyElementColor(TextboxContainer)
 ApplyGlass(TextboxContainer)
 TextboxContainer.Size = UDim2.new(0.95, 0, 0, 35)
 Instance.new('UICorner', TextboxContainer).CornerRadius = UDim.new(0, 6)
@@ -1897,7 +2043,7 @@ end
 
 local TextboxContainer = Instance.new('Frame')
 TextboxContainer.Parent = CategoryPage
-TextboxContainer.BackgroundColor3 = C.BgCard
+ApplyElementColor(TextboxContainer)
 ApplyGlass(TextboxContainer)
 TextboxContainer.Size = UDim2.new(0.95, 0, 0, 35)
 Instance.new('UICorner', TextboxContainer).CornerRadius = UDim.new(0, 6)
@@ -1959,7 +2105,7 @@ IconName = IconName or 'lucide-search'
 
 local SearchContainer = Instance.new('Frame')
 SearchContainer.Parent = CategoryPage
-SearchContainer.BackgroundColor3 = C.BgCard
+ApplyElementColor(SearchContainer)
 ApplyGlass(SearchContainer)
 SearchContainer.Size = UDim2.new(0.95, 0, 0, 35)
 Instance.new('UICorner', SearchContainer).CornerRadius = UDim.new(0, 6)
@@ -2010,7 +2156,7 @@ end
 
 local ToggleContainer = Instance.new('TextButton')
 ToggleContainer.Parent = CategoryPage
-ToggleContainer.BackgroundColor3 = C.BgCard
+ApplyElementColor(ToggleContainer)
 ApplyGlass(ToggleContainer)
 ToggleContainer.Size = UDim2.new(0.95, 0, 0, 35)
 ToggleContainer.Text = ''
@@ -2109,7 +2255,7 @@ end
 
 local SliderContainer = Instance.new('Frame')
 SliderContainer.Parent = CategoryPage
-SliderContainer.BackgroundColor3 = C.BgCard
+ApplyElementColor(SliderContainer)
 ApplyGlass(SliderContainer)
 SliderContainer.Size = UDim2.new(0.95, 0, 0, 50)
 Instance.new('UICorner', SliderContainer).CornerRadius = UDim.new(0, 6)
@@ -2205,7 +2351,7 @@ local isOpen = false
 
 local DropdownContainer = Instance.new('Frame')
 DropdownContainer.Parent = CategoryPage
-DropdownContainer.BackgroundColor3 = C.BgCard
+ApplyDropdownColor(DropdownContainer)
 ApplyGlass(DropdownContainer)
 DropdownContainer.Size = UDim2.new(0.95, 0, 0, 35)
 DropdownContainer.ClipsDescendants = true
@@ -2258,7 +2404,7 @@ ApplyTheme(ArrowIcon, 'TextColor3')
 
 local OptionList = Instance.new('Frame')
 OptionList.Parent = DropdownContainer
-OptionList.BackgroundColor3 = C.BgMid
+ApplyDropdownListColor(OptionList)           -- ← สีแผงรายการ Dropdown ตอนกางออก (ปรับได้จาก Settings)
 ApplyGlass(OptionList)
 OptionList.Position = UDim2.new(0, 0, 0, 35)
 OptionList.Size = UDim2.new(1, 0, 1, -35)
@@ -2302,7 +2448,7 @@ end
 local function AddOption(option)
 local OptionBtn = Instance.new('TextButton')
 OptionBtn.Parent = OptionList
-OptionBtn.BackgroundColor3 = C.BgCard
+ApplyDropdownColor(OptionBtn)
 ApplyGlass(OptionBtn)
 OptionBtn.BorderSizePixel = 0
 OptionBtn.Size = UDim2.new(1, 0, 0, 30)
@@ -2470,6 +2616,18 @@ local CatB = math.floor(CurrentCategoryColor.B * 255 + 0.5)
 local IdleCatR = math.floor(CurrentCategoryIdleColor.R * 255 + 0.5)
 local IdleCatG = math.floor(CurrentCategoryIdleColor.G * 255 + 0.5)
 local IdleCatB = math.floor(CurrentCategoryIdleColor.B * 255 + 0.5)
+local ButtonR = math.floor(CurrentButtonColor.R * 255 + 0.5)
+local ButtonG = math.floor(CurrentButtonColor.G * 255 + 0.5)
+local ButtonB = math.floor(CurrentButtonColor.B * 255 + 0.5)
+local DropR = math.floor(CurrentDropdownColor.R * 255 + 0.5)
+local DropG = math.floor(CurrentDropdownColor.G * 255 + 0.5)
+local DropB = math.floor(CurrentDropdownColor.B * 255 + 0.5)
+local DropListR = math.floor(CurrentDropdownListColor.R * 255 + 0.5)
+local DropListG = math.floor(CurrentDropdownListColor.G * 255 + 0.5)
+local DropListB = math.floor(CurrentDropdownListColor.B * 255 + 0.5)
+local ElemR = math.floor(CurrentElementColor.R * 255 + 0.5)
+local ElemG = math.floor(CurrentElementColor.G * 255 + 0.5)
+local ElemB = math.floor(CurrentElementColor.B * 255 + 0.5)
 local RLR = math.floor(CurrentRunningLightColor.R * 255 + 0.5)
 local RLG = math.floor(CurrentRunningLightColor.G * 255 + 0.5)
 local RLB = math.floor(CurrentRunningLightColor.B * 255 + 0.5)
@@ -2484,6 +2642,10 @@ ThemeSettings.TextRainbow = isTextRainbow
 ThemeSettings.Background = { BgR, BgG, BgB }
 ThemeSettings.CategoryColor = { CatR, CatG, CatB }
 ThemeSettings.CategoryIdleColor = { IdleCatR, IdleCatG, IdleCatB }
+ThemeSettings.ButtonColor = { ButtonR, ButtonG, ButtonB }
+ThemeSettings.DropdownColor = { DropR, DropG, DropB }
+ThemeSettings.DropdownListColor = { DropListR, DropListG, DropListB }
+ThemeSettings.ElementColor = { ElemR, ElemG, ElemB }
 ThemeSettings.Language = CurrentLanguage
 ThemeSettings.RunningLightEnabled = RunningLightEnabled
 ThemeSettings.RunningLightSpeed = RunningLightSpeed
@@ -2594,6 +2756,65 @@ IdleCatB = v
 UpdateCategoryIdleColor(Color3.fromRGB(IdleCatR, IdleCatG, IdleCatB))
 end)
 
+-- ===================== สีพื้นผิว: ปุ่ม / Dropdown / Element อื่นๆ =====================
+SettingsTab:CreateLabel(T.SurfaceHeader, 'lucide-palette')
+
+SettingsTab:CreateLabel(T.ButtonColorSubHeader, 'lucide-square')
+SettingsTab:CreateSlider(T.ButtonRed, nil, 0, 255, ButtonR, nil, function(v)
+ButtonR = v
+UpdateButtonColor(Color3.fromRGB(ButtonR, ButtonG, ButtonB))
+end)
+SettingsTab:CreateSlider(T.ButtonGreen, nil, 0, 255, ButtonG, nil, function(v)
+ButtonG = v
+UpdateButtonColor(Color3.fromRGB(ButtonR, ButtonG, ButtonB))
+end)
+SettingsTab:CreateSlider(T.ButtonBlue, nil, 0, 255, ButtonB, nil, function(v)
+ButtonB = v
+UpdateButtonColor(Color3.fromRGB(ButtonR, ButtonG, ButtonB))
+end)
+
+SettingsTab:CreateLabel(T.DropdownColorSubHeader, 'lucide-chevron-down')
+SettingsTab:CreateSlider(T.DropdownRed, nil, 0, 255, DropR, nil, function(v)
+DropR = v
+UpdateDropdownColor(Color3.fromRGB(DropR, DropG, DropB))
+end)
+SettingsTab:CreateSlider(T.DropdownGreen, nil, 0, 255, DropG, nil, function(v)
+DropG = v
+UpdateDropdownColor(Color3.fromRGB(DropR, DropG, DropB))
+end)
+SettingsTab:CreateSlider(T.DropdownBlue, nil, 0, 255, DropB, nil, function(v)
+DropB = v
+UpdateDropdownColor(Color3.fromRGB(DropR, DropG, DropB))
+end)
+
+SettingsTab:CreateLabel(T.DropdownListSubHeader, 'lucide-list')
+SettingsTab:CreateSlider(T.DropdownListRed, nil, 0, 255, DropListR, nil, function(v)
+DropListR = v
+UpdateDropdownListColor(Color3.fromRGB(DropListR, DropListG, DropListB))
+end)
+SettingsTab:CreateSlider(T.DropdownListGreen, nil, 0, 255, DropListG, nil, function(v)
+DropListG = v
+UpdateDropdownListColor(Color3.fromRGB(DropListR, DropListG, DropListB))
+end)
+SettingsTab:CreateSlider(T.DropdownListBlue, nil, 0, 255, DropListB, nil, function(v)
+DropListB = v
+UpdateDropdownListColor(Color3.fromRGB(DropListR, DropListG, DropListB))
+end)
+
+SettingsTab:CreateLabel(T.ElementColorSubHeader, 'lucide-layout-grid')
+SettingsTab:CreateSlider(T.ElementRed, nil, 0, 255, ElemR, nil, function(v)
+ElemR = v
+UpdateElementColor(Color3.fromRGB(ElemR, ElemG, ElemB))
+end)
+SettingsTab:CreateSlider(T.ElementGreen, nil, 0, 255, ElemG, nil, function(v)
+ElemG = v
+UpdateElementColor(Color3.fromRGB(ElemR, ElemG, ElemB))
+end)
+SettingsTab:CreateSlider(T.ElementBlue, nil, 0, 255, ElemB, nil, function(v)
+ElemB = v
+UpdateElementColor(Color3.fromRGB(ElemR, ElemG, ElemB))
+end)
+
 -- ===================== Running Light (เส้นขอบวิ่ง) =====================
 SettingsTab:CreateLabel(T.RunningLightHeader, 'lucide-activity')
 SettingsTab:CreateToggle(T.RunningLightEnable, 'lucide-flame', RunningLightEnabled, nil, function(state)
@@ -2669,6 +2890,18 @@ CatB = math.floor(C.AccentDim.B * 255 + 0.5)
 IdleCatR = math.floor(C.BgCard.R * 255 + 0.5)
 IdleCatG = math.floor(C.BgCard.G * 255 + 0.5)
 IdleCatB = math.floor(C.BgCard.B * 255 + 0.5)
+ButtonR = math.floor(C.BgElement.R * 255 + 0.5)
+ButtonG = math.floor(C.BgElement.G * 255 + 0.5)
+ButtonB = math.floor(C.BgElement.B * 255 + 0.5)
+DropR = math.floor(C.BgCard.R * 255 + 0.5)
+DropG = math.floor(C.BgCard.G * 255 + 0.5)
+DropB = math.floor(C.BgCard.B * 255 + 0.5)
+DropListR = math.floor(C.BgMid.R * 255 + 0.5)
+DropListG = math.floor(C.BgMid.G * 255 + 0.5)
+DropListB = math.floor(C.BgMid.B * 255 + 0.5)
+ElemR = math.floor(C.BgCard.R * 255 + 0.5)
+ElemG = math.floor(C.BgCard.G * 255 + 0.5)
+ElemB = math.floor(C.BgCard.B * 255 + 0.5)
 RLR = math.floor(C.Accent.R * 255 + 0.5)
 RLG = math.floor(C.Accent.G * 255 + 0.5)
 RLB = math.floor(C.Accent.B * 255 + 0.5)
@@ -2684,6 +2917,10 @@ UpdateGlassTransparency(C.GlassTransparency)
 UpdateBackgroundColor(C.BgDeep)
 UpdateCategoryColor(C.AccentDim)
 UpdateCategoryIdleColor(C.BgCard)
+UpdateButtonColor(C.BgElement)
+UpdateDropdownColor(C.BgCard)
+UpdateDropdownListColor(C.BgMid)
+UpdateElementColor(C.BgCard)
 CurrentRunningLightColor = C.Accent
 if PatternBg then PatternBg.Visible = true end
 if MainStroke then MainStroke.Enabled = true end
