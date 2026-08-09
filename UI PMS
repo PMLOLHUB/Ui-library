@@ -3015,23 +3015,43 @@ pcs.Thickness = 1; pcs.Color = C.AccentDim
 
 local PickerLabel = Instance.new('TextLabel')
 PickerLabel.Parent = PickerContainer
-PickerLabel.Position = UDim2.new(0, 10, 0, 6)
 PickerLabel.BackgroundTransparency = 1
 PickerLabel.Size = UDim2.new(0.55, 0, 0, 20)
 ApplyFont(PickerLabel, false)
 ApplyFontSize(PickerLabel, 14)
 PickerLabel.TextXAlignment = Enum.TextXAlignment.Left
 PickerLabel.TextTruncate = Enum.TextTruncate.AtEnd
+PickerLabel.Text = PickerText
 ApplyTextColor(PickerLabel)
--- แสดงลูกศรบอกสถานะย่อ/ขยายไว้หน้าชื่อหัวข้อ (▸ = ปิดอยู่, ▾ = เปิดอยู่)
+
+-- ลูกศรบอกสถานะย่อ/ขยาย (เดิมใช้ตัวอักษร Unicode ▸/▾ แต่บางฟอนต์/executor บน Roblox ไม่มีสัญลักษณ์นี้
+-- ทำให้ขึ้นเป็นกล่องว่าง "โหลดลูกศรไม่ได้") เปลี่ยนมาใช้ไอคอนรูปภาพ lucide-chevron-right แทน
+-- แล้วหมุน 90 องศาตอนขยาย (ชี้ลง) ซึ่งเป็นรูปภาพเดียวกับที่ใช้ในส่วนอื่นของ UI อยู่แล้ว จึงโหลดได้แน่นอน
+local hasFeatureIcon = AddElementIcon(PickerContainer, IconName, 16, 34)
+local ExpandArrow = Instance.new('ImageLabel')
+ExpandArrow.Name = 'ExpandArrow'
+ExpandArrow.Parent = PickerContainer
+ExpandArrow.BackgroundTransparency = 1
+ExpandArrow.Position = UDim2.new(0, 10, 0, 10)
+ExpandArrow.Size = UDim2.new(0, 14, 0, 14)
+ExpandArrow.ZIndex = (PickerContainer.ZIndex or 1) + 1
+ExpandArrow.Image = Icons['lucide-chevron-right']
+ExpandArrow.Rotation = 0
+ApplyTextColor(ExpandArrow, 'ImageColor3')
+
+if hasFeatureIcon then
+PickerLabel.Position = UDim2.new(0, 56, 0, 6)
+PickerLabel.Size = UDim2.new(0.5, -46, 0, 20)
+else
+PickerLabel.Position = UDim2.new(0, 28, 0, 6)
+PickerLabel.Size = UDim2.new(0.5, -18, 0, 20)
+end
+
 local function RefreshPickerLabelText()
-PickerLabel.Text = (PickerExpanded and '\226\150\190 ' or '\226\150\184 ') .. PickerText
+-- หมุนลูกศรแทนการเปลี่ยนข้อความ: 0 องศา = ปิดอยู่ (ชี้ขวา), 90 องศา = เปิดอยู่ (ชี้ลง)
+ExpandArrow.Rotation = PickerExpanded and 90 or 0
 end
 RefreshPickerLabelText()
-if AddElementIcon(PickerContainer, IconName, 16, 10) then
-PickerLabel.Position = UDim2.new(0, 32, 0, 6)
-PickerLabel.Size = UDim2.new(0.5, -22, 0, 20)
-end
 
 local HexLabel = Instance.new('TextLabel')
 HexLabel.Parent = PickerContainer
