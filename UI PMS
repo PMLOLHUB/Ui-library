@@ -2241,7 +2241,7 @@ end)
 local TopBar = Instance.new('Frame')
 TopBar.Name = 'TopBar'
 TopBar.Parent = MainFrame
-TopBar.BackgroundColor3 = C.BgMid             -- ← ม่วงดำ topbar
+ApplyBackground(TopBar)                        -- ← ผูกกับสีพื้นหลังหลัก (ปรับสดได้จาก Settings/ธีม) แทนสีตายตัวเดิม
 ApplyGlass(TopBar)
 TopBar.Size = UDim2.new(1, 0, 0, 32)
 TopBar.ZIndex = 2
@@ -2253,11 +2253,14 @@ Instance.new('UICorner', TopBar).CornerRadius = UDim.new(0, 10)
 -- โดนความโปร่งแสงซ้อนกัน 2 ชั้น (เข้มกว่าครึ่งบน) กลายเป็นแถบสีเข้มไม่เท่ากันพาดผ่านแนวไอคอนตั้งค่า
 -- แก้โดยคลุมเฉพาะ "มุมโค้ง" ด้วยแพตช์ทึบเล็กๆ (เท่ารัศมี UICorner) แทนการคลุมเต็มความกว้าง
 -- และไม่เรียก ApplyGlass เพื่อไม่ให้ซ้อนความโปร่งแสงอีกชั้น
+-- หมายเหตุ: เดิมแพตช์นี้ใช้สี C.BgMid ตายตัว ไม่ตรงกับสีพื้นหลังที่ปรับได้จาก Settings/ธีมสำเร็จรูป/พื้นหลังรูปภาพ
+-- ทำให้เห็นเป็นสี่เหลี่ยมเล็กๆ สีไม่ตรงกันที่มุมซ้าย-ขวาบนสุดเวลาลูกค้าเปลี่ยนธีม จึงเปลี่ยนมาผูกกับ ApplyBackground
+-- เช่นเดียวกับ TopBar เอง เพื่อให้สีตรงกันเสมอไม่ว่าจะปรับพื้นหลังเป็นสีอะไรก็ตาม
 local CornerFixSize = 10
 local TopBarFixLeft = Instance.new('Frame')
 TopBarFixLeft.Name = 'TopBarFixLeft'
 TopBarFixLeft.Parent = TopBar
-TopBarFixLeft.BackgroundColor3 = C.BgMid
+ApplyBackground(TopBarFixLeft)
 TopBarFixLeft.BackgroundTransparency = 0
 TopBarFixLeft.Position = UDim2.new(0, 0, 1, -CornerFixSize)
 TopBarFixLeft.Size = UDim2.new(0, CornerFixSize, 0, CornerFixSize)
@@ -2267,7 +2270,7 @@ TopBarFixLeft.ZIndex = 2
 local TopBarFixRight = Instance.new('Frame')
 TopBarFixRight.Name = 'TopBarFixRight'
 TopBarFixRight.Parent = TopBar
-TopBarFixRight.BackgroundColor3 = C.BgMid
+ApplyBackground(TopBarFixRight)
 TopBarFixRight.BackgroundTransparency = 0
 TopBarFixRight.Position = UDim2.new(1, -CornerFixSize, 1, -CornerFixSize)
 TopBarFixRight.Size = UDim2.new(0, CornerFixSize, 0, CornerFixSize)
