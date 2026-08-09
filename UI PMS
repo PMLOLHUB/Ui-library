@@ -987,6 +987,13 @@ ElementColorSubHeader = 'Other Elements (Textbox, Toggle, Slider, Search Bar, Ca
 ElementRed = 'Element - Red',
 ElementGreen = 'Element - Green',
 ElementBlue = 'Element - Blue',
+TeamColorSubHeader = 'Team Color',
+TeamRed = 'Team - Red',
+TeamGreen = 'Team - Green',
+TeamBlue = 'Team - Blue',
+FontHeader = 'Font Settings',
+FontFamilyLabel = 'Font Family',
+FontSizeLabel = 'Font Size (%)',
 RunningLightHeader = 'Running Light (Animated Border)',
 RunningLightEnable = 'Enable Running Light',
 RunningLightSpeed = 'Running Light Speed',
@@ -1048,6 +1055,13 @@ ElementColorSubHeader = 'Element อื่นๆ (Textbox, Toggle, Slider, Searc
 ElementRed = 'Element - Red',
 ElementGreen = 'Element - Green',
 ElementBlue = 'Element - Blue',
+TeamColorSubHeader = 'สีทีม (Team)',
+TeamRed = 'Team - Red',
+TeamGreen = 'Team - Green',
+TeamBlue = 'Team - Blue',
+FontHeader = 'ตั้งค่าฟอนต์',
+FontFamilyLabel = 'รูปแบบฟอนต์',
+FontSizeLabel = 'ขนาดตัวอักษร (%)',
 RunningLightHeader = 'Running Light (เส้นขอบวิ่ง)',
 RunningLightEnable = 'เปิดใช้งาน Running Light',
 RunningLightSpeed = 'ความเร็ว Running Light',
@@ -1150,6 +1164,9 @@ TextDim   = Color3.fromRGB(150, 150, 155), -- เทาซีด (placeholder)
 -- ปุ่ม toggle knob
 KnobOff   = Color3.fromRGB(90, 90, 95),
 
+-- สี Team เริ่มต้น (หมวดสีธีมเพิ่มเติม แยกอิสระจาก Element/Button/Dropdown)
+TeamDefault = Color3.fromRGB(90, 140, 220),
+
 -- ค่าโปร่งแสงเริ่มต้นของพื้นหลัง element ต่างๆ (glass effect)
 GlassTransparency = 0.35,
 }
@@ -1170,6 +1187,7 @@ DropdownColor      = Color3.fromRGB(30, 44, 32),
 DropdownListColor  = Color3.fromRGB(24, 36, 26),
 ElementColor       = Color3.fromRGB(30, 44, 32),
 RunningLightColor  = Color3.fromRGB(76, 175, 80),
+TeamColor          = Color3.fromRGB(56, 142, 60),
 },
 Red = {
 Accent             = Color3.fromRGB(220, 60, 60),
@@ -1182,6 +1200,7 @@ DropdownColor      = Color3.fromRGB(44, 30, 30),
 DropdownListColor  = Color3.fromRGB(36, 24, 24),
 ElementColor       = Color3.fromRGB(44, 30, 30),
 RunningLightColor  = Color3.fromRGB(220, 60, 60),
+TeamColor          = Color3.fromRGB(170, 45, 45),
 },
 Black = {
 Accent             = Color3.fromRGB(180, 180, 185),
@@ -1194,6 +1213,7 @@ DropdownColor      = Color3.fromRGB(28, 28, 30),
 DropdownListColor  = Color3.fromRGB(18, 18, 20),
 ElementColor       = Color3.fromRGB(28, 28, 30),
 RunningLightColor  = Color3.fromRGB(180, 180, 185),
+TeamColor          = Color3.fromRGB(90, 90, 95),
 },
 White = {
 Accent             = Color3.fromRGB(80, 80, 90),
@@ -1206,6 +1226,7 @@ DropdownColor      = Color3.fromRGB(225, 225, 230),
 DropdownListColor  = Color3.fromRGB(215, 215, 220),
 ElementColor       = Color3.fromRGB(230, 230, 234),
 RunningLightColor  = Color3.fromRGB(80, 80, 90),
+TeamColor          = Color3.fromRGB(190, 190, 198),
 },
 Blue = {
 Accent             = Color3.fromRGB(66, 133, 244),
@@ -1218,6 +1239,7 @@ DropdownColor      = Color3.fromRGB(26, 36, 50),
 DropdownListColor  = Color3.fromRGB(20, 28, 40),
 ElementColor       = Color3.fromRGB(26, 36, 50),
 RunningLightColor  = Color3.fromRGB(66, 133, 244),
+TeamColor          = Color3.fromRGB(48, 96, 176),
 },
 }
 
@@ -1258,6 +1280,27 @@ local CurrentDropdownColor = Config.DropdownColor or C.BgCard
 
 -- สีของรายการ Dropdown ตอนกางออก (Option List panel) — แยกจากกล่อง Dropdown ตอนปิด
 local CurrentDropdownListColor = Config.DropdownListColor or C.BgMid
+
+-- สี Team — หมวดสีธีมเพิ่มเติม แยกอิสระ ใช้กับ element ที่สคริปต์ผู้ใช้ผูกไว้เอง (เช่น ป้ายทีม/แถบสถานะ)
+local CurrentTeamColor = Config.TeamColor or C.TeamDefault
+
+-- ===================== Font (รูปแบบตัวอักษร / ขนาดตัวอักษร) =====================
+-- รายชื่อฟอนต์ที่เลือกได้ พร้อมคู่ Regular/Bold ที่ปลอดภัยและมีอยู่จริงบน Roblox
+local FontPresets = {
+Gotham          = { Regular = Enum.Font.Gotham,          Bold = Enum.Font.GothamBold },
+GothamBlack     = { Regular = Enum.Font.GothamBlack,     Bold = Enum.Font.GothamBlack },
+SourceSans      = { Regular = Enum.Font.SourceSans,      Bold = Enum.Font.SourceSansBold },
+SourceSansLight = { Regular = Enum.Font.SourceSansLight, Bold = Enum.Font.SourceSansBold },
+}
+local FontPresetOrder = { 'Gotham', 'GothamBlack', 'SourceSans', 'SourceSansLight' }
+
+local CurrentFontFamilyName = 'Gotham'
+if Config.FontFamily and FontPresets[Config.FontFamily] then
+CurrentFontFamilyName = Config.FontFamily
+end
+
+-- ตัวคูณขนาดตัวอักษร (1 = 100% ปกติ) ปรับได้ระหว่าง 0.8 - 1.3
+local CurrentFontScale = Config.FontScale or 1
 
 -- ภาษาที่ใช้แสดงผลในเมนู Settings ('en' = English, 'th' = Thai) — ค่าเริ่มต้นคือ English
 local CurrentLanguage = 'en'
@@ -1451,6 +1494,73 @@ CurrentDropdownListColor = newColor
 for _, data in ipairs(DropdownListElements) do data.UpdateFunc(CurrentDropdownListColor) end
 end
 
+-- TeamElements: หมวดสีธีมเพิ่มเติม แยกอิสระจาก Element/Button/Dropdown เก็บไว้ปรับสดได้
+-- ใช้สำหรับ element ที่สคริปต์ผู้ใช้ผูกไว้เอง (เช่น ป้ายทีม / แถบสถานะ / ตัวบ่งชี้)
+local TeamElements = {}
+local function ApplyTeamColor(instance, property)
+if not instance then return end
+property = property or 'BackgroundColor3'
+SafeSetProperty(instance, property, CurrentTeamColor)
+table.insert(TeamElements, {
+UpdateFunc = function(color)
+if instance and instance.Parent then
+SafeSetProperty(instance, property, color)
+end
+end,
+})
+end
+
+local function UpdateTeamColor(newColor)
+CurrentTeamColor = newColor
+for _, data in ipairs(TeamElements) do data.UpdateFunc(CurrentTeamColor) end
+end
+
+-- FontElements: ทุก TextLabel/TextButton/TextBox ที่ผูกกับฟอนต์หลัก เก็บไว้ปรับสดได้ (isBold = true/false)
+local FontElements = {}
+local function ApplyFont(instance, isBold)
+if not instance then return end
+local preset = FontPresets[CurrentFontFamilyName] or FontPresets.Gotham
+SafeSetProperty(instance, 'Font', isBold and preset.Bold or preset.Regular)
+table.insert(FontElements, {
+IsBold = isBold,
+UpdateFunc = function(instance2, isBold2, presetToUse)
+if instance2 and instance2.Parent then
+SafeSetProperty(instance2, 'Font', isBold2 and presetToUse.Bold or presetToUse.Regular)
+end
+end,
+Instance = instance,
+})
+end
+
+local function UpdateFontFamily(newFamilyName)
+if not FontPresets[newFamilyName] then return end
+CurrentFontFamilyName = newFamilyName
+local preset = FontPresets[CurrentFontFamilyName]
+for _, data in ipairs(FontElements) do
+data.UpdateFunc(data.Instance, data.IsBold, preset)
+end
+end
+
+-- FontSizeElements: ทุก instance ที่มีขนาดตัวอักษรพื้นฐาน (BaseSize) เก็บไว้ปรับสัดส่วนได้ตาม CurrentFontScale
+local FontSizeElements = {}
+local function ApplyFontSize(instance, baseSize)
+if not instance then return end
+SafeSetProperty(instance, 'TextSize', math.floor(baseSize * CurrentFontScale + 0.5))
+table.insert(FontSizeElements, {
+BaseSize = baseSize,
+Instance = instance,
+})
+end
+
+local function UpdateFontSize(newScale)
+CurrentFontScale = math.clamp(newScale, 0.8, 1.3)
+for _, data in ipairs(FontSizeElements) do
+if data.Instance and data.Instance.Parent then
+SafeSetProperty(data.Instance, 'TextSize', math.floor(data.BaseSize * CurrentFontScale + 0.5))
+end
+end
+end
+
 -- CategoryButtons: เก็บปุ่ม Category ทุกปุ่ม (ทั้งที่ Active และ Idle) ไว้
 -- เพื่อให้ตอนเปลี่ยนสี Category จาก Settings (ไม่ว่าจะสี Active หรือ Idle) อัปเดตสีของทุกปุ่มได้ทันที
 -- ตามสถานะจริง ณ ขณะนั้นของแต่ละปุ่ม
@@ -1521,6 +1631,15 @@ end
 if savedTheme.DropdownListColor then
 CurrentDropdownListColor = Color3.fromRGB(savedTheme.DropdownListColor[1], savedTheme.DropdownListColor[2], savedTheme.DropdownListColor[3])
 end
+if savedTheme.TeamColor then
+CurrentTeamColor = Color3.fromRGB(savedTheme.TeamColor[1], savedTheme.TeamColor[2], savedTheme.TeamColor[3])
+end
+if savedTheme.FontFamily and FontPresets[savedTheme.FontFamily] then
+CurrentFontFamilyName = savedTheme.FontFamily
+end
+if savedTheme.FontScale ~= nil then
+CurrentFontScale = savedTheme.FontScale
+end
 if savedTheme.Language then
 local savedLang = string.lower(tostring(savedTheme.Language))
 if savedLang == 'th' or savedLang == 'thai' then
@@ -1559,6 +1678,9 @@ ThemeSettings.ElementColor = { math.floor(CurrentElementColor.R * 255), math.flo
 ThemeSettings.ButtonColor = { math.floor(CurrentButtonColor.R * 255), math.floor(CurrentButtonColor.G * 255), math.floor(CurrentButtonColor.B * 255) }
 ThemeSettings.DropdownColor = { math.floor(CurrentDropdownColor.R * 255), math.floor(CurrentDropdownColor.G * 255), math.floor(CurrentDropdownColor.B * 255) }
 ThemeSettings.DropdownListColor = { math.floor(CurrentDropdownListColor.R * 255), math.floor(CurrentDropdownListColor.G * 255), math.floor(CurrentDropdownListColor.B * 255) }
+ThemeSettings.TeamColor = { math.floor(CurrentTeamColor.R * 255), math.floor(CurrentTeamColor.G * 255), math.floor(CurrentTeamColor.B * 255) }
+ThemeSettings.FontFamily = CurrentFontFamilyName
+ThemeSettings.FontScale = CurrentFontScale
 ThemeSettings.Language = CurrentLanguage
 ThemeSettings.RunningLightEnabled = RunningLightEnabled
 ThemeSettings.RunningLightSpeed = RunningLightSpeed
@@ -1700,9 +1822,9 @@ local ToggleText = Instance.new('TextLabel')
 ToggleText.Parent = ToggleBtn
 ToggleText.BackgroundTransparency = 1
 ToggleText.Size = UDim2.new(1, 0, 1, 0)
-ToggleText.Font = Enum.Font.GothamBold
+ApplyFont(ToggleText, true)
 ToggleText.Text = ToggleConfig.Text or (ToggleConfig.Image and '' or 'UI')
-ToggleText.TextSize = 16
+ApplyFontSize(ToggleText, 16)
 ToggleText.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(ToggleText)
 
@@ -1758,8 +1880,8 @@ TitleLabel.BackgroundTransparency = 1
 TitleLabel.Position = UDim2.new(0, TitlePadding, 0, 0)
 TitleLabel.Size = UDim2.new(1, -TitlePadding - 40, 1, 0)
 TitleLabel.Text = WindowName or 'LMG2L Library'
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.TextSize = 14
+ApplyFont(TitleLabel, true)
+ApplyFontSize(TitleLabel, 14)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.TextTruncate = Enum.TextTruncate.AtEnd
 TitleLabel.ZIndex = 3
@@ -1792,9 +1914,9 @@ ResizeBtn.Parent = MainFrame
 ResizeBtn.BackgroundTransparency = 1
 ResizeBtn.Position = UDim2.new(1, -20, 1, -20)
 ResizeBtn.Size = UDim2.new(0, 20, 0, 20)
-ResizeBtn.Font = Enum.Font.GothamBold
+ApplyFont(ResizeBtn, true)
 ResizeBtn.Text = '\u{25e2}'
-ResizeBtn.TextSize = 16
+ApplyFontSize(ResizeBtn, 16)
 ResizeBtn.ZIndex = 10
 ApplyTheme(ResizeBtn, 'TextColor3')
 
@@ -1881,9 +2003,9 @@ CategoryBtn.Parent = Sidebar
 CategoryBtn.BackgroundColor3 = CurrentCategoryIdleColor  -- ← สี idle (ปรับได้จาก Settings)
 ApplyGlass(CategoryBtn)
 CategoryBtn.Size = UDim2.new(0.9, 0, 0, 32)
-CategoryBtn.Font = Enum.Font.GothamBold
+ApplyFont(CategoryBtn, true)
 CategoryBtn.Text = CategoryName
-CategoryBtn.TextSize = 13
+ApplyFontSize(CategoryBtn, 13)
 CategoryBtn.TextTruncate = Enum.TextTruncate.AtEnd
 CategoryBtn.ZIndex = 3
 Instance.new('UICorner', CategoryBtn).CornerRadius = UDim.new(0, 6)
@@ -1978,9 +2100,9 @@ local LabelText = Instance.new('TextLabel')
 LabelText.Parent = LabelContainer
 LabelText.BackgroundTransparency = 1
 LabelText.Size = UDim2.new(1, 0, 1, 0)
-LabelText.Font = Enum.Font.GothamBold
+ApplyFont(LabelText, true)
 LabelText.Text = Text
-LabelText.TextSize = 14
+ApplyFontSize(LabelText, 14)
 LabelText.TextXAlignment = Enum.TextXAlignment.Left
 LabelText.TextTruncate = Enum.TextTruncate.AtEnd
 if TextColor then LabelText.TextColor3 = TextColor
@@ -2016,9 +2138,9 @@ BtnLabel.Parent = ActionBtn
 BtnLabel.BackgroundTransparency = 1
 BtnLabel.Position = UDim2.new(0, 10, 0, 0)
 BtnLabel.Size = UDim2.new(1, -20, 1, 0)
-BtnLabel.Font = Enum.Font.Gotham
+ApplyFont(BtnLabel, false)
 BtnLabel.Text = ButtonText
-BtnLabel.TextSize = 14
+ApplyFontSize(BtnLabel, 14)
 BtnLabel.TextXAlignment = Enum.TextXAlignment.Left
 BtnLabel.TextTruncate = Enum.TextTruncate.AtEnd
 BtnLabel.ZIndex = ActionBtn.ZIndex + 1
@@ -2059,9 +2181,9 @@ TextboxLabel.Parent = TextboxContainer
 TextboxLabel.BackgroundTransparency = 1
 TextboxLabel.Position = UDim2.new(0, 10, 0, 0)
 TextboxLabel.Size = UDim2.new(0.5, 0, 1, 0)
-TextboxLabel.Font = Enum.Font.Gotham
+ApplyFont(TextboxLabel, false)
 TextboxLabel.Text = TextboxText
-TextboxLabel.TextSize = 14
+ApplyFontSize(TextboxLabel, 14)
 TextboxLabel.TextXAlignment = Enum.TextXAlignment.Left
 TextboxLabel.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(TextboxLabel)
@@ -2083,11 +2205,11 @@ TextBox.Parent = TextboxBg
 TextBox.BackgroundTransparency = 1
 TextBox.Size = UDim2.new(1, -10, 1, 0)
 TextBox.Position = UDim2.new(0, 5, 0, 0)
-TextBox.Font = Enum.Font.Gotham
+ApplyFont(TextBox, false)
 TextBox.PlaceholderText = Placeholder or ''
 TextBox.PlaceholderColor3 = C.TextDim
 TextBox.Text = RestoredText or ''
-TextBox.TextSize = 12
+ApplyFontSize(TextBox, 12)
 TextBox.TextXAlignment = Enum.TextXAlignment.Left
 TextBox.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(TextBox)
@@ -2123,9 +2245,9 @@ TextboxLabel.Parent = TextboxContainer
 TextboxLabel.BackgroundTransparency = 1
 TextboxLabel.Position = UDim2.new(0, 10, 0, 0)
 TextboxLabel.Size = UDim2.new(0.5, 0, 1, 0)
-TextboxLabel.Font = Enum.Font.Gotham
+ApplyFont(TextboxLabel, false)
 TextboxLabel.Text = LabelText
-TextboxLabel.TextSize = 14
+ApplyFontSize(TextboxLabel, 14)
 TextboxLabel.TextXAlignment = Enum.TextXAlignment.Left
 TextboxLabel.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(TextboxLabel)
@@ -2147,11 +2269,11 @@ TextBox.Parent = TextboxBg
 TextBox.BackgroundTransparency = 1
 TextBox.Size = UDim2.new(1, -10, 1, 0)
 TextBox.Position = UDim2.new(0, 5, 0, 0)
-TextBox.Font = Enum.Font.Gotham
+ApplyFont(TextBox, false)
 TextBox.PlaceholderText = tostring(DefaultNumber or '')
 TextBox.PlaceholderColor3 = C.TextDim
 TextBox.Text = DefaultNumber and tostring(DefaultNumber) or ''
-TextBox.TextSize = 12
+ApplyFontSize(TextBox, 12)
 TextBox.TextXAlignment = Enum.TextXAlignment.Left
 TextBox.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(TextBox)
@@ -2194,11 +2316,11 @@ TextBox.Parent = SearchContainer
 TextBox.BackgroundTransparency = 1
 TextBox.Size = UDim2.new(1, -40, 1, 0)
 TextBox.Position = UDim2.new(0, 35, 0, 0)
-TextBox.Font = Enum.Font.Gotham
+ApplyFont(TextBox, false)
 TextBox.PlaceholderText = Placeholder or 'Search...'
 TextBox.PlaceholderColor3 = C.TextDim
 TextBox.Text = ''
-TextBox.TextSize = 14
+ApplyFontSize(TextBox, 14)
 TextBox.TextXAlignment = Enum.TextXAlignment.Left
 TextBox.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(TextBox)
@@ -2241,9 +2363,9 @@ ToggleLabel.Parent = ToggleContainer
 ToggleLabel.BackgroundTransparency = 1
 ToggleLabel.Position = UDim2.new(0, 10, 0, 0)
 ToggleLabel.Size = UDim2.new(0.7, 0, 1, 0)
-ToggleLabel.Font = Enum.Font.Gotham
+ApplyFont(ToggleLabel, false)
 ToggleLabel.Text = ToggleText
-ToggleLabel.TextSize = 14
+ApplyFontSize(ToggleLabel, 14)
 ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
 ToggleLabel.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(ToggleLabel)
@@ -2338,9 +2460,9 @@ SliderLabel.Parent = SliderContainer
 SliderLabel.Position = UDim2.new(0, 10, 0, 5)
 SliderLabel.BackgroundTransparency = 1
 SliderLabel.Size = UDim2.new(0.5, 0, 0, 20)
-SliderLabel.Font = Enum.Font.Gotham
+ApplyFont(SliderLabel, false)
 SliderLabel.Text = SliderText
-SliderLabel.TextSize = 14
+ApplyFontSize(SliderLabel, 14)
 SliderLabel.TextXAlignment = Enum.TextXAlignment.Left
 SliderLabel.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(SliderLabel)
@@ -2354,9 +2476,9 @@ ValueLabel.Parent = SliderContainer
 ValueLabel.BackgroundTransparency = 1
 ValueLabel.Position = UDim2.new(1, -60, 0, 5)
 ValueLabel.Size = UDim2.new(0, 50, 0, 20)
-ValueLabel.Font = Enum.Font.GothamBold
+ApplyFont(ValueLabel, true)
 ValueLabel.Text = tostring(CurrentValue)
-ValueLabel.TextSize = 14
+ApplyFontSize(ValueLabel, 14)
 ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
 ValueLabel.TextColor3 = C.AccentHov           -- ← ค่าตัวเลข = ม่วงสว่าง
 ApplyTextColor(ValueLabel)
@@ -2448,13 +2570,13 @@ local DropdownBtn = Instance.new('TextButton')
 DropdownBtn.Parent = DropdownContainer
 DropdownBtn.BackgroundTransparency = 1
 DropdownBtn.Size = UDim2.new(1, 0, 0, 35)
-DropdownBtn.Font = Enum.Font.Gotham
+ApplyFont(DropdownBtn, false)
 if Default then
 DropdownBtn.Text = ' ' .. DropdownText .. ' : ' .. tostring(Default)
 else
 DropdownBtn.Text = ' ' .. DropdownText .. ' : Select Option'
 end
-DropdownBtn.TextSize = 14
+ApplyFontSize(DropdownBtn, 14)
 DropdownBtn.TextXAlignment = Enum.TextXAlignment.Left
 DropdownBtn.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(DropdownBtn)
@@ -2468,9 +2590,9 @@ ArrowIcon.Parent = DropdownBtn
 ArrowIcon.BackgroundTransparency = 1
 ArrowIcon.Position = UDim2.new(1, -30, 0, 0)
 ArrowIcon.Size = UDim2.new(0, 30, 1, 0)
-ArrowIcon.Font = Enum.Font.GothamBold
+ApplyFont(ArrowIcon, true)
 ArrowIcon.Text = '▼'
-ArrowIcon.TextSize = 12
+ApplyFontSize(ArrowIcon, 12)
 ApplyTheme(ArrowIcon, 'TextColor3')
 
 local OptionList = Instance.new('Frame')
@@ -2489,11 +2611,11 @@ SearchBox.BackgroundColor3 = C.BgInput
 ApplyGlass(SearchBox)
 SearchBox.BorderSizePixel = 0
 SearchBox.Size = UDim2.new(1, 0, 0, 30)
-SearchBox.Font = Enum.Font.Gotham
+ApplyFont(SearchBox, false)
 SearchBox.PlaceholderText = 'Search in Dropdown...'
 SearchBox.PlaceholderColor3 = C.TextDim
 SearchBox.Text = ''
-SearchBox.TextSize = 14
+ApplyFontSize(SearchBox, 14)
 SearchBox.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(SearchBox)
 
@@ -2523,11 +2645,11 @@ ApplyDropdownColor(OptionBtn)
 ApplyGlass(OptionBtn)
 OptionBtn.BorderSizePixel = 0
 OptionBtn.Size = UDim2.new(1, 0, 0, 30)
-OptionBtn.Font = Enum.Font.Gotham
+ApplyFont(OptionBtn, false)
 OptionBtn.Text = ' ' .. tostring(option)
 OptionBtn:SetAttribute('OptionText', tostring(option))
 OptionBtn.TextXAlignment = Enum.TextXAlignment.Left
-OptionBtn.TextSize = 14
+ApplyFontSize(OptionBtn, 14)
 ApplyTextColor(OptionBtn)
 table.insert(OptionBtns, OptionBtn)
 OptionBtn.MouseButton1Click:Connect(function()
@@ -2609,6 +2731,11 @@ end
 return CategoryElements, CategoryPage, CategoryBtn
 end
 WindowElements.Flags = Flags
+
+-- เปิดให้สคริปต์ผู้ใช้ผูก instance ของตัวเอง (เช่น ป้ายทีม/แถบสถานะ) เข้ากับสี Team ที่ปรับได้จาก Settings
+WindowElements.ApplyTeamColor = ApplyTeamColor
+WindowElements.UpdateTeamColor = UpdateTeamColor
+WindowElements.GetTeamColor = function() return CurrentTeamColor end
 
 function WindowElements:GetFlag(FlagName)
 local flagData = Flags[FlagName]
@@ -2703,6 +2830,10 @@ local RLR = math.floor(CurrentRunningLightColor.R * 255 + 0.5)
 local RLG = math.floor(CurrentRunningLightColor.G * 255 + 0.5)
 local RLB = math.floor(CurrentRunningLightColor.B * 255 + 0.5)
 local RLSpeedValue = math.floor(RunningLightSpeed + 0.5)
+local TeamR = math.floor(CurrentTeamColor.R * 255 + 0.5)
+local TeamG = math.floor(CurrentTeamColor.G * 255 + 0.5)
+local TeamB = math.floor(CurrentTeamColor.B * 255 + 0.5)
+local FontSizePercent = math.floor(CurrentFontScale * 100 + 0.5)
 
 local function PersistThemeSettings()
 ThemeSettings.Accent = { AccentR, AccentG, AccentB }
@@ -2717,6 +2848,9 @@ ThemeSettings.ButtonColor = { ButtonR, ButtonG, ButtonB }
 ThemeSettings.DropdownColor = { DropR, DropG, DropB }
 ThemeSettings.DropdownListColor = { DropListR, DropListG, DropListB }
 ThemeSettings.ElementColor = { ElemR, ElemG, ElemB }
+ThemeSettings.TeamColor = { TeamR, TeamG, TeamB }
+ThemeSettings.FontFamily = CurrentFontFamilyName
+ThemeSettings.FontScale = CurrentFontScale
 ThemeSettings.Language = CurrentLanguage
 ThemeSettings.RunningLightEnabled = RunningLightEnabled
 ThemeSettings.RunningLightSpeed = RunningLightSpeed
@@ -2756,6 +2890,9 @@ UpdateButtonColor(preset.ButtonColor)
 UpdateDropdownColor(preset.DropdownColor)
 UpdateDropdownListColor(preset.DropdownListColor)
 UpdateElementColor(preset.ElementColor)
+if preset.TeamColor then
+UpdateTeamColor(preset.TeamColor)
+end
 CurrentRunningLightColor = preset.RunningLightColor
 if not RunningLightEnabled then
 ApplyRunningLightStatic()
@@ -2772,6 +2909,9 @@ DropR, DropG, DropB = math.floor(preset.DropdownColor.R * 255 + 0.5), math.floor
 DropListR, DropListG, DropListB = math.floor(preset.DropdownListColor.R * 255 + 0.5), math.floor(preset.DropdownListColor.G * 255 + 0.5), math.floor(preset.DropdownListColor.B * 255 + 0.5)
 ElemR, ElemG, ElemB = math.floor(preset.ElementColor.R * 255 + 0.5), math.floor(preset.ElementColor.G * 255 + 0.5), math.floor(preset.ElementColor.B * 255 + 0.5)
 RLR, RLG, RLB = math.floor(preset.RunningLightColor.R * 255 + 0.5), math.floor(preset.RunningLightColor.G * 255 + 0.5), math.floor(preset.RunningLightColor.B * 255 + 0.5)
+if preset.TeamColor then
+TeamR, TeamG, TeamB = math.floor(preset.TeamColor.R * 255 + 0.5), math.floor(preset.TeamColor.G * 255 + 0.5), math.floor(preset.TeamColor.B * 255 + 0.5)
+end
 
 -- วาดหน้า Settings ใหม่ทันที เพื่อให้ slider ทุกตัวแสดงค่าตรงกับธีมที่เพิ่งเลือก
 BuildSettingsUI()
@@ -2931,6 +3071,20 @@ ElemB = v
 UpdateElementColor(Color3.fromRGB(ElemR, ElemG, ElemB))
 end)
 
+SettingsTab:CreateLabel(T.TeamColorSubHeader, 'lucide-users')
+SettingsTab:CreateSlider(T.TeamRed, nil, 0, 255, TeamR, nil, function(v)
+TeamR = v
+UpdateTeamColor(Color3.fromRGB(TeamR, TeamG, TeamB))
+end)
+SettingsTab:CreateSlider(T.TeamGreen, nil, 0, 255, TeamG, nil, function(v)
+TeamG = v
+UpdateTeamColor(Color3.fromRGB(TeamR, TeamG, TeamB))
+end)
+SettingsTab:CreateSlider(T.TeamBlue, nil, 0, 255, TeamB, nil, function(v)
+TeamB = v
+UpdateTeamColor(Color3.fromRGB(TeamR, TeamG, TeamB))
+end)
+
 -- ===================== Running Light (เส้นขอบวิ่ง) =====================
 SettingsTab:CreateLabel(T.RunningLightHeader, 'lucide-activity')
 SettingsTab:CreateToggle(T.RunningLightEnable, 'lucide-flame', RunningLightEnabled, nil, function(state)
@@ -2968,6 +3122,16 @@ end)
 SettingsTab:CreateToggle(T.BorderToggle, 'lucide-square', BorderEnabled, nil, function(state)
 BorderEnabled = state
 if MainStroke then MainStroke.Enabled = BorderEnabled end
+end)
+
+-- ===================== ฟอนต์ (Font Family / Font Size) =====================
+SettingsTab:CreateLabel(T.FontHeader, 'lucide-baseline')
+SettingsTab:CreateDropdown(T.FontFamilyLabel, 'lucide-baseline', FontPresetOrder, CurrentFontFamilyName, nil, function(selected)
+UpdateFontFamily(selected)
+end)
+SettingsTab:CreateSlider(T.FontSizeLabel, nil, 80, 130, FontSizePercent, nil, function(v)
+FontSizePercent = v
+UpdateFontSize(v / 100)
 end)
 
 -- ===================== ภาษา (Language) =====================
@@ -3027,6 +3191,10 @@ RunningLightEnabled = true
 PatternEnabled = true
 BorderEnabled = true
 CurrentLanguage = 'en'
+TeamR = math.floor(C.TeamDefault.R * 255 + 0.5)
+TeamG = math.floor(C.TeamDefault.G * 255 + 0.5)
+TeamB = math.floor(C.TeamDefault.B * 255 + 0.5)
+FontSizePercent = 100
 UpdateThemeColor(C.Accent)
 UpdateTextColor(C.TextMain)
 UpdateGlassTransparency(C.GlassTransparency)
@@ -3037,6 +3205,9 @@ UpdateButtonColor(C.BgElement)
 UpdateDropdownColor(C.BgCard)
 UpdateDropdownListColor(C.BgMid)
 UpdateElementColor(C.BgCard)
+UpdateTeamColor(C.TeamDefault)
+UpdateFontFamily('Gotham')
+UpdateFontSize(1)
 CurrentRunningLightColor = C.Accent
 if PatternBg then PatternBg.Visible = true end
 if MainStroke then MainStroke.Enabled = true end
