@@ -1141,6 +1141,24 @@ end
 end)
 end
 
+-- Hover effect ทั่วไป: สว่างขึ้นเล็กน้อยตอนเมาส์ชี้ที่ instance แล้ว fade กลับสีเดิมตอนเมาส์ออก
+-- getBaseColor: ฟังก์ชันคืนค่าสีปัจจุบันที่ "ควรกลับไป" ตอนเมาส์ออก (เผื่อสีถูกเปลี่ยนจาก Settings ระหว่างนั้น)
+local function AddHoverBrighten(instance, getBaseColor, brightenAmount)
+brightenAmount = brightenAmount or 0.1
+instance.MouseEnter:Connect(function()
+local ok, base = pcall(getBaseColor)
+if not ok or not base then return end
+local h, s, v = base:ToHSV()
+local hoverColor = Color3.fromHSV(h, s, math.clamp(v + brightenAmount, 0, 1))
+TweenService:Create(instance, TweenInfo.new(0.12), { BackgroundColor3 = hoverColor }):Play()
+end)
+instance.MouseLeave:Connect(function()
+local ok, base = pcall(getBaseColor)
+if not ok or not base then return end
+TweenService:Create(instance, TweenInfo.new(0.16), { BackgroundColor3 = base }):Play()
+end)
+end
+
 -- ============================================================
 -- สีธีมเทาโปร่งแสง (ค่า RGB สำหรับใช้ทั่วทั้งไฟล์)
 -- ============================================================
@@ -1724,6 +1742,7 @@ MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
 MainFrame.Size = UDim2.new(0, 500, 0, 350)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
+MainFrame.Visible = false -- ← ซ่อนไว้ก่อน จะเล่นอนิเมชั่นเปิดหลังสร้าง UI เสร็จทั้งหมด (ดูท้ายฟังก์ชัน CreateWindow)
 Instance.new('UICorner', MainFrame).CornerRadius = UDim.new(0, 10)
 
 -- pattern overlay (ลด opacity ให้เบาลง บนพื้นดำม่วง)
@@ -1829,8 +1848,46 @@ ToggleText.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(ToggleText)
 
 MakeDraggable(ToggleBtn)
+AddHoverBrighten(ToggleBtn, function() return C.BgCard end)
+
+-- เปิด/ปิดหน้าต่างพร้อมอนิเมชั่นย่อ-ขยายจากจุดกึ่งกลางของตัวมันเอง (คำนวณจาก Size/Position ปัจจุบัน
+-- จึงใช้ได้ถูกต้องแม้ผู้ใช้จะเคยลาก/ปรับขนาดหน้าต่างไปแล้ว)
+local WindowAnimating = false
+local function SetWindowOpen(shouldOpen)
+if WindowAnimating or shouldOpen == MainFrame.Visible then return end
+WindowAnimating = true
+local fullSize = MainFrame.Size
+local fullPos = MainFrame.Position
+local centerPos = UDim2.new(fullPos.X.Scale, fullPos.X.Offset + fullSize.X.Offset / 2, fullPos.Y.Scale, fullPos.Y.Offset + fullSize.Y.Offset / 2)
+local zeroSize = UDim2.new(fullSize.X.Scale, 0, fullSize.Y.Scale, 0)
+
+if shouldOpen then
+MainFrame.Size = zeroSize
+MainFrame.Position = centerPos
+MainFrame.Visible = true
+local openTween = TweenService:Create(MainFrame, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+Size = fullSize,
+Position = fullPos,
+})
+openTween.Completed:Connect(function() WindowAnimating = false end)
+openTween:Play()
+else
+local closeTween = TweenService:Create(MainFrame, TweenInfo.new(0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+Size = zeroSize,
+Position = centerPos,
+})
+closeTween.Completed:Connect(function()
+MainFrame.Visible = false
+MainFrame.Size = fullSize
+MainFrame.Position = fullPos
+WindowAnimating = false
+end)
+closeTween:Play()
+end
+end
+
 ToggleBtn.MouseButton1Click:Connect(function()
-MainFrame.Visible = not MainFrame.Visible
+SetWindowOpen(not MainFrame.Visible)
 end)
 
 -- ===================== TopBar =====================
@@ -1978,6 +2035,20 @@ ContentContainer.Position = UDim2.new(0.29, 0, 0.12, 0)
 ContentContainer.Size = UDim2.new(0.69, 0, 0.84, 0)
 ContentContainer.ZIndex = 2
 
+-- เล่นอนิเมชั่นเลื่อนขึ้นเบาๆ ให้หน้า Category/Settings ตอนถูกเปิดขึ้นมาแสดง (สลับแท็บ/เปิด Settings)
+local function AnimatePageIn(page)
+if not page then return end
+local basePos = page:GetAttribute('BasePosition')
+if not basePos then
+basePos = page.Position
+page:SetAttribute('BasePosition', basePos)
+end
+page.Position = UDim2.new(basePos.X.Scale, basePos.X.Offset, basePos.Y.Scale, basePos.Y.Offset + 10)
+TweenService:Create(page, TweenInfo.new(0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+Position = basePos,
+}):Play()
+end
+
 -- ============================================================
 local WindowElements = {}
 
@@ -2017,6 +2088,9 @@ CategoryBtn:SetAttribute('CategorySelected', false)
 RegisterCategoryButton(CategoryBtn, function()
 return CategoryBtn:GetAttribute('CategorySelected') == true
 end)
+AddHoverBrighten(CategoryBtn, function()
+return CategoryBtn:GetAttribute('CategorySelected') and CurrentCategoryColor or CurrentCategoryIdleColor
+end, 0.08)
 
 -- Hidden = true: ใช้สำหรับแท็บที่ไม่อยากให้โชว์เป็นปุ่มปกติใน sidebar (เช่น Settings)
 -- จะถูกเรียกออกมาแสดงผ่านฟังก์ชัน/ปุ่มอื่นแทน ไม่ใช่การคลิกที่ sidebar
@@ -2073,6 +2147,7 @@ btn:SetAttribute('CategorySelected', false)
 end
 end
 CategoryPage.Visible = true
+AnimatePageIn(CategoryPage)
 CategoryBtn:SetAttribute('CategorySelected', true)
 TweenService:Create(CategoryBtn, TweenInfo.new(0.2), {
 BackgroundColor3 = CurrentCategoryColor,        -- ← active = สี Category (ปรับได้จาก Settings)
@@ -2151,6 +2226,8 @@ if AddElementIcon(ActionBtn, IconName, 18, 10) then
 BtnLabel.Position = UDim2.new(0, 36, 0, 0)
 BtnLabel.Size = UDim2.new(1, -46, 1, 0)
 end
+
+AddHoverBrighten(ActionBtn, function() return CurrentButtonColor end)
 
 ActionBtn.MouseButton1Click:Connect(function()
 TweenService:Create(ActionBtn, TweenInfo.new(0.08), { BackgroundColor3 = C.Accent }):Play()
@@ -2580,6 +2657,15 @@ ApplyFontSize(DropdownBtn, 14)
 DropdownBtn.TextXAlignment = Enum.TextXAlignment.Left
 DropdownBtn.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(DropdownBtn)
+DropdownBtn.MouseEnter:Connect(function()
+local h, s, v = CurrentDropdownColor:ToHSV()
+TweenService:Create(DropdownContainer, TweenInfo.new(0.12), { BackgroundColor3 = Color3.fromHSV(h, s, math.clamp(v + 0.08, 0, 1)) }):Play()
+end)
+DropdownBtn.MouseLeave:Connect(function()
+if not isOpen then
+TweenService:Create(DropdownContainer, TweenInfo.new(0.16), { BackgroundColor3 = CurrentDropdownColor }):Play()
+end
+end)
 if IconOffset > 0 then
 local ddPad = Instance.new('UIPadding', DropdownBtn)
 ddPad.PaddingLeft = UDim.new(0, IconOffset)
@@ -2757,6 +2843,19 @@ function WindowElements:Destroy()
 ScreenGui:Destroy()
 end
 
+-- เปิด/ปิด/สลับหน้าต่างจากภายนอกด้วยอนิเมชั่นเดียวกับปุ่ม Toggle
+function WindowElements:Show()
+SetWindowOpen(true)
+end
+
+function WindowElements:Hide()
+SetWindowOpen(false)
+end
+
+function WindowElements:ToggleVisibility()
+SetWindowOpen(not MainFrame.Visible)
+end
+
 -- ===================== แถบตั้งค่า UI (Settings Tab) =====================
 -- สร้างอัตโนมัติทุกครั้งที่เปิดหน้าต่าง เว้นแต่ตั้ง Config.ShowSettingsTab = false
 -- ใช้ task.defer เพื่อรอให้สคริปต์ผู้ใช้สร้างแท็บของตัวเองให้ครบก่อน (แบบ synchronous)
@@ -2779,6 +2878,7 @@ page.Visible = false
 end
 end
 SettingsPage.Visible = true
+AnimatePageIn(SettingsPage)
 SettingsOpen = true
 end
 
@@ -2787,6 +2887,7 @@ if not SettingsOpen then return end
 SettingsPage.Visible = false
 if PreviousPage and PreviousPage.Parent then
 PreviousPage.Visible = true
+AnimatePageIn(PreviousPage)
 end
 SettingsOpen = false
 end
@@ -3220,6 +3321,13 @@ end
 
 -- วาดหน้า Settings ครั้งแรกด้วยภาษาเริ่มต้น (English เว้นแต่ผู้ใช้ตั้ง Config.Language หรือมีค่าที่เคยเซฟไว้)
 BuildSettingsUI()
+end)
+end
+
+-- เล่นอนิเมชั่นเปิดหน้าต่างครั้งแรกหลังสร้าง UI เสร็จทั้งหมด (ปิดได้ด้วย Config.StartOpen = false)
+if Config.StartOpen ~= false then
+task.defer(function()
+SetWindowOpen(true)
 end)
 end
 
