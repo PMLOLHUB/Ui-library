@@ -2248,34 +2248,9 @@ TopBar.ZIndex = 2
 Instance.new('UICorner', TopBar).CornerRadius = UDim.new(0, 10)
 
 -- fix bottom corners
--- เดิม: ใช้เฟรมเดียวคลุมครึ่งล่างทั้งแถบ แล้วสั่ง ApplyGlass ซ้ำ (ค่า GTrans เดียวกับ TopBar)
--- เพราะเฟรมนี้เป็นลูกของ TopBar จึงวาดทับอยู่บน TopBar ที่โปร่งแสงอยู่แล้ว ทำให้ครึ่งล่าง
--- โดนความโปร่งแสงซ้อนกัน 2 ชั้น (เข้มกว่าครึ่งบน) กลายเป็นแถบสีเข้มไม่เท่ากันพาดผ่านแนวไอคอนตั้งค่า
--- แก้โดยคลุมเฉพาะ "มุมโค้ง" ด้วยแพตช์ทึบเล็กๆ (เท่ารัศมี UICorner) แทนการคลุมเต็มความกว้าง
--- และไม่เรียก ApplyGlass เพื่อไม่ให้ซ้อนความโปร่งแสงอีกชั้น
--- หมายเหตุ: เดิมแพตช์นี้ใช้สี C.BgMid ตายตัว ไม่ตรงกับสีพื้นหลังที่ปรับได้จาก Settings/ธีมสำเร็จรูป/พื้นหลังรูปภาพ
--- ทำให้เห็นเป็นสี่เหลี่ยมเล็กๆ สีไม่ตรงกันที่มุมซ้าย-ขวาบนสุดเวลาลูกค้าเปลี่ยนธีม จึงเปลี่ยนมาผูกกับ ApplyBackground
--- เช่นเดียวกับ TopBar เอง เพื่อให้สีตรงกันเสมอไม่ว่าจะปรับพื้นหลังเป็นสีอะไรก็ตาม
-local CornerFixSize = 10
-local TopBarFixLeft = Instance.new('Frame')
-TopBarFixLeft.Name = 'TopBarFixLeft'
-TopBarFixLeft.Parent = TopBar
-ApplyBackground(TopBarFixLeft)
-TopBarFixLeft.BackgroundTransparency = 0
-TopBarFixLeft.Position = UDim2.new(0, 0, 1, -CornerFixSize)
-TopBarFixLeft.Size = UDim2.new(0, CornerFixSize, 0, CornerFixSize)
-TopBarFixLeft.BorderSizePixel = 0
-TopBarFixLeft.ZIndex = 2
-
-local TopBarFixRight = Instance.new('Frame')
-TopBarFixRight.Name = 'TopBarFixRight'
-TopBarFixRight.Parent = TopBar
-ApplyBackground(TopBarFixRight)
-TopBarFixRight.BackgroundTransparency = 0
-TopBarFixRight.Position = UDim2.new(1, -CornerFixSize, 1, -CornerFixSize)
-TopBarFixRight.Size = UDim2.new(0, CornerFixSize, 0, CornerFixSize)
-TopBarFixRight.BorderSizePixel = 0
-TopBarFixRight.ZIndex = 2
+-- หมายเหตุ: เดิมตรงนี้มีแพตช์เหลี่ยมเล็กๆ (TopBarFixLeft/TopBarFixRight) คลุมมุมล่างซ้าย-ขวาของ TopBar
+-- เพื่อกันความโปร่งแสงซ้อนกัน 2 ชั้นตรงมุมโค้ง แต่ผู้ใช้เห็นเป็นแพตช์สี่เหลี่ยมเล็กๆ โผล่ผิดที่ที่มุมบนของ UI
+-- (โดยเฉพาะเมื่อใช้พื้นหลังรูปภาพหรือธีมบางสี) จึงเอาออก ให้ TopBar ใช้มุมโค้งของ UICorner ตามปกติไปเลย
 
 -- เส้นเรืองแสงด้านล่าง topbar — ผูกกับสี Accent แบบสด (เดิมค้างเป็นสีเทาตายตัว ไม่ตรงกับสี Accent ที่ปรับใน Settings
 -- ทำให้ดูเหมือนมีสองสีไม่ตรงกันที่แถบด้านบนใกล้ไอคอนตั้งค่า)
@@ -3302,9 +3277,10 @@ end)
 SetPickerExpanded(false, false)
 end
 
-function CategoryElements:CreateDropdown(DropdownText, IconName, Options, Default, Flag, Callback)
--- ลำดับใหม่: CreateDropdown(Text, IconName, Options, Default, Flag, Callback)
+function CategoryElements:CreateDropdown(DropdownText, IconName, Options, Default, Flag, Callback, HideArrow)
+-- ลำดับใหม่: CreateDropdown(Text, IconName, Options, Default, Flag, Callback, HideArrow)
 -- ตรวจจับอัตโนมัติถ้าเรียกแบบเก่าที่ไม่มี IconName: CreateDropdown(Text, Options, Default, Flag, Callback)
+-- HideArrow (optional, ท้ายสุด): true = ไม่แสดงไอคอนหน้ากล่องและลูกศร ▼ ท้ายกล่อง (ใช้กับบางกล่องที่ต้องการหน้าตาเรียบๆ)
 if type(IconName) == 'table' then
 Callback = Flag; Flag = Default; Default = Options; Options = IconName; IconName = nil
 end
@@ -3329,7 +3305,7 @@ local dds = Instance.new('UIStroke', DropdownContainer)
 dds.Thickness = 1; dds.Color = C.AccentDim
 
 local IconOffset = 0
-if IconName and Icons and Icons[IconName] then
+if not HideArrow and IconName and Icons and Icons[IconName] then
 IconOffset = 22
 local DropdownIcon = Instance.new('ImageLabel')
 DropdownIcon.Name = 'ElementIcon'
@@ -3370,6 +3346,7 @@ local ddPad = Instance.new('UIPadding', DropdownBtn)
 ddPad.PaddingLeft = UDim.new(0, IconOffset)
 end
 
+if not HideArrow then
 local ArrowIcon = Instance.new('TextLabel')
 ArrowIcon.Parent = DropdownBtn
 ArrowIcon.BackgroundTransparency = 1
@@ -3379,6 +3356,7 @@ ApplyFont(ArrowIcon, true)
 ArrowIcon.Text = '▼'
 ApplyFontSize(ArrowIcon, 12)
 ApplyTheme(ArrowIcon, 'TextColor3')
+end
 
 local OptionList = Instance.new('Frame')
 OptionList.Parent = DropdownContainer
@@ -3732,7 +3710,7 @@ ClearSettingsContent()
 SettingsTab:CreateLabel(T.PresetHeader, 'lucide-palette')
 SettingsTab:CreateDropdown(T.PresetLabel, 'lucide-palette', PresetThemeOrder, nil, nil, function(selected)
 ApplyPresetTheme(selected)
-end)
+end, true)
 
 -- ===================== สีหลัก (Essential / Quick Color Settings) =====================
 -- รวม 4 การตั้งค่าสีที่จำเป็นที่สุดไว้ในหมวดเดียว เพื่อให้เข้าถึงง่ายและประหยัดพื้นที่
