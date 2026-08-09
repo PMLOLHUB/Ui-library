@@ -945,6 +945,8 @@ en = {
 Settings = 'Settings',
 PresetHeader = 'Preset Themes',
 PresetLabel = 'Choose a Preset Theme',
+EssentialColorHeader = 'Quick Color Settings',
+AdvancedColorHeader = 'Advanced Color Customization',
 AccentHeader = 'Customize Accent Color',
 AccentRed = 'Accent - Red',
 AccentGreen = 'Accent - Green',
@@ -957,6 +959,7 @@ TextBlue = 'Text - Blue',
 RainbowText = 'Rainbow Text',
 TransparencyHeader = 'UI Transparency',
 TransparencyLabel = 'Transparency (%)',
+LightContrastLabel = 'Light Contrast (%)',
 BackgroundHeader = 'Customize Background Color',
 BackgroundRed = 'Background - Red',
 BackgroundGreen = 'Background - Green',
@@ -1014,6 +1017,8 @@ th = {
 Settings = 'ตั้งค่า',
 PresetHeader = 'ธีมสำเร็จรูป',
 PresetLabel = 'เลือกธีมสำเร็จรูป',
+EssentialColorHeader = 'ตั้งค่าสีด่วน',
+AdvancedColorHeader = 'ปรับแต่งสีขั้นสูง',
 AccentHeader = 'ปรับแต่งสี Accent',
 AccentRed = 'Accent - Red',
 AccentGreen = 'Accent - Green',
@@ -1026,6 +1031,7 @@ TextBlue = 'Text - Blue',
 RainbowText = 'Rainbow ข้อความ',
 TransparencyHeader = 'ความโปร่งแสงของ UI',
 TransparencyLabel = 'ความโปร่งแสง (%)',
+LightContrastLabel = 'ความสว่าง/ความโปร่งแสง (%)',
 BackgroundHeader = 'ปรับแต่งสีพื้นหลัง',
 BackgroundRed = 'พื้นหลัง - Red',
 BackgroundGreen = 'พื้นหลัง - Green',
@@ -2652,11 +2658,18 @@ if Flag then
 Flags[Flag] = { Type = 'ColorPicker', Value = { math.floor(DefaultColor.R * 255 + 0.5), math.floor(DefaultColor.G * 255 + 0.5), math.floor(DefaultColor.B * 255 + 0.5) } }
 end
 
+-- ค่าความสูงของกล่อง ColorPicker: แบบย่อ (แสดงแค่แถบหัวข้อ + hex + swatch) และแบบขยายเต็ม (มี SV box + Hue bar)
+-- ค่าเริ่มต้นคือ "ย่อ" เสมอ เพื่อประหยัดพื้นที่ในเมนู Settings ผู้ใช้กดที่แถบหัวข้อเพื่อขยายออกมาเลือกสีแบบเต็มรูปแบบ
+local PickerCollapsedHeight = 34
+local PickerExpandedHeight = 168
+local PickerExpanded = false
+
 local PickerContainer = Instance.new('Frame')
 PickerContainer.Parent = CategoryPage
 ApplyElementColor(PickerContainer)
 ApplyGlass(PickerContainer)
-PickerContainer.Size = UDim2.new(0.95, 0, 0, 168)
+PickerContainer.Size = UDim2.new(0.95, 0, 0, PickerCollapsedHeight)
+PickerContainer.ClipsDescendants = true
 Instance.new('UICorner', PickerContainer).CornerRadius = UDim.new(0, 6)
 local pcs = Instance.new('UIStroke', PickerContainer)
 pcs.Thickness = 1; pcs.Color = C.AccentDim
@@ -2667,11 +2680,15 @@ PickerLabel.Position = UDim2.new(0, 10, 0, 6)
 PickerLabel.BackgroundTransparency = 1
 PickerLabel.Size = UDim2.new(0.55, 0, 0, 20)
 ApplyFont(PickerLabel, false)
-PickerLabel.Text = PickerText
 ApplyFontSize(PickerLabel, 14)
 PickerLabel.TextXAlignment = Enum.TextXAlignment.Left
 PickerLabel.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(PickerLabel)
+-- แสดงลูกศรบอกสถานะย่อ/ขยายไว้หน้าชื่อหัวข้อ (▸ = ปิดอยู่, ▾ = เปิดอยู่)
+local function RefreshPickerLabelText()
+PickerLabel.Text = (PickerExpanded and '\226\150\190 ' or '\226\150\184 ') .. PickerText
+end
+RefreshPickerLabelText()
 if AddElementIcon(PickerContainer, IconName, 16, 10) then
 PickerLabel.Position = UDim2.new(0, 32, 0, 6)
 PickerLabel.Size = UDim2.new(0.5, -22, 0, 20)
@@ -2722,6 +2739,7 @@ SVBox.Size = UDim2.new(1, -20, 0, 96)
 SVBox.BackgroundColor3 = Color3.fromHSV(Hue, 1, 1)
 SVBox.BorderSizePixel = 0
 SVBox.ClipsDescendants = true
+SVBox.Visible = PickerExpanded
 Instance.new('UICorner', SVBox).CornerRadius = UDim.new(0, 6)
 
 local SatOverlay = Instance.new('Frame')
@@ -2778,6 +2796,7 @@ HueBar.Parent = PickerContainer
 HueBar.Position = UDim2.new(0, 10, 0, 134)
 HueBar.Size = UDim2.new(1, -20, 0, 16)
 HueBar.BorderSizePixel = 0
+HueBar.Visible = PickerExpanded
 Instance.new('UICorner', HueBar).CornerRadius = UDim.new(0, 6)
 local HueGradient = Instance.new('UIGradient', HueBar)
 HueGradient.Color = ColorSequence.new({
@@ -2871,6 +2890,39 @@ if draggingHue and (input.UserInputType == Enum.UserInputType.MouseMovement or i
 UpdateHueFromInput(input)
 end
 end)
+
+-- ===== ปุ่มกด แถบหัวข้อ เพื่อย่อ/ขยายกล่องเลือกสี =====
+-- คลิกที่แถบบนสุด (ชื่อหัวข้อ / hex / swatch) เพื่อสลับระหว่างโหมดย่อ (ประหยัดพื้นที่) กับโหมดขยาย (เลือกสีแบบเต็ม)
+local ToggleButton = Instance.new('TextButton')
+ToggleButton.Name = 'ToggleButton'
+ToggleButton.Parent = PickerContainer
+ToggleButton.BackgroundTransparency = 1
+ToggleButton.Text = ''
+ToggleButton.AutoButtonColor = false
+ToggleButton.Position = UDim2.new(0, 0, 0, 0)
+ToggleButton.Size = UDim2.new(1, 0, 0, PickerCollapsedHeight)
+ToggleButton.ZIndex = 10
+
+local function SetPickerExpanded(state, animate)
+PickerExpanded = state
+RefreshPickerLabelText()
+SVBox.Visible = PickerExpanded
+HueBar.Visible = PickerExpanded
+local targetHeight = PickerExpanded and PickerExpandedHeight or PickerCollapsedHeight
+local targetSize = UDim2.new(0.95, 0, 0, targetHeight)
+if animate then
+TweenService:Create(PickerContainer, TweenInfo.new(0.18, Enum.EasingStyle.Quad), { Size = targetSize }):Play()
+else
+PickerContainer.Size = targetSize
+end
+end
+
+ToggleButton.MouseButton1Click:Connect(function()
+SetPickerExpanded(not PickerExpanded, true)
+end)
+
+-- เริ่มต้นแบบย่อเสมอ (ไม่มี animation ตอนสร้างครั้งแรก)
+SetPickerExpanded(false, false)
 end
 
 function CategoryElements:CreateDropdown(DropdownText, IconName, Options, Default, Flag, Callback)
@@ -3297,6 +3349,12 @@ SettingsTab:CreateDropdown(T.PresetLabel, 'lucide-palette', { 'Green', 'Red', 'B
 ApplyPresetTheme(selected)
 end)
 
+-- ===================== สีหลัก (Essential / Quick Color Settings) =====================
+-- รวม 4 การตั้งค่าสีที่จำเป็นที่สุดไว้ในหมวดเดียว เพื่อให้เข้าถึงง่ายและประหยัดพื้นที่
+-- (แต่ละช่องเป็น ColorPicker แบบย่ออยู่แล้วโดยดีฟอลต์ กดเพื่อขยายเลือกสีแบบเต็มรูปแบบ)
+-- LightContrast, Background, TextColor, Accent — ปรับแยกจากกันได้อิสระ มีผลกับ UI ทันที
+SettingsTab:CreateLabel(T.EssentialColorHeader, 'lucide-palette')
+
 SettingsTab:CreateColorPicker(T.AccentHeader, 'lucide-palette', Color3.fromRGB(AccentR, AccentG, AccentB), function(newColor)
 AccentR, AccentG, AccentB = math.floor(newColor.R * 255 + 0.5), math.floor(newColor.G * 255 + 0.5), math.floor(newColor.B * 255 + 0.5)
 UpdateThemeColor(newColor)
@@ -3313,17 +3371,20 @@ SettingsTab:CreateToggle(T.RainbowText, 'lucide-wand-2', isTextRainbow, nil, fun
 isTextRainbow = state
 end)
 
-SettingsTab:CreateLabel(T.TransparencyHeader, 'lucide-glasses')
-SettingsTab:CreateSlider(T.TransparencyLabel, nil, 0, 90, TransPercent, nil, function(v)
-TransPercent = v
-UpdateGlassTransparency(v / 100)
-end)
-
--- ===================== สีพื้นหลัง (Background Color) =====================
 SettingsTab:CreateColorPicker(T.BackgroundHeader, 'lucide-square', Color3.fromRGB(BgR, BgG, BgB), function(newColor)
 BgR, BgG, BgB = math.floor(newColor.R * 255 + 0.5), math.floor(newColor.G * 255 + 0.5), math.floor(newColor.B * 255 + 0.5)
 UpdateBackgroundColor(newColor)
 end)
+
+SettingsTab:CreateSlider(T.LightContrastLabel, 'lucide-glasses', 0, 90, TransPercent, nil, function(v)
+TransPercent = v
+UpdateGlassTransparency(v / 100)
+end)
+
+-- ===================== ปรับแต่งสีขั้นสูง (Advanced Color Customization) =====================
+-- ตัวเลือกสีที่เหลือทั้งหมดยังคงอยู่ครบถ้วนและทำงานเหมือนเดิมทุกประการ เพียงจัดกลุ่มแยกไว้ใต้หมวดนี้
+-- เพื่อให้หน้า Settings หลักโฟกัสที่สีที่จำเป็นที่สุดก่อน ส่วนตัวเลือกละเอียดยังปรับได้ครบผ่านหมวดนี้
+SettingsTab:CreateLabel(T.AdvancedColorHeader, 'lucide-sliders-horizontal')
 
 -- ===================== สีของ Category (sidebar tab) — ครอบคลุมทั้งตอน Active และ Idle =====================
 SettingsTab:CreateLabel(T.CategoryColorHeader, 'lucide-layout-dashboard')
