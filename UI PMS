@@ -3027,7 +3027,22 @@ ApplyTextColor(PickerLabel)
 -- ลูกศรบอกสถานะย่อ/ขยาย (เดิมใช้ตัวอักษร Unicode ▸/▾ แต่บางฟอนต์/executor บน Roblox ไม่มีสัญลักษณ์นี้
 -- ทำให้ขึ้นเป็นกล่องว่าง "โหลดลูกศรไม่ได้") เปลี่ยนมาใช้ไอคอนรูปภาพ lucide-chevron-right แทน
 -- แล้วหมุน 90 องศาตอนขยาย (ชี้ลง) ซึ่งเป็นรูปภาพเดียวกับที่ใช้ในส่วนอื่นของ UI อยู่แล้ว จึงโหลดได้แน่นอน
-local hasFeatureIcon = AddElementIcon(PickerContainer, IconName, 16, 34)
+-- ไอคอน lucide ของหัวข้อ (ถ้ามี IconName) — ไม่ใช้ AddElementIcon ตรงๆ เพราะฟังก์ชันนั้นวางตำแหน่ง Y
+-- แบบ scale (0.5 ของความสูง parent) ซึ่งพอ PickerContainer ขยายสูงขึ้น (ตอนกดเปิดจานสี) ไอคอนจะเลื่อนลง
+-- ไปกลางกล่องแทนที่จะติดอยู่ที่แถวหัวข้อด้านบนเสมอ จึงสร้างเองด้วยตำแหน่ง Y แบบ offset คงที่แทน
+local hasFeatureIcon = false
+if IconName and Icons and Icons[IconName] then
+hasFeatureIcon = true
+local FeatureIcon = Instance.new('ImageLabel')
+FeatureIcon.Name = 'ElementIcon'
+FeatureIcon.Parent = PickerContainer
+FeatureIcon.BackgroundTransparency = 1
+FeatureIcon.Position = UDim2.new(0, 34, 0, 9)
+FeatureIcon.Size = UDim2.new(0, 16, 0, 16)
+FeatureIcon.ZIndex = (PickerContainer.ZIndex or 1) + 1
+FeatureIcon.Image = Icons[IconName]
+ApplyTextColor(FeatureIcon, 'ImageColor3')
+end
 local ExpandArrow = Instance.new('ImageLabel')
 ExpandArrow.Name = 'ExpandArrow'
 ExpandArrow.Parent = PickerContainer
