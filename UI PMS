@@ -1007,6 +1007,11 @@ RunningLightColorLabel = 'Running Light Color',
 EffectsHeader = 'Other Effects',
 PatternToggle = 'Background Pattern Texture',
 BorderToggle = 'Show Border',
+BgImageHeader = 'Background Image',
+BgImageEnable = 'Enable Background Image',
+BgImageLabel = 'Image Asset ID',
+BgImagePlaceholder = 'rbxassetid://0000000000',
+BgImageTransparencyLabel = 'Background Image Transparency (%)',
 LanguageHeader = 'Language',
 LanguageLabel = 'Select Language',
 ManageHeader = 'Manage Settings',
@@ -1079,6 +1084,11 @@ RunningLightColorLabel = 'สี Running Light',
 EffectsHeader = 'เอฟเฟกต์อื่นๆ',
 PatternToggle = 'พื้นผิว Pattern พื้นหลัง',
 BorderToggle = 'แสดงเส้นขอบ (Border)',
+BgImageHeader = 'พื้นหลังรูปภาพ',
+BgImageEnable = 'เปิดใช้งานพื้นหลังรูปภาพ',
+BgImageLabel = 'Asset ID รูปภาพ',
+BgImagePlaceholder = 'rbxassetid://0000000000',
+BgImageTransparencyLabel = 'ความโปร่งแสงของพื้นหลังรูปภาพ (%)',
 LanguageHeader = 'ภาษา',
 LanguageLabel = 'เลือกภาษา',
 ManageHeader = 'จัดการการตั้งค่า',
@@ -1267,6 +1277,275 @@ ElementColor       = Color3.fromRGB(26, 36, 50),
 RunningLightColor  = Color3.fromRGB(66, 133, 244),
 TeamColor          = Color3.fromRGB(48, 96, 176),
 },
+Purple = {
+Accent             = Color3.fromRGB(155, 89, 224),
+Text               = Color3.fromRGB(238, 232, 245),
+Background         = Color3.fromRGB(22, 16, 28),
+CategoryColor      = Color3.fromRGB(102, 51, 153),
+CategoryIdleColor  = Color3.fromRGB(36, 28, 44),
+ButtonColor        = Color3.fromRGB(46, 34, 58),
+DropdownColor      = Color3.fromRGB(36, 28, 44),
+DropdownListColor  = Color3.fromRGB(28, 22, 36),
+ElementColor       = Color3.fromRGB(36, 28, 44),
+RunningLightColor  = Color3.fromRGB(155, 89, 224),
+TeamColor          = Color3.fromRGB(122, 63, 179),
+},
+Orange = {
+Accent             = Color3.fromRGB(237, 137, 54),
+Text               = Color3.fromRGB(247, 238, 230),
+Background         = Color3.fromRGB(28, 20, 14),
+CategoryColor      = Color3.fromRGB(180, 95, 30),
+CategoryIdleColor  = Color3.fromRGB(46, 34, 26),
+ButtonColor        = Color3.fromRGB(60, 42, 30),
+DropdownColor      = Color3.fromRGB(46, 34, 26),
+DropdownListColor  = Color3.fromRGB(36, 26, 20),
+ElementColor       = Color3.fromRGB(46, 34, 26),
+RunningLightColor  = Color3.fromRGB(237, 137, 54),
+TeamColor          = Color3.fromRGB(196, 110, 40),
+},
+Pink = {
+Accent             = Color3.fromRGB(236, 100, 152),
+Text               = Color3.fromRGB(247, 232, 238),
+Background         = Color3.fromRGB(28, 16, 22),
+CategoryColor      = Color3.fromRGB(180, 60, 105),
+CategoryIdleColor  = Color3.fromRGB(46, 28, 36),
+ButtonColor        = Color3.fromRGB(60, 34, 44),
+DropdownColor      = Color3.fromRGB(46, 28, 36),
+DropdownListColor  = Color3.fromRGB(36, 22, 28),
+ElementColor       = Color3.fromRGB(46, 28, 36),
+RunningLightColor  = Color3.fromRGB(236, 100, 152),
+TeamColor          = Color3.fromRGB(196, 76, 122),
+},
+Cyan = {
+Accent             = Color3.fromRGB(45, 212, 210),
+Text               = Color3.fromRGB(230, 245, 245),
+Background         = Color3.fromRGB(12, 26, 26),
+CategoryColor      = Color3.fromRGB(24, 140, 138),
+CategoryIdleColor  = Color3.fromRGB(24, 46, 46),
+ButtonColor        = Color3.fromRGB(30, 60, 60),
+DropdownColor      = Color3.fromRGB(24, 46, 46),
+DropdownListColor  = Color3.fromRGB(18, 36, 36),
+ElementColor       = Color3.fromRGB(24, 46, 46),
+RunningLightColor  = Color3.fromRGB(45, 212, 210),
+TeamColor          = Color3.fromRGB(32, 168, 166),
+},
+Yellow = {
+Accent             = Color3.fromRGB(230, 200, 60),
+Text               = Color3.fromRGB(247, 245, 230),
+Background         = Color3.fromRGB(26, 24, 14),
+CategoryColor      = Color3.fromRGB(170, 145, 30),
+CategoryIdleColor  = Color3.fromRGB(44, 40, 26),
+ButtonColor        = Color3.fromRGB(58, 52, 32),
+DropdownColor      = Color3.fromRGB(44, 40, 26),
+DropdownListColor  = Color3.fromRGB(34, 30, 20),
+ElementColor       = Color3.fromRGB(44, 40, 26),
+RunningLightColor  = Color3.fromRGB(230, 200, 60),
+TeamColor          = Color3.fromRGB(190, 164, 45),
+},
+Teal = {
+Accent             = Color3.fromRGB(38, 166, 154),
+Text               = Color3.fromRGB(230, 244, 242),
+Background         = Color3.fromRGB(12, 24, 22),
+CategoryColor      = Color3.fromRGB(22, 120, 110),
+CategoryIdleColor  = Color3.fromRGB(22, 42, 40),
+ButtonColor        = Color3.fromRGB(28, 54, 50),
+DropdownColor      = Color3.fromRGB(22, 42, 40),
+DropdownListColor  = Color3.fromRGB(16, 32, 30),
+ElementColor       = Color3.fromRGB(22, 42, 40),
+RunningLightColor  = Color3.fromRGB(38, 166, 154),
+TeamColor          = Color3.fromRGB(28, 136, 126),
+},
+Indigo = {
+Accent             = Color3.fromRGB(92, 107, 224),
+Text               = Color3.fromRGB(233, 234, 247),
+Background         = Color3.fromRGB(16, 18, 30),
+CategoryColor      = Color3.fromRGB(60, 70, 165),
+CategoryIdleColor  = Color3.fromRGB(28, 30, 48),
+ButtonColor        = Color3.fromRGB(34, 38, 62),
+DropdownColor      = Color3.fromRGB(28, 30, 48),
+DropdownListColor  = Color3.fromRGB(22, 24, 38),
+ElementColor       = Color3.fromRGB(28, 30, 48),
+RunningLightColor  = Color3.fromRGB(92, 107, 224),
+TeamColor          = Color3.fromRGB(72, 84, 184),
+},
+Lime = {
+Accent             = Color3.fromRGB(163, 217, 76),
+Text               = Color3.fromRGB(240, 247, 230),
+Background         = Color3.fromRGB(18, 24, 12),
+CategoryColor      = Color3.fromRGB(110, 160, 40),
+CategoryIdleColor  = Color3.fromRGB(32, 42, 22),
+ButtonColor        = Color3.fromRGB(40, 54, 28),
+DropdownColor      = Color3.fromRGB(32, 42, 22),
+DropdownListColor  = Color3.fromRGB(24, 32, 16),
+ElementColor       = Color3.fromRGB(32, 42, 22),
+RunningLightColor  = Color3.fromRGB(163, 217, 76),
+TeamColor          = Color3.fromRGB(132, 180, 56),
+},
+Amber = {
+Accent             = Color3.fromRGB(245, 176, 45),
+Text               = Color3.fromRGB(247, 240, 226),
+Background         = Color3.fromRGB(28, 22, 12),
+CategoryColor      = Color3.fromRGB(190, 130, 20),
+CategoryIdleColor  = Color3.fromRGB(46, 36, 22),
+ButtonColor        = Color3.fromRGB(60, 46, 28),
+DropdownColor      = Color3.fromRGB(46, 36, 22),
+DropdownListColor  = Color3.fromRGB(36, 28, 16),
+ElementColor       = Color3.fromRGB(46, 36, 22),
+RunningLightColor  = Color3.fromRGB(245, 176, 45),
+TeamColor          = Color3.fromRGB(204, 144, 30),
+},
+Rose = {
+Accent             = Color3.fromRGB(224, 82, 106),
+Text               = Color3.fromRGB(247, 232, 235),
+Background         = Color3.fromRGB(28, 15, 18),
+CategoryColor      = Color3.fromRGB(170, 50, 72),
+CategoryIdleColor  = Color3.fromRGB(46, 27, 30),
+ButtonColor        = Color3.fromRGB(60, 32, 36),
+DropdownColor      = Color3.fromRGB(46, 27, 30),
+DropdownListColor  = Color3.fromRGB(36, 21, 24),
+ElementColor       = Color3.fromRGB(46, 27, 30),
+RunningLightColor  = Color3.fromRGB(224, 82, 106),
+TeamColor          = Color3.fromRGB(184, 60, 82),
+},
+Slate = {
+Accent             = Color3.fromRGB(148, 163, 184),
+Text               = Color3.fromRGB(232, 235, 240),
+Background         = Color3.fromRGB(16, 18, 22),
+CategoryColor      = Color3.fromRGB(90, 100, 120),
+CategoryIdleColor  = Color3.fromRGB(30, 34, 40),
+ButtonColor        = Color3.fromRGB(38, 42, 50),
+DropdownColor      = Color3.fromRGB(30, 34, 40),
+DropdownListColor  = Color3.fromRGB(24, 27, 32),
+ElementColor       = Color3.fromRGB(30, 34, 40),
+RunningLightColor  = Color3.fromRGB(148, 163, 184),
+TeamColor          = Color3.fromRGB(115, 128, 148),
+},
+Emerald = {
+Accent             = Color3.fromRGB(52, 199, 132),
+Text               = Color3.fromRGB(230, 246, 238),
+Background         = Color3.fromRGB(12, 24, 18),
+CategoryColor      = Color3.fromRGB(24, 140, 92),
+CategoryIdleColor  = Color3.fromRGB(22, 42, 32),
+ButtonColor        = Color3.fromRGB(28, 54, 42),
+DropdownColor      = Color3.fromRGB(22, 42, 32),
+DropdownListColor  = Color3.fromRGB(16, 32, 24),
+ElementColor       = Color3.fromRGB(22, 42, 32),
+RunningLightColor  = Color3.fromRGB(52, 199, 132),
+TeamColor          = Color3.fromRGB(36, 162, 106),
+},
+Sky = {
+Accent             = Color3.fromRGB(56, 178, 245),
+Text               = Color3.fromRGB(230, 242, 250),
+Background         = Color3.fromRGB(12, 22, 30),
+CategoryColor      = Color3.fromRGB(24, 120, 176),
+CategoryIdleColor  = Color3.fromRGB(22, 38, 48),
+ButtonColor        = Color3.fromRGB(28, 48, 62),
+DropdownColor      = Color3.fromRGB(22, 38, 48),
+DropdownListColor  = Color3.fromRGB(16, 30, 38),
+ElementColor       = Color3.fromRGB(22, 38, 48),
+RunningLightColor  = Color3.fromRGB(56, 178, 245),
+TeamColor          = Color3.fromRGB(40, 144, 200),
+},
+Violet = {
+Accent             = Color3.fromRGB(139, 92, 246),
+Text               = Color3.fromRGB(238, 233, 250),
+Background         = Color3.fromRGB(20, 16, 30),
+CategoryColor      = Color3.fromRGB(94, 58, 176),
+CategoryIdleColor  = Color3.fromRGB(34, 28, 48),
+ButtonColor        = Color3.fromRGB(42, 34, 60),
+DropdownColor      = Color3.fromRGB(34, 28, 48),
+DropdownListColor  = Color3.fromRGB(26, 22, 38),
+ElementColor       = Color3.fromRGB(34, 28, 48),
+RunningLightColor  = Color3.fromRGB(139, 92, 246),
+TeamColor          = Color3.fromRGB(110, 72, 196),
+},
+Fuchsia = {
+Accent             = Color3.fromRGB(217, 70, 219),
+Text               = Color3.fromRGB(246, 232, 247),
+Background         = Color3.fromRGB(26, 14, 26),
+CategoryColor      = Color3.fromRGB(160, 44, 162),
+CategoryIdleColor  = Color3.fromRGB(44, 26, 44),
+ButtonColor        = Color3.fromRGB(56, 32, 56),
+DropdownColor      = Color3.fromRGB(44, 26, 44),
+DropdownListColor  = Color3.fromRGB(34, 20, 34),
+ElementColor       = Color3.fromRGB(44, 26, 44),
+RunningLightColor  = Color3.fromRGB(217, 70, 219),
+TeamColor          = Color3.fromRGB(178, 56, 180),
+},
+Crimson = {
+Accent             = Color3.fromRGB(200, 30, 60),
+Text               = Color3.fromRGB(246, 230, 233),
+Background         = Color3.fromRGB(26, 12, 15),
+CategoryColor      = Color3.fromRGB(140, 20, 42),
+CategoryIdleColor  = Color3.fromRGB(42, 22, 26),
+ButtonColor        = Color3.fromRGB(54, 26, 30),
+DropdownColor      = Color3.fromRGB(42, 22, 26),
+DropdownListColor  = Color3.fromRGB(32, 17, 20),
+ElementColor       = Color3.fromRGB(42, 22, 26),
+RunningLightColor  = Color3.fromRGB(200, 30, 60),
+TeamColor          = Color3.fromRGB(160, 26, 50),
+},
+Gold = {
+Accent             = Color3.fromRGB(212, 175, 55),
+Text               = Color3.fromRGB(247, 243, 228),
+Background         = Color3.fromRGB(24, 20, 12),
+CategoryColor      = Color3.fromRGB(160, 128, 30),
+CategoryIdleColor  = Color3.fromRGB(40, 34, 22),
+ButtonColor        = Color3.fromRGB(52, 44, 28),
+DropdownColor      = Color3.fromRGB(40, 34, 22),
+DropdownListColor  = Color3.fromRGB(30, 26, 16),
+ElementColor       = Color3.fromRGB(40, 34, 22),
+RunningLightColor  = Color3.fromRGB(212, 175, 55),
+TeamColor          = Color3.fromRGB(176, 144, 42),
+},
+Mint = {
+Accent             = Color3.fromRGB(102, 224, 178),
+Text               = Color3.fromRGB(233, 247, 241),
+Background         = Color3.fromRGB(14, 26, 21),
+CategoryColor      = Color3.fromRGB(56, 156, 122),
+CategoryIdleColor  = Color3.fromRGB(26, 44, 36),
+ButtonColor        = Color3.fromRGB(32, 56, 46),
+DropdownColor      = Color3.fromRGB(26, 44, 36),
+DropdownListColor  = Color3.fromRGB(20, 34, 28),
+ElementColor       = Color3.fromRGB(26, 44, 36),
+RunningLightColor  = Color3.fromRGB(102, 224, 178),
+TeamColor          = Color3.fromRGB(78, 184, 146),
+},
+Coral = {
+Accent             = Color3.fromRGB(240, 128, 106),
+Text               = Color3.fromRGB(247, 235, 231),
+Background         = Color3.fromRGB(28, 18, 15),
+CategoryColor      = Color3.fromRGB(190, 82, 62),
+CategoryIdleColor  = Color3.fromRGB(46, 30, 26),
+ButtonColor        = Color3.fromRGB(60, 38, 32),
+DropdownColor      = Color3.fromRGB(46, 30, 26),
+DropdownListColor  = Color3.fromRGB(36, 24, 20),
+ElementColor       = Color3.fromRGB(46, 30, 26),
+RunningLightColor  = Color3.fromRGB(240, 128, 106),
+TeamColor          = Color3.fromRGB(200, 100, 80),
+},
+Navy = {
+Accent             = Color3.fromRGB(70, 100, 170),
+Text               = Color3.fromRGB(228, 234, 244),
+Background         = Color3.fromRGB(10, 14, 24),
+CategoryColor      = Color3.fromRGB(38, 58, 110),
+CategoryIdleColor  = Color3.fromRGB(20, 26, 40),
+ButtonColor        = Color3.fromRGB(24, 32, 50),
+DropdownColor      = Color3.fromRGB(20, 26, 40),
+DropdownListColor  = Color3.fromRGB(15, 20, 32),
+ElementColor       = Color3.fromRGB(20, 26, 40),
+RunningLightColor  = Color3.fromRGB(70, 100, 170),
+TeamColor          = Color3.fromRGB(54, 80, 140),
+},
+}
+
+-- ลำดับรายชื่อธีมสำเร็จรูปทั้งหมด (5 ธีมเดิม + 20 ธีมใหม่ = 25 ธีม) ใช้แสดงผลใน Dropdown เลือกธีม
+local PresetThemeOrder = {
+'Green', 'Red', 'Black', 'White', 'Blue',
+'Purple', 'Orange', 'Pink', 'Cyan', 'Yellow',
+'Teal', 'Indigo', 'Lime', 'Amber', 'Rose',
+'Slate', 'Emerald', 'Sky', 'Violet', 'Fuchsia',
+'Crimson', 'Gold', 'Mint', 'Coral', 'Navy',
 }
 
 function Library:CreateWindow(WindowName, Config)
@@ -1311,14 +1590,23 @@ local CurrentDropdownListColor = Config.DropdownListColor or C.BgMid
 local CurrentTeamColor = Config.TeamColor or C.TeamDefault
 
 -- ===================== Font (รูปแบบตัวอักษร / ขนาดตัวอักษร) =====================
--- รายชื่อฟอนต์ที่เลือกได้ พร้อมคู่ Regular/Bold ที่ปลอดภัยและมีอยู่จริงบน Roblox
-local FontPresets = {
-Gotham          = { Regular = Enum.Font.Gotham,          Bold = Enum.Font.GothamBold },
-GothamBlack     = { Regular = Enum.Font.GothamBlack,     Bold = Enum.Font.GothamBlack },
-SourceSans      = { Regular = Enum.Font.SourceSans,      Bold = Enum.Font.SourceSansBold },
-SourceSansLight = { Regular = Enum.Font.SourceSansLight, Bold = Enum.Font.SourceSansBold },
+-- รายชื่อฟอนต์ที่เลือกได้ — ดึง "ทุกฟอนต์" ที่มีอยู่จริงบน Roblox ในตอนรันสด (Enum.Font:GetEnumItems())
+-- แทนที่จะไล่พิมพ์ชื่อฟอนต์ทีละตัว วิธีนี้ครอบคลุมฟอนต์ทั้งหมดเสมอ แม้ Roblox จะเพิ่มฟอนต์ใหม่ในอนาคต
+-- แต่ละฟอนต์จะพยายามหาคู่ 'Bold' ของตัวเอง (เช่น Gotham -> GothamBold) ถ้าไม่มีคู่ Bold จะใช้ตัวเองแทน
+local FontPresets = {}
+local FontPresetOrder = {}
+for _, fontEnum in ipairs(Enum.Font:GetEnumItems()) do
+local fontName = fontEnum.Name
+local boldOk, boldEnum = pcall(function()
+return Enum.Font[fontName .. 'Bold']
+end)
+FontPresets[fontName] = {
+Regular = fontEnum,
+Bold = (boldOk and boldEnum) or fontEnum,
 }
-local FontPresetOrder = { 'Gotham', 'GothamBlack', 'SourceSans', 'SourceSansLight' }
+table.insert(FontPresetOrder, fontName)
+end
+table.sort(FontPresetOrder)
 
 local CurrentFontFamilyName = 'Gotham'
 if Config.FontFamily and FontPresets[Config.FontFamily] then
@@ -1350,6 +1638,13 @@ local PatternEnabled = true
 if Config.PatternEnabled ~= nil then PatternEnabled = Config.PatternEnabled end
 local BorderEnabled = true
 if Config.BorderEnabled ~= nil then BorderEnabled = Config.BorderEnabled end
+
+-- ===================== พื้นหลังรูปภาพโปร่งแสง (Background Image) =====================
+-- รูปพื้นหลังแบบกำหนดเอง วางซ้อนบน MainFrame ปรับความโปร่งแสงได้อิสระ แยกจาก Pattern texture เดิม
+local CurrentBackgroundImage = Config.BackgroundImage or ''
+local BackgroundImageTransparency = Config.BackgroundImageTransparency or 0.5
+local BackgroundImageEnabled = CurrentBackgroundImage ~= ''
+if Config.BackgroundImageEnabled ~= nil then BackgroundImageEnabled = Config.BackgroundImageEnabled end
 
 -- ThemedElements: ทุก instance ที่ผูกกับ Accent color จะถูกเก็บไว้ที่นี่
 -- เพื่อให้ปรับสีใหม่ (จาก Settings หรือ Rainbow) แล้วอัปเดตทันทีทั้ง UI
@@ -1689,6 +1984,15 @@ end
 if savedTheme.BorderEnabled ~= nil then
 BorderEnabled = savedTheme.BorderEnabled
 end
+if savedTheme.BackgroundImage ~= nil then
+CurrentBackgroundImage = savedTheme.BackgroundImage
+end
+if savedTheme.BackgroundImageTransparency ~= nil then
+BackgroundImageTransparency = savedTheme.BackgroundImageTransparency
+end
+if savedTheme.BackgroundImageEnabled ~= nil then
+BackgroundImageEnabled = savedTheme.BackgroundImageEnabled
+end
 end
 
 -- อัปเดต ThemeSettings ให้ตรงกับค่าที่กำลังใช้จริง (default หรือที่โหลดมา) เพื่อให้เซฟรอบถัดไปถูกต้อง
@@ -1713,6 +2017,9 @@ ThemeSettings.RunningLightSpeed = RunningLightSpeed
 ThemeSettings.RunningLightColor = { math.floor(CurrentRunningLightColor.R * 255), math.floor(CurrentRunningLightColor.G * 255), math.floor(CurrentRunningLightColor.B * 255) }
 ThemeSettings.PatternEnabled = PatternEnabled
 ThemeSettings.BorderEnabled = BorderEnabled
+ThemeSettings.BackgroundImage = CurrentBackgroundImage
+ThemeSettings.BackgroundImageTransparency = BackgroundImageTransparency
+ThemeSettings.BackgroundImageEnabled = BackgroundImageEnabled
 
 -- ===================== Element Icon Helper =====================
 -- ใช้วาดไอคอน lucide-xxx ในตัว element ต่างๆ (เหมือน Rayfield/Fluent)
@@ -1753,6 +2060,34 @@ MainFrame.ClipsDescendants = true
 MainFrame.Visible = false -- ← ซ่อนไว้ก่อน จะเล่นอนิเมชั่นเปิดหลังสร้าง UI เสร็จทั้งหมด (ดูท้ายฟังก์ชัน CreateWindow)
 Instance.new('UICorner', MainFrame).CornerRadius = UDim.new(0, 10)
 
+-- พื้นหลังรูปภาพโปร่งแสง (Background Image) — วางไว้ล่างสุด ใต้ Pattern texture และเนื้อหาอื่นๆ ทั้งหมด
+local CustomBgImage = Instance.new('ImageLabel')
+CustomBgImage.Name = 'CustomBackgroundImage'
+CustomBgImage.Parent = MainFrame
+CustomBgImage.BackgroundTransparency = 1
+CustomBgImage.Size = UDim2.new(1, 0, 1, 0)
+CustomBgImage.ZIndex = -1
+CustomBgImage.Image = CurrentBackgroundImage
+CustomBgImage.ImageTransparency = BackgroundImageTransparency
+CustomBgImage.ScaleType = Enum.ScaleType.Crop
+CustomBgImage.Visible = BackgroundImageEnabled and CurrentBackgroundImage ~= ''
+Instance.new('UICorner', CustomBgImage).CornerRadius = UDim.new(0, 10)
+
+-- ฟังก์ชันอัปเดตรูปภาพพื้นหลังและความโปร่งแสงแบบสด (เรียกจาก Settings หรือจาก config ตอนสร้างหน้าต่าง)
+local function UpdateBackgroundImage(imageId)
+CurrentBackgroundImage = imageId or ''
+CustomBgImage.Image = CurrentBackgroundImage
+CustomBgImage.Visible = BackgroundImageEnabled and CurrentBackgroundImage ~= ''
+end
+local function UpdateBackgroundImageTransparency(t)
+BackgroundImageTransparency = t
+CustomBgImage.ImageTransparency = t
+end
+local function UpdateBackgroundImageEnabled(state)
+BackgroundImageEnabled = state
+CustomBgImage.Visible = BackgroundImageEnabled and CurrentBackgroundImage ~= ''
+end
+
 -- pattern overlay (ลด opacity ให้เบาลง บนพื้นดำม่วง)
 local PatternBg = Instance.new('ImageLabel')
 PatternBg.Name = 'Pattern'
@@ -1770,6 +2105,10 @@ PatternBg.Visible = PatternEnabled
 if savedSize then MainFrame.Size = savedSize end
 if savedPos  then MainFrame.Position = savedPos end
 local SavedFlags = savedFlags or {}
+-- ให้กล่องกรอก Asset ID ของพื้นหลังรูปภาพแสดงค่าปัจจุบันเป็นค่าเริ่มต้น (ถ้ายังไม่เคยพิมพ์ค่าใหม่ไว้)
+if SavedFlags['BackgroundImageAssetId'] == nil then
+SavedFlags['BackgroundImageAssetId'] = CurrentBackgroundImage
+end
 
 -- ฟังก์ชันเรียกเปิด/ปิดเมนู Settings (forward declare ไว้ก่อน เพราะปุ่ม gear ถูกสร้างก่อน
 -- แท็บ Settings จริงที่มาสร้างทีหลังผ่าน task.defer ด้านล่างสุดของไฟล์)
@@ -2680,30 +3019,19 @@ PickerLabel.Position = UDim2.new(0, 10, 0, 6)
 PickerLabel.BackgroundTransparency = 1
 PickerLabel.Size = UDim2.new(0.55, 0, 0, 20)
 ApplyFont(PickerLabel, false)
-PickerLabel.Text = PickerText
 ApplyFontSize(PickerLabel, 14)
 PickerLabel.TextXAlignment = Enum.TextXAlignment.Left
 PickerLabel.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(PickerLabel)
+-- แสดงลูกศรบอกสถานะย่อ/ขยายไว้หน้าชื่อหัวข้อ (▸ = ปิดอยู่, ▾ = เปิดอยู่)
+local function RefreshPickerLabelText()
+PickerLabel.Text = (PickerExpanded and '\226\150\190 ' or '\226\150\184 ') .. PickerText
+end
+RefreshPickerLabelText()
 if AddElementIcon(PickerContainer, IconName, 16, 10) then
 PickerLabel.Position = UDim2.new(0, 32, 0, 6)
 PickerLabel.Size = UDim2.new(0.5, -22, 0, 20)
 end
-
--- ลูกศรบอกสถานะย่อ/ขยาย ใช้ไอคอนรูปภาพจริง (ไม่ใช่ตัวอักษร Unicode) เพื่อไม่ให้ขึ้นเป็นกล่องโหลดไม่ออกในบางฟอนต์
-local PickerChevron = Instance.new('ImageLabel')
-PickerChevron.Name = 'PickerChevron'
-PickerChevron.Parent = PickerContainer
-PickerChevron.BackgroundTransparency = 1
-PickerChevron.Position = UDim2.new(1, -104, 0, 9)
-PickerChevron.Size = UDim2.new(0, 14, 0, 14)
-PickerChevron.Image = Icons['lucide-chevron-right'] or ''
-PickerChevron.ZIndex = 2
-ApplyTextColor(PickerChevron, 'ImageColor3')
-local function RefreshPickerLabelText()
-PickerChevron.Image = (PickerExpanded and Icons['lucide-chevron-down'] or Icons['lucide-chevron-right']) or ''
-end
-RefreshPickerLabelText()
 
 local HexLabel = Instance.new('TextLabel')
 HexLabel.Parent = PickerContainer
@@ -3156,6 +3484,11 @@ WindowElements.ApplyTeamColor = ApplyTeamColor
 WindowElements.UpdateTeamColor = UpdateTeamColor
 WindowElements.GetTeamColor = function() return CurrentTeamColor end
 
+-- เปิดให้สคริปต์ผู้ใช้ตั้งค่าพื้นหลังรูปภาพโปร่งแสงได้เองจากภายนอกเช่นกัน
+WindowElements.UpdateBackgroundImage = UpdateBackgroundImage
+WindowElements.UpdateBackgroundImageTransparency = UpdateBackgroundImageTransparency
+WindowElements.UpdateBackgroundImageEnabled = UpdateBackgroundImageEnabled
+
 function WindowElements:GetFlag(FlagName)
 local flagData = Flags[FlagName]
 return flagData and flagData.Value or nil
@@ -3291,6 +3624,9 @@ ThemeSettings.RunningLightSpeed = RunningLightSpeed
 ThemeSettings.RunningLightColor = { RLR, RLG, RLB }
 ThemeSettings.PatternEnabled = PatternEnabled
 ThemeSettings.BorderEnabled = BorderEnabled
+ThemeSettings.BackgroundImage = CurrentBackgroundImage
+ThemeSettings.BackgroundImageTransparency = BackgroundImageTransparency
+ThemeSettings.BackgroundImageEnabled = BackgroundImageEnabled
 end
 
 -- ล้างเนื้อหาปัจจุบันของหน้า Settings (ไม่แตะ UIListLayout/UIPadding) เพื่อวาดใหม่ตามภาษาที่เลือก
@@ -3356,7 +3692,7 @@ ClearSettingsContent()
 
 -- ===================== ธีมสำเร็จรูป (Preset Themes) =====================
 SettingsTab:CreateLabel(T.PresetHeader, 'lucide-palette')
-SettingsTab:CreateDropdown(T.PresetLabel, 'lucide-palette', { 'Green', 'Red', 'Black', 'White', 'Blue' }, nil, nil, function(selected)
+SettingsTab:CreateDropdown(T.PresetLabel, 'lucide-palette', PresetThemeOrder, nil, nil, function(selected)
 ApplyPresetTheme(selected)
 end)
 
@@ -3467,6 +3803,18 @@ BorderEnabled = state
 if MainStroke then MainStroke.Enabled = BorderEnabled end
 end)
 
+-- ===================== พื้นหลังรูปภาพโปร่งแสง (Background Image) =====================
+SettingsTab:CreateLabel(T.BgImageHeader, 'lucide-image')
+SettingsTab:CreateToggle(T.BgImageEnable, 'lucide-image', BackgroundImageEnabled, nil, function(state)
+UpdateBackgroundImageEnabled(state)
+end)
+SettingsTab:CreateTextbox(T.BgImageLabel, 'lucide-image', T.BgImagePlaceholder, 'BackgroundImageAssetId', function(text)
+UpdateBackgroundImage(text)
+end)
+SettingsTab:CreateSlider(T.BgImageTransparencyLabel, 'lucide-glasses', 0, 100, math.floor(BackgroundImageTransparency * 100 + 0.5), nil, function(v)
+UpdateBackgroundImageTransparency(v / 100)
+end)
+
 -- ===================== ฟอนต์ (Font Family / Font Size) =====================
 SettingsTab:CreateLabel(T.FontHeader, 'lucide-baseline')
 SettingsTab:CreateDropdown(T.FontFamilyLabel, 'lucide-baseline', FontPresetOrder, CurrentFontFamilyName, nil, function(selected)
@@ -3554,6 +3902,10 @@ UpdateFontSize(1)
 CurrentRunningLightColor = C.Accent
 if PatternBg then PatternBg.Visible = true end
 if MainStroke then MainStroke.Enabled = true end
+UpdateBackgroundImage('')
+UpdateBackgroundImageTransparency(0.5)
+UpdateBackgroundImageEnabled(false)
+SavedFlags['BackgroundImageAssetId'] = ''
 PersistThemeSettings()
 SaveConfig(MainFrame)
 -- วาดหน้า Settings ใหม่ทันทีตามค่าที่รีเซ็ต (รวมถึงภาษากลับเป็น English)
