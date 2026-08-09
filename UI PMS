@@ -1000,6 +1000,7 @@ RunningLightSpeed = 'Running Light Speed',
 RunningLightRed = 'Running Light Color - Red',
 RunningLightGreen = 'Running Light Color - Green',
 RunningLightBlue = 'Running Light Color - Blue',
+RunningLightColorLabel = 'Running Light Color',
 EffectsHeader = 'Other Effects',
 PatternToggle = 'Background Pattern Texture',
 BorderToggle = 'Show Border',
@@ -1068,6 +1069,7 @@ RunningLightSpeed = 'ความเร็ว Running Light',
 RunningLightRed = 'สี Running Light - Red',
 RunningLightGreen = 'สี Running Light - Green',
 RunningLightBlue = 'สี Running Light - Blue',
+RunningLightColorLabel = 'สี Running Light',
 EffectsHeader = 'เอฟเฟกต์อื่นๆ',
 PatternToggle = 'พื้นผิว Pattern พื้นหลัง',
 BorderToggle = 'แสดงเส้นขอบ (Border)',
@@ -2621,6 +2623,226 @@ end
 end)
 end
 
+-- ===================== ColorPicker (Saturation/Value square + Hue bar) =====================
+-- ใช้แทนชุดสไลเดอร์ R/G/B เดิม เพื่อให้เลือกสีได้ง่ายและเห็นภาพรวมสีทันที
+-- เรียกใช้: CreateColorPicker(Text, IconName, DefaultColor3, Callback)
+-- รองรับเรียกแบบไม่มี IconName: CreateColorPicker(Text, DefaultColor3, Callback)
+function CategoryElements:CreateColorPicker(PickerText, IconName, DefaultColor, Callback)
+if typeof(IconName) == 'Color3' then
+Callback = DefaultColor; DefaultColor = IconName; IconName = nil
+end
+DefaultColor = DefaultColor or Color3.fromRGB(255, 255, 255)
+
+local Hue, Sat, Val = DefaultColor:ToHSV()
+local CurrentColor = DefaultColor
+
+local PickerContainer = Instance.new('Frame')
+PickerContainer.Parent = CategoryPage
+ApplyElementColor(PickerContainer)
+ApplyGlass(PickerContainer)
+PickerContainer.Size = UDim2.new(0.95, 0, 0, 168)
+Instance.new('UICorner', PickerContainer).CornerRadius = UDim.new(0, 6)
+local pcs = Instance.new('UIStroke', PickerContainer)
+pcs.Thickness = 1; pcs.Color = C.AccentDim
+
+local PickerLabel = Instance.new('TextLabel')
+PickerLabel.Parent = PickerContainer
+PickerLabel.Position = UDim2.new(0, 10, 0, 6)
+PickerLabel.BackgroundTransparency = 1
+PickerLabel.Size = UDim2.new(0.55, 0, 0, 20)
+ApplyFont(PickerLabel, false)
+PickerLabel.Text = PickerText
+ApplyFontSize(PickerLabel, 14)
+PickerLabel.TextXAlignment = Enum.TextXAlignment.Left
+PickerLabel.TextTruncate = Enum.TextTruncate.AtEnd
+ApplyTextColor(PickerLabel)
+if AddElementIcon(PickerContainer, IconName, 16, 10) then
+PickerLabel.Position = UDim2.new(0, 32, 0, 6)
+PickerLabel.Size = UDim2.new(0.5, -22, 0, 20)
+end
+
+local HexLabel = Instance.new('TextLabel')
+HexLabel.Parent = PickerContainer
+HexLabel.BackgroundTransparency = 1
+HexLabel.Position = UDim2.new(1, -85, 0, 6)
+HexLabel.Size = UDim2.new(0, 55, 0, 20)
+ApplyFont(HexLabel, true)
+ApplyFontSize(HexLabel, 12)
+HexLabel.TextXAlignment = Enum.TextXAlignment.Right
+HexLabel.TextColor3 = C.AccentHov
+ApplyTextColor(HexLabel)
+
+local PreviewSwatch = Instance.new('Frame')
+PreviewSwatch.Parent = PickerContainer
+PreviewSwatch.BackgroundColor3 = DefaultColor
+PreviewSwatch.Position = UDim2.new(1, -22, 0, 6)
+PreviewSwatch.Size = UDim2.new(0, 18, 0, 18)
+Instance.new('UICorner', PreviewSwatch).CornerRadius = UDim.new(0, 4)
+local pss = Instance.new('UIStroke', PreviewSwatch)
+pss.Thickness = 1; pss.Color = C.AccentDim
+
+local function RefreshHex()
+HexLabel.Text = string.format('#XXX', math.floor(CurrentColor.R * 255 + 0.5), math.floor(CurrentColor.G * 255 + 0.5), math.floor(CurrentColor.B * 255 + 0.5))
+end
+RefreshHex()
+
+-- ===== กล่อง Saturation/Value =====
+local SVBox = Instance.new('Frame')
+SVBox.Name = 'SVBox'
+SVBox.Parent = PickerContainer
+SVBox.Position = UDim2.new(0, 10, 0, 30)
+SVBox.Size = UDim2.new(1, -20, 0, 96)
+SVBox.BackgroundColor3 = Color3.fromHSV(Hue, 1, 1)
+SVBox.BorderSizePixel = 0
+SVBox.ClipsDescendants = true
+Instance.new('UICorner', SVBox).CornerRadius = UDim.new(0, 6)
+
+local SatOverlay = Instance.new('Frame')
+SatOverlay.Parent = SVBox
+SatOverlay.BackgroundColor3 = Color3.new(1, 1, 1)
+SatOverlay.BorderSizePixel = 0
+SatOverlay.Size = UDim2.new(1, 0, 1, 0)
+local SatGradient = Instance.new('UIGradient', SatOverlay)
+SatGradient.Transparency = NumberSequence.new({
+NumberSequenceKeypoint.new(0, 0),
+NumberSequenceKeypoint.new(1, 1),
+})
+
+local ValOverlay = Instance.new('Frame')
+ValOverlay.Parent = SVBox
+ValOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+ValOverlay.BorderSizePixel = 0
+ValOverlay.Size = UDim2.new(1, 0, 1, 0)
+local ValGradient = Instance.new('UIGradient', ValOverlay)
+ValGradient.Rotation = 90
+ValGradient.Transparency = NumberSequence.new({
+NumberSequenceKeypoint.new(0, 1),
+NumberSequenceKeypoint.new(1, 0),
+})
+
+local SVCursor = Instance.new('Frame')
+SVCursor.Name = 'SVCursor'
+SVCursor.Parent = SVBox
+SVCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+SVCursor.Size = UDim2.new(0, 10, 0, 10)
+SVCursor.BackgroundColor3 = Color3.new(1, 1, 1)
+SVCursor.BorderSizePixel = 0
+SVCursor.ZIndex = 5
+Instance.new('UICorner', SVCursor).CornerRadius = UDim.new(1, 0)
+local svcs = Instance.new('UIStroke', SVCursor)
+svcs.Thickness = 2; svcs.Color = Color3.new(0, 0, 0)
+local function UpdateSVCursor()
+SVCursor.Position = UDim2.new(Sat, 0, 1 - Val, 0)
+end
+UpdateSVCursor()
+
+local SVButton = Instance.new('TextButton')
+SVButton.Parent = SVBox
+SVButton.BackgroundTransparency = 1
+SVButton.Size = UDim2.new(1, 0, 1, 0)
+SVButton.Text = ''
+SVButton.AutoButtonColor = false
+SVButton.ZIndex = 6
+
+-- ===== แถบ Hue =====
+local HueBar = Instance.new('Frame')
+HueBar.Name = 'HueBar'
+HueBar.Parent = PickerContainer
+HueBar.Position = UDim2.new(0, 10, 0, 134)
+HueBar.Size = UDim2.new(1, -20, 0, 16)
+HueBar.BorderSizePixel = 0
+Instance.new('UICorner', HueBar).CornerRadius = UDim.new(0, 6)
+local HueGradient = Instance.new('UIGradient', HueBar)
+HueGradient.Color = ColorSequence.new({
+ColorSequenceKeypoint.new(0.000, Color3.fromHSV(0 / 6, 1, 1)),
+ColorSequenceKeypoint.new(0.166, Color3.fromHSV(1 / 6, 1, 1)),
+ColorSequenceKeypoint.new(0.333, Color3.fromHSV(2 / 6, 1, 1)),
+ColorSequenceKeypoint.new(0.500, Color3.fromHSV(3 / 6, 1, 1)),
+ColorSequenceKeypoint.new(0.666, Color3.fromHSV(4 / 6, 1, 1)),
+ColorSequenceKeypoint.new(0.833, Color3.fromHSV(5 / 6, 1, 1)),
+ColorSequenceKeypoint.new(1.000, Color3.fromHSV(1, 1, 1)),
+})
+
+local HueCursor = Instance.new('Frame')
+HueCursor.Name = 'HueCursor'
+HueCursor.Parent = HueBar
+HueCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+HueCursor.Position = UDim2.new(Hue, 0, 0.5, 0)
+HueCursor.Size = UDim2.new(0, 6, 1, 4)
+HueCursor.BackgroundColor3 = Color3.new(1, 1, 1)
+HueCursor.BorderSizePixel = 0
+HueCursor.ZIndex = 5
+Instance.new('UICorner', HueCursor).CornerRadius = UDim.new(0, 3)
+local hcs = Instance.new('UIStroke', HueCursor)
+hcs.Thickness = 2; hcs.Color = Color3.new(0, 0, 0)
+
+local HueButton = Instance.new('TextButton')
+HueButton.Parent = HueBar
+HueButton.BackgroundTransparency = 1
+HueButton.Size = UDim2.new(1, 0, 1, 0)
+HueButton.Text = ''
+HueButton.AutoButtonColor = false
+HueButton.ZIndex = 6
+
+local function Commit()
+CurrentColor = Color3.fromHSV(Hue, Sat, Val)
+PreviewSwatch.BackgroundColor3 = CurrentColor
+RefreshHex()
+if Callback then Callback(CurrentColor) end
+end
+
+local draggingSV = false
+local function UpdateSVFromInput(input)
+local relX = math.clamp((input.Position.X - SVBox.AbsolutePosition.X) / SVBox.AbsoluteSize.X, 0, 1)
+local relY = math.clamp((input.Position.Y - SVBox.AbsolutePosition.Y) / SVBox.AbsoluteSize.Y, 0, 1)
+Sat = relX
+Val = 1 - relY
+UpdateSVCursor()
+Commit()
+end
+SVButton.InputBegan:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+draggingSV = true; UpdateSVFromInput(input)
+end
+end)
+UserInputService.InputEnded:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+if draggingSV then SaveConfig(MainFrame) end
+draggingSV = false
+end
+end)
+UserInputService.InputChanged:Connect(function(input)
+if draggingSV and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+UpdateSVFromInput(input)
+end
+end)
+
+local draggingHue = false
+local function UpdateHueFromInput(input)
+local relX = math.clamp((input.Position.X - HueBar.AbsolutePosition.X) / HueBar.AbsoluteSize.X, 0, 1)
+Hue = relX
+HueCursor.Position = UDim2.new(Hue, 0, 0.5, 0)
+SVBox.BackgroundColor3 = Color3.fromHSV(Hue, 1, 1)
+Commit()
+end
+HueButton.InputBegan:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+draggingHue = true; UpdateHueFromInput(input)
+end
+end)
+UserInputService.InputEnded:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+if draggingHue then SaveConfig(MainFrame) end
+draggingHue = false
+end
+end)
+UserInputService.InputChanged:Connect(function(input)
+if draggingHue and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+UpdateHueFromInput(input)
+end
+end)
+end
+
 function CategoryElements:CreateDropdown(DropdownText, IconName, Options, Default, Flag, Callback)
 -- ลำดับใหม่: CreateDropdown(Text, IconName, Options, Default, Flag, Callback)
 -- ตรวจจับอัตโนมัติถ้าเรียกแบบเก่าที่ไม่มี IconName: CreateDropdown(Text, Options, Default, Flag, Callback)
@@ -3045,35 +3267,17 @@ SettingsTab:CreateDropdown(T.PresetLabel, 'lucide-palette', { 'Green', 'Red', 'B
 ApplyPresetTheme(selected)
 end)
 
-SettingsTab:CreateLabel(T.AccentHeader, 'lucide-palette')
-SettingsTab:CreateSlider(T.AccentRed, nil, 0, 255, AccentR, nil, function(v)
-AccentR = v
-UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
-end)
-SettingsTab:CreateSlider(T.AccentGreen, nil, 0, 255, AccentG, nil, function(v)
-AccentG = v
-UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
-end)
-SettingsTab:CreateSlider(T.AccentBlue, nil, 0, 255, AccentB, nil, function(v)
-AccentB = v
-UpdateThemeColor(Color3.fromRGB(AccentR, AccentG, AccentB))
+SettingsTab:CreateColorPicker(T.AccentHeader, 'lucide-palette', Color3.fromRGB(AccentR, AccentG, AccentB), function(newColor)
+AccentR, AccentG, AccentB = math.floor(newColor.R * 255 + 0.5), math.floor(newColor.G * 255 + 0.5), math.floor(newColor.B * 255 + 0.5)
+UpdateThemeColor(newColor)
 end)
 SettingsTab:CreateToggle(T.RainbowAccent, 'lucide-wand-2', isRainbow, nil, function(state)
 isRainbow = state
 end)
 
-SettingsTab:CreateLabel(T.TextHeader, 'lucide-baseline')
-SettingsTab:CreateSlider(T.TextRed, nil, 0, 255, TextR, nil, function(v)
-TextR = v
-UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
-end)
-SettingsTab:CreateSlider(T.TextGreen, nil, 0, 255, TextG, nil, function(v)
-TextG = v
-UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
-end)
-SettingsTab:CreateSlider(T.TextBlue, nil, 0, 255, TextB, nil, function(v)
-TextB = v
-UpdateTextColor(Color3.fromRGB(TextR, TextG, TextB))
+SettingsTab:CreateColorPicker(T.TextHeader, 'lucide-baseline', Color3.fromRGB(TextR, TextG, TextB), function(newColor)
+TextR, TextG, TextB = math.floor(newColor.R * 255 + 0.5), math.floor(newColor.G * 255 + 0.5), math.floor(newColor.B * 255 + 0.5)
+UpdateTextColor(newColor)
 end)
 SettingsTab:CreateToggle(T.RainbowText, 'lucide-wand-2', isTextRainbow, nil, function(state)
 isTextRainbow = state
@@ -3086,122 +3290,50 @@ UpdateGlassTransparency(v / 100)
 end)
 
 -- ===================== สีพื้นหลัง (Background Color) =====================
-SettingsTab:CreateLabel(T.BackgroundHeader, 'lucide-square')
-SettingsTab:CreateSlider(T.BackgroundRed, nil, 0, 255, BgR, nil, function(v)
-BgR = v
-UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
-end)
-SettingsTab:CreateSlider(T.BackgroundGreen, nil, 0, 255, BgG, nil, function(v)
-BgG = v
-UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
-end)
-SettingsTab:CreateSlider(T.BackgroundBlue, nil, 0, 255, BgB, nil, function(v)
-BgB = v
-UpdateBackgroundColor(Color3.fromRGB(BgR, BgG, BgB))
+SettingsTab:CreateColorPicker(T.BackgroundHeader, 'lucide-square', Color3.fromRGB(BgR, BgG, BgB), function(newColor)
+BgR, BgG, BgB = math.floor(newColor.R * 255 + 0.5), math.floor(newColor.G * 255 + 0.5), math.floor(newColor.B * 255 + 0.5)
+UpdateBackgroundColor(newColor)
 end)
 
 -- ===================== สีของ Category (sidebar tab) — ครอบคลุมทั้งตอน Active และ Idle =====================
 SettingsTab:CreateLabel(T.CategoryColorHeader, 'lucide-layout-dashboard')
 
-SettingsTab:CreateLabel(T.CategoryActiveSubHeader, 'lucide-check-circle')
-SettingsTab:CreateSlider(T.CategoryActiveRed, nil, 0, 255, CatR, nil, function(v)
-CatR = v
-UpdateCategoryColor(Color3.fromRGB(CatR, CatG, CatB))
-end)
-SettingsTab:CreateSlider(T.CategoryActiveGreen, nil, 0, 255, CatG, nil, function(v)
-CatG = v
-UpdateCategoryColor(Color3.fromRGB(CatR, CatG, CatB))
-end)
-SettingsTab:CreateSlider(T.CategoryActiveBlue, nil, 0, 255, CatB, nil, function(v)
-CatB = v
-UpdateCategoryColor(Color3.fromRGB(CatR, CatG, CatB))
+SettingsTab:CreateColorPicker(T.CategoryActiveSubHeader, 'lucide-check-circle', Color3.fromRGB(CatR, CatG, CatB), function(newColor)
+CatR, CatG, CatB = math.floor(newColor.R * 255 + 0.5), math.floor(newColor.G * 255 + 0.5), math.floor(newColor.B * 255 + 0.5)
+UpdateCategoryColor(newColor)
 end)
 
-SettingsTab:CreateLabel(T.CategoryIdleSubHeader, 'lucide-circle')
-SettingsTab:CreateSlider(T.CategoryIdleRed, nil, 0, 255, IdleCatR, nil, function(v)
-IdleCatR = v
-UpdateCategoryIdleColor(Color3.fromRGB(IdleCatR, IdleCatG, IdleCatB))
-end)
-SettingsTab:CreateSlider(T.CategoryIdleGreen, nil, 0, 255, IdleCatG, nil, function(v)
-IdleCatG = v
-UpdateCategoryIdleColor(Color3.fromRGB(IdleCatR, IdleCatG, IdleCatB))
-end)
-SettingsTab:CreateSlider(T.CategoryIdleBlue, nil, 0, 255, IdleCatB, nil, function(v)
-IdleCatB = v
-UpdateCategoryIdleColor(Color3.fromRGB(IdleCatR, IdleCatG, IdleCatB))
+SettingsTab:CreateColorPicker(T.CategoryIdleSubHeader, 'lucide-circle', Color3.fromRGB(IdleCatR, IdleCatG, IdleCatB), function(newColor)
+IdleCatR, IdleCatG, IdleCatB = math.floor(newColor.R * 255 + 0.5), math.floor(newColor.G * 255 + 0.5), math.floor(newColor.B * 255 + 0.5)
+UpdateCategoryIdleColor(newColor)
 end)
 
 -- ===================== สีพื้นผิว: ปุ่ม / Dropdown / Element อื่นๆ =====================
 SettingsTab:CreateLabel(T.SurfaceHeader, 'lucide-palette')
 
-SettingsTab:CreateLabel(T.ButtonColorSubHeader, 'lucide-square')
-SettingsTab:CreateSlider(T.ButtonRed, nil, 0, 255, ButtonR, nil, function(v)
-ButtonR = v
-UpdateButtonColor(Color3.fromRGB(ButtonR, ButtonG, ButtonB))
-end)
-SettingsTab:CreateSlider(T.ButtonGreen, nil, 0, 255, ButtonG, nil, function(v)
-ButtonG = v
-UpdateButtonColor(Color3.fromRGB(ButtonR, ButtonG, ButtonB))
-end)
-SettingsTab:CreateSlider(T.ButtonBlue, nil, 0, 255, ButtonB, nil, function(v)
-ButtonB = v
-UpdateButtonColor(Color3.fromRGB(ButtonR, ButtonG, ButtonB))
+SettingsTab:CreateColorPicker(T.ButtonColorSubHeader, 'lucide-square', Color3.fromRGB(ButtonR, ButtonG, ButtonB), function(newColor)
+ButtonR, ButtonG, ButtonB = math.floor(newColor.R * 255 + 0.5), math.floor(newColor.G * 255 + 0.5), math.floor(newColor.B * 255 + 0.5)
+UpdateButtonColor(newColor)
 end)
 
-SettingsTab:CreateLabel(T.DropdownColorSubHeader, 'lucide-chevron-down')
-SettingsTab:CreateSlider(T.DropdownRed, nil, 0, 255, DropR, nil, function(v)
-DropR = v
-UpdateDropdownColor(Color3.fromRGB(DropR, DropG, DropB))
-end)
-SettingsTab:CreateSlider(T.DropdownGreen, nil, 0, 255, DropG, nil, function(v)
-DropG = v
-UpdateDropdownColor(Color3.fromRGB(DropR, DropG, DropB))
-end)
-SettingsTab:CreateSlider(T.DropdownBlue, nil, 0, 255, DropB, nil, function(v)
-DropB = v
-UpdateDropdownColor(Color3.fromRGB(DropR, DropG, DropB))
+SettingsTab:CreateColorPicker(T.DropdownColorSubHeader, 'lucide-chevron-down', Color3.fromRGB(DropR, DropG, DropB), function(newColor)
+DropR, DropG, DropB = math.floor(newColor.R * 255 + 0.5), math.floor(newColor.G * 255 + 0.5), math.floor(newColor.B * 255 + 0.5)
+UpdateDropdownColor(newColor)
 end)
 
-SettingsTab:CreateLabel(T.DropdownListSubHeader, 'lucide-list')
-SettingsTab:CreateSlider(T.DropdownListRed, nil, 0, 255, DropListR, nil, function(v)
-DropListR = v
-UpdateDropdownListColor(Color3.fromRGB(DropListR, DropListG, DropListB))
-end)
-SettingsTab:CreateSlider(T.DropdownListGreen, nil, 0, 255, DropListG, nil, function(v)
-DropListG = v
-UpdateDropdownListColor(Color3.fromRGB(DropListR, DropListG, DropListB))
-end)
-SettingsTab:CreateSlider(T.DropdownListBlue, nil, 0, 255, DropListB, nil, function(v)
-DropListB = v
-UpdateDropdownListColor(Color3.fromRGB(DropListR, DropListG, DropListB))
+SettingsTab:CreateColorPicker(T.DropdownListSubHeader, 'lucide-list', Color3.fromRGB(DropListR, DropListG, DropListB), function(newColor)
+DropListR, DropListG, DropListB = math.floor(newColor.R * 255 + 0.5), math.floor(newColor.G * 255 + 0.5), math.floor(newColor.B * 255 + 0.5)
+UpdateDropdownListColor(newColor)
 end)
 
-SettingsTab:CreateLabel(T.ElementColorSubHeader, 'lucide-layout-grid')
-SettingsTab:CreateSlider(T.ElementRed, nil, 0, 255, ElemR, nil, function(v)
-ElemR = v
-UpdateElementColor(Color3.fromRGB(ElemR, ElemG, ElemB))
-end)
-SettingsTab:CreateSlider(T.ElementGreen, nil, 0, 255, ElemG, nil, function(v)
-ElemG = v
-UpdateElementColor(Color3.fromRGB(ElemR, ElemG, ElemB))
-end)
-SettingsTab:CreateSlider(T.ElementBlue, nil, 0, 255, ElemB, nil, function(v)
-ElemB = v
-UpdateElementColor(Color3.fromRGB(ElemR, ElemG, ElemB))
+SettingsTab:CreateColorPicker(T.ElementColorSubHeader, 'lucide-layout-grid', Color3.fromRGB(ElemR, ElemG, ElemB), function(newColor)
+ElemR, ElemG, ElemB = math.floor(newColor.R * 255 + 0.5), math.floor(newColor.G * 255 + 0.5), math.floor(newColor.B * 255 + 0.5)
+UpdateElementColor(newColor)
 end)
 
-SettingsTab:CreateLabel(T.TeamColorSubHeader, 'lucide-users')
-SettingsTab:CreateSlider(T.TeamRed, nil, 0, 255, TeamR, nil, function(v)
-TeamR = v
-UpdateTeamColor(Color3.fromRGB(TeamR, TeamG, TeamB))
-end)
-SettingsTab:CreateSlider(T.TeamGreen, nil, 0, 255, TeamG, nil, function(v)
-TeamG = v
-UpdateTeamColor(Color3.fromRGB(TeamR, TeamG, TeamB))
-end)
-SettingsTab:CreateSlider(T.TeamBlue, nil, 0, 255, TeamB, nil, function(v)
-TeamB = v
-UpdateTeamColor(Color3.fromRGB(TeamR, TeamG, TeamB))
+SettingsTab:CreateColorPicker(T.TeamColorSubHeader, 'lucide-users', Color3.fromRGB(TeamR, TeamG, TeamB), function(newColor)
+TeamR, TeamG, TeamB = math.floor(newColor.R * 255 + 0.5), math.floor(newColor.G * 255 + 0.5), math.floor(newColor.B * 255 + 0.5)
+UpdateTeamColor(newColor)
 end)
 
 -- ===================== Running Light (เส้นขอบวิ่ง) =====================
@@ -3216,19 +3348,9 @@ SettingsTab:CreateSlider(T.RunningLightSpeed, nil, 10, 500, RLSpeedValue, nil, f
 RLSpeedValue = v
 RunningLightSpeed = v
 end)
-SettingsTab:CreateSlider(T.RunningLightRed, nil, 0, 255, RLR, nil, function(v)
-RLR = v
-CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
-if not RunningLightEnabled then ApplyRunningLightStatic() end
-end)
-SettingsTab:CreateSlider(T.RunningLightGreen, nil, 0, 255, RLG, nil, function(v)
-RLG = v
-CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
-if not RunningLightEnabled then ApplyRunningLightStatic() end
-end)
-SettingsTab:CreateSlider(T.RunningLightBlue, nil, 0, 255, RLB, nil, function(v)
-RLB = v
-CurrentRunningLightColor = Color3.fromRGB(RLR, RLG, RLB)
+SettingsTab:CreateColorPicker(T.RunningLightColorLabel, 'lucide-flame', Color3.fromRGB(RLR, RLG, RLB), function(newColor)
+RLR, RLG, RLB = math.floor(newColor.R * 255 + 0.5), math.floor(newColor.G * 255 + 0.5), math.floor(newColor.B * 255 + 0.5)
+CurrentRunningLightColor = newColor
 if not RunningLightEnabled then ApplyRunningLightStatic() end
 end)
 
