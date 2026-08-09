@@ -2625,16 +2625,32 @@ end
 
 -- ===================== ColorPicker (Saturation/Value square + Hue bar) =====================
 -- ใช้แทนชุดสไลเดอร์ R/G/B เดิม เพื่อให้เลือกสีได้ง่ายและเห็นภาพรวมสีทันที
--- เรียกใช้: CreateColorPicker(Text, IconName, DefaultColor3, Callback)
--- รองรับเรียกแบบไม่มี IconName: CreateColorPicker(Text, DefaultColor3, Callback)
-function CategoryElements:CreateColorPicker(PickerText, IconName, DefaultColor, Callback)
+-- ใช้ได้ทั้งในเมนู Settings และในหน้า Category ทั่วไป (Tab ที่ผู้ใช้สร้างเอง) เหมือน CreateSlider/CreateToggle
+-- เรียกใช้: CreateColorPicker(Text, IconName, DefaultColor3, Flag, Callback)
+-- รองรับเรียกแบบไม่มี IconName: CreateColorPicker(Text, DefaultColor3, Flag, Callback)
+-- รองรับเรียกแบบไม่มี Flag: CreateColorPicker(Text, IconName, DefaultColor3, Callback)
+-- ถ้าใส่ Flag ไว้ ค่าสีที่เลือกจะถูกเซฟ/โหลดอัตโนมัติเหมือน Slider/Toggle ทั่วไป (ผ่าน SaveConfig/LoadConfig)
+function CategoryElements:CreateColorPicker(PickerText, IconName, DefaultColor, Flag, Callback)
 if typeof(IconName) == 'Color3' then
-Callback = DefaultColor; DefaultColor = IconName; IconName = nil
+Callback = Flag; Flag = DefaultColor; DefaultColor = IconName; IconName = nil
 end
+if type(Flag) == 'function' then Callback = Flag; Flag = nil end
+
+if Flag and SavedFlags[Flag] ~= nil then
+local sv = SavedFlags[Flag]
+if typeof(sv) == 'table' and sv[1] and sv[2] and sv[3] then
+DefaultColor = Color3.fromRGB(sv[1], sv[2], sv[3])
+end
+end
+
 DefaultColor = DefaultColor or Color3.fromRGB(255, 255, 255)
 
 local Hue, Sat, Val = DefaultColor:ToHSV()
 local CurrentColor = DefaultColor
+
+if Flag then
+Flags[Flag] = { Type = 'ColorPicker', Value = { math.floor(DefaultColor.R * 255 + 0.5), math.floor(DefaultColor.G * 255 + 0.5), math.floor(DefaultColor.B * 255 + 0.5) } }
+end
 
 local PickerContainer = Instance.new('Frame')
 PickerContainer.Parent = CategoryPage
@@ -2799,6 +2815,9 @@ local function Commit()
 CurrentColor = Color3.fromHSV(Hue, Sat, Val)
 PreviewSwatch.BackgroundColor3 = CurrentColor
 RefreshHex()
+if Flag then
+Flags[Flag].Value = { math.floor(CurrentColor.R * 255 + 0.5), math.floor(CurrentColor.G * 255 + 0.5), math.floor(CurrentColor.B * 255 + 0.5) }
+end
 if Callback then Callback(CurrentColor) end
 end
 
@@ -2818,7 +2837,7 @@ end
 end)
 UserInputService.InputEnded:Connect(function(input)
 if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-if draggingSV then SaveConfig(MainFrame) end
+if draggingSV and Flag then SaveConfig(MainFrame) end
 draggingSV = false
 end
 end)
@@ -2843,7 +2862,7 @@ end
 end)
 UserInputService.InputEnded:Connect(function(input)
 if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-if draggingHue then SaveConfig(MainFrame) end
+if draggingHue and Flag then SaveConfig(MainFrame) end
 draggingHue = false
 end
 end)
