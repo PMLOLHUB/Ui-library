@@ -2680,19 +2680,30 @@ PickerLabel.Position = UDim2.new(0, 10, 0, 6)
 PickerLabel.BackgroundTransparency = 1
 PickerLabel.Size = UDim2.new(0.55, 0, 0, 20)
 ApplyFont(PickerLabel, false)
+PickerLabel.Text = PickerText
 ApplyFontSize(PickerLabel, 14)
 PickerLabel.TextXAlignment = Enum.TextXAlignment.Left
 PickerLabel.TextTruncate = Enum.TextTruncate.AtEnd
 ApplyTextColor(PickerLabel)
--- แสดงลูกศรบอกสถานะย่อ/ขยายไว้หน้าชื่อหัวข้อ (▸ = ปิดอยู่, ▾ = เปิดอยู่)
-local function RefreshPickerLabelText()
-PickerLabel.Text = (PickerExpanded and '\226\150\190 ' or '\226\150\184 ') .. PickerText
-end
-RefreshPickerLabelText()
 if AddElementIcon(PickerContainer, IconName, 16, 10) then
 PickerLabel.Position = UDim2.new(0, 32, 0, 6)
 PickerLabel.Size = UDim2.new(0.5, -22, 0, 20)
 end
+
+-- ลูกศรบอกสถานะย่อ/ขยาย ใช้ไอคอนรูปภาพจริง (ไม่ใช่ตัวอักษร Unicode) เพื่อไม่ให้ขึ้นเป็นกล่องโหลดไม่ออกในบางฟอนต์
+local PickerChevron = Instance.new('ImageLabel')
+PickerChevron.Name = 'PickerChevron'
+PickerChevron.Parent = PickerContainer
+PickerChevron.BackgroundTransparency = 1
+PickerChevron.Position = UDim2.new(1, -104, 0, 9)
+PickerChevron.Size = UDim2.new(0, 14, 0, 14)
+PickerChevron.Image = Icons['lucide-chevron-right'] or ''
+PickerChevron.ZIndex = 2
+ApplyTextColor(PickerChevron, 'ImageColor3')
+local function RefreshPickerLabelText()
+PickerChevron.Image = (PickerExpanded and Icons['lucide-chevron-down'] or Icons['lucide-chevron-right']) or ''
+end
+RefreshPickerLabelText()
 
 local HexLabel = Instance.new('TextLabel')
 HexLabel.Parent = PickerContainer
