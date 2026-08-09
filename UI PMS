@@ -2681,8 +2681,19 @@ Instance.new('UICorner', PreviewSwatch).CornerRadius = UDim.new(0, 4)
 local pss = Instance.new('UIStroke', PreviewSwatch)
 pss.Thickness = 1; pss.Color = C.AccentDim
 
+local HexChars = '0123456789ABCDEF'
+local function ByteToHex(n)
+n = math.clamp(math.floor(n + 0.5), 0, 255)
+local hi = math.floor(n / 16) + 1
+local lo = (n % 16) + 1
+return HexChars:sub(hi, hi) .. HexChars:sub(lo, lo)
+end
+
 local function RefreshHex()
-HexLabel.Text = string.format('#XXX', math.floor(CurrentColor.R * 255 + 0.5), math.floor(CurrentColor.G * 255 + 0.5), math.floor(CurrentColor.B * 255 + 0.5))
+-- เดิมใช้ string.format('X', ...) แต่บาง executor ไม่รองรับ specifier %X ทำให้ขึ้นเป็น
+-- ตัวหนังสือต้นแบบ "#XXX" ดิบๆ (เห็นเป็น # กล่องเทา X กล่องเทา X ...) แทนค่าจริง
+-- จึงเปลี่ยนมาแปลง Hex เองแบบ manual แทน ไม่พึ่ง string.format เลย ปลอดภัยกับทุก executor
+HexLabel.Text = '#' .. ByteToHex(CurrentColor.R * 255) .. ByteToHex(CurrentColor.G * 255) .. ByteToHex(CurrentColor.B * 255)
 end
 RefreshHex()
 
