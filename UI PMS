@@ -3373,8 +3373,14 @@ local ddPad = Instance.new('UIPadding', DropdownBtn)
 ddPad.PaddingLeft = UDim.new(0, IconOffset)
 end
 
+-- ArrowIcon ต้องประกาศไว้นอก if-block เพื่อให้ UpdateSize() (ที่นิยามอยู่ถัดไปข้างล่าง) เห็นตัวแปรนี้ได้
+-- เดิมประกาศ "local ArrowIcon" ไว้ข้างในบล็อก if แล้วพอ block จบ ตัวแปรก็หลุด scope ไป
+-- ทำให้ UpdateSize() อ้างถึง ArrowIcon เป็น global (nil) แล้ว error "attempt to index nil value 'ArrowIcon'"
+-- ทุกครั้งที่มีการเปิด/ปิด Dropdown หรือตอนสร้างครั้งแรก (RebuildOptions เรียก UpdateSize ทันที)
+-- ซึ่ง error นี้ทำให้สคริปต์ค้างกลางคันตอนสร้าง UI ทั้งหน้า Settings เห็นแค่ Dropdown อันแรกแล้วหยุด
+local ArrowIcon = nil
 if not HideArrow then
-local ArrowIcon = Instance.new('TextLabel')
+ArrowIcon = Instance.new('TextLabel')
 ArrowIcon.Parent = DropdownBtn
 ArrowIcon.BackgroundTransparency = 1
 ArrowIcon.Position = UDim2.new(1, -30, 0, 0)
@@ -3385,12 +3391,22 @@ ApplyFontSize(ArrowIcon, 12)
 ApplyTheme(ArrowIcon, 'TextColor3')
 end
 
-local OptionList = Instance.new('Frame')
+-- ใช้ ScrollingFrame แทน Frame ธรรมดา + จำกัดความสูงสูงสุดตอนกางออก (MaxVisibleItems)
+-- เพราะถ้ามีตัวเลือกเยอะ (เช่น ธีม 25 แบบ หรือฟอนต์เกือบร้อยแบบ) กล่องแบบเดิมจะขยายสูงจนบัง
+-- เนื้อหาอื่นทั้งหน้า Settings ให้เห็นแต่ Dropdown ที่กางอยู่ ทางแก้คือกางแค่บางส่วนแล้วเลื่อนดูที่เหลือแทน
+local MaxVisibleItems = 6
+local ItemHeight = 30
+local OptionList = Instance.new('ScrollingFrame')
 OptionList.Parent = DropdownContainer
 ApplyDropdownListColor(OptionList)           -- ← สีแผงรายการ Dropdown ตอนกางออก (ปรับได้จาก Settings)
 ApplyGlass(OptionList)
 OptionList.Position = UDim2.new(0, 0, 0, 35)
 OptionList.Size = UDim2.new(1, 0, 1, -35)
+OptionList.ScrollBarThickness = 4
+OptionList.ScrollBarImageColor3 = C.Accent
+OptionList.BorderSizePixel = 0
+OptionList.CanvasSize = UDim2.new(0, 0, 0, 0)
+OptionList.AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y
 
 local ListLayout = Instance.new('UIListLayout', OptionList)
 ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -3421,11 +3437,13 @@ local visibleCount = 0
 for _, btn in ipairs(OptionBtns) do
 if btn.Visible then visibleCount = visibleCount + 1 end
 end
-local targetHeight = isOpen and (65 + (visibleCount * 30)) or 35
+-- จำกัดจำนวนแถวที่กางแสดงพร้อมกันไว้ที่ MaxVisibleItems แถว ถ้ามีมากกว่านั้นให้เลื่อนดูใน OptionList แทน
+local shownCount = math.min(visibleCount, MaxVisibleItems)
+local targetHeight = isOpen and (65 + (shownCount * ItemHeight)) or 35
 TweenService:Create(DropdownContainer, TweenInfo.new(0.2), {
 Size = UDim2.new(0.95, 0, 0, targetHeight),
 }):Play()
-ArrowIcon.Text = isOpen and '▲' or '▼'
+if ArrowIcon then ArrowIcon.Text = isOpen and '▲' or '▼' end
 end
 
 local function AddOption(option)
