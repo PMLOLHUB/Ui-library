@@ -1593,8 +1593,11 @@ local CurrentTeamColor = Config.TeamColor or C.TeamDefault
 -- รายชื่อฟอนต์ที่เลือกได้ — ดึง "ทุกฟอนต์" ที่มีอยู่จริงบน Roblox ในตอนรันสด (Enum.Font:GetEnumItems())
 -- แทนที่จะไล่พิมพ์ชื่อฟอนต์ทีละตัว วิธีนี้ครอบคลุมฟอนต์ทั้งหมดเสมอ แม้ Roblox จะเพิ่มฟอนต์ใหม่ในอนาคต
 -- แต่ละฟอนต์จะพยายามหาคู่ 'Bold' ของตัวเอง (เช่น Gotham -> GothamBold) ถ้าไม่มีคู่ Bold จะใช้ตัวเองแทน
+-- ครอบทั้งบล็อกด้วย pcall: บาง executor อาจไม่รองรับ Enum.Font:GetEnumItems() ครบ 100% ถ้าพังจะไม่ทำให้
+-- สคริปต์ทั้งตัวหยุดทำงานกลางคัน (ซึ่งจะทำให้ UI ทั้งหน้าต่างไม่ขึ้นเลย) แต่จะสลับไปใช้ลิสต์ฟอนต์สำรองที่ปลอดภัยแทน
 local FontPresets = {}
 local FontPresetOrder = {}
+local fontBuildOk = pcall(function()
 for _, fontEnum in ipairs(Enum.Font:GetEnumItems()) do
 local fontName = fontEnum.Name
 local boldOk, boldEnum = pcall(function()
@@ -1607,6 +1610,17 @@ Bold = (boldOk and boldEnum) or fontEnum,
 table.insert(FontPresetOrder, fontName)
 end
 table.sort(FontPresetOrder)
+end)
+if not fontBuildOk or #FontPresetOrder == 0 then
+-- ลิสต์ฟอนต์สำรอง (เดิมที่เคยใช้และรู้อยู่แล้วว่าใช้งานได้แน่นอนทุก executor)
+FontPresets = {
+Gotham          = { Regular = Enum.Font.Gotham,          Bold = Enum.Font.GothamBold },
+GothamBlack     = { Regular = Enum.Font.GothamBlack,     Bold = Enum.Font.GothamBlack },
+SourceSans      = { Regular = Enum.Font.SourceSans,      Bold = Enum.Font.SourceSansBold },
+SourceSansLight = { Regular = Enum.Font.SourceSansLight, Bold = Enum.Font.SourceSansBold },
+}
+FontPresetOrder = { 'Gotham', 'GothamBlack', 'SourceSans', 'SourceSansLight' }
+end
 
 local CurrentFontFamilyName = 'Gotham'
 if Config.FontFamily and FontPresets[Config.FontFamily] then
@@ -3084,8 +3098,8 @@ return HexChars:sub(hi, hi) .. HexChars:sub(lo, lo)
 end
 
 local function RefreshHex()
--- เดิมใช้ string.format('X', ...) แต่บาง executor ไม่รองรับ specifier %X ทำให้ขึ้นเป็น
--- ตัวหนังสือต้นแบบ "#XXX" ดิบๆ (เห็นเป็น # กล่องเทา X กล่องเทา X ...) แทนค่าจริง
+-- เดิมใช้ string.format('%02X', ...) แต่บาง executor ไม่รองรับ specifier %X ทำให้ขึ้นเป็น
+-- ตัวหนังสือต้นแบบ "#%02X%02X%02X" ดิบๆ (เห็นเป็น # กล่องเทา X กล่องเทา X ...) แทนค่าจริง
 -- จึงเปลี่ยนมาแปลง Hex เองแบบ manual แทน ไม่พึ่ง string.format เลย ปลอดภัยกับทุก executor
 HexLabel.Text = '#' .. ByteToHex(CurrentColor.R * 255) .. ByteToHex(CurrentColor.G * 255) .. ByteToHex(CurrentColor.B * 255)
 end
