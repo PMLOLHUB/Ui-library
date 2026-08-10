@@ -2277,11 +2277,15 @@ TopBar.ClipsDescendants = true
 
 -- เส้นเรืองแสงด้านล่าง topbar — ผูกกับสี Accent แบบสด (เดิมค้างเป็นสีเทาตายตัว ไม่ตรงกับสี Accent ที่ปรับใน Settings
 -- ทำให้ดูเหมือนมีสองสีไม่ตรงกันที่แถบด้านบนใกล้ไอคอนตั้งค่า)
+-- หมายเหตุสำคัญ: ClipsDescendants ของ TopBar ตัดเนื้อหาแบบ "สี่เหลี่ยมตรง" เท่านั้น ไม่ได้ตัดตามขอบโค้งของ
+-- UICorner ดังนั้นถ้าแท่ง TopBarAccent นี้กว้างเต็ม 100% เท่า TopBar พอดี มุมของมันจะยื่นพ้นขอบโค้งของ TopBar
+-- ออกมาเป็นเหลี่ยมเล็กๆ ให้เห็นที่มุมล่างซ้าย-ขวา (ซ้อนทับกับความโค้งของขอบ UI) จึงร่นระยะซ้าย-ขวาเข้ามา
+-- เท่ารัศมีมุมโค้ง (10) ให้แท่งนี้อยู่แค่ในช่วงขอบตรงตรงกลางเท่านั้น ไม่ยื่นเข้าไปในโซนโค้งของมุม
 local TopBarAccent = Instance.new('Frame')
 TopBarAccent.Parent = TopBar
 TopBarAccent.BorderSizePixel = 0
-TopBarAccent.Position = UDim2.new(0, 0, 1, -2)
-TopBarAccent.Size = UDim2.new(1, 0, 0, 2)
+TopBarAccent.Position = UDim2.new(0, 10, 1, -2)
+TopBarAccent.Size = UDim2.new(1, -20, 0, 2)
 TopBarAccent.ZIndex = 3
 ApplyTheme(TopBarAccent)
 
@@ -3098,8 +3102,8 @@ return HexChars:sub(hi, hi) .. HexChars:sub(lo, lo)
 end
 
 local function RefreshHex()
--- เดิมใช้ string.format('%02X', ...) แต่บาง executor ไม่รองรับ specifier %X ทำให้ขึ้นเป็น
--- ตัวหนังสือต้นแบบ "#%02X%02X%02X" ดิบๆ (เห็นเป็น # กล่องเทา X กล่องเทา X ...) แทนค่าจริง
+-- เดิมใช้ string.format('X', ...) แต่บาง executor ไม่รองรับ specifier %X ทำให้ขึ้นเป็น
+-- ตัวหนังสือต้นแบบ "#XXX" ดิบๆ (เห็นเป็น # กล่องเทา X กล่องเทา X ...) แทนค่าจริง
 -- จึงเปลี่ยนมาแปลง Hex เองแบบ manual แทน ไม่พึ่ง string.format เลย ปลอดภัยกับทุก executor
 HexLabel.Text = '#' .. ByteToHex(CurrentColor.R * 255) .. ByteToHex(CurrentColor.G * 255) .. ByteToHex(CurrentColor.B * 255)
 end
