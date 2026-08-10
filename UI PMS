@@ -2249,6 +2249,12 @@ ApplyGlass(TopBar)
 TopBar.Size = UDim2.new(1, 0, 0, 32)
 TopBar.ZIndex = 2
 Instance.new('UICorner', TopBar).CornerRadius = UDim.new(0, 10)
+-- ตัด (clip) เนื้อหาลูกทั้งหมดของ TopBar ให้อยู่ในกรอบมุมโค้งเสมอ
+-- สาเหตุจริงของสี่เหลี่ยมเล็กๆ ที่โผล่มุมล่างซ้าย-ขวา: TopBarAccent (เส้นเรืองแสงด้านล่าง) เป็นแท่งสี่เหลี่ยมมุมฉาก
+-- เต็มความกว้าง พอไม่ได้ตัดขอบ มันจะยื่นพ้นมุมโค้งของ TopBar ออกมาเป็นเหลี่ยมเล็กๆ ให้เห็น
+-- เดิมใช้แพตช์สีทึบ (TopBarFixLeft/Right) แปะปิดไว้ แต่เป็นการแก้ปลายเหตุและสีเพี้ยนเวลาสลับธีม/พื้นหลังรูปภาพ
+-- ตัด ClipsDescendants ตรงนี้คือการแก้ที่ต้นเหตุจริง ไม่ต้องใช้แพตช์ปิดอีกต่อไป
+TopBar.ClipsDescendants = true
 
 -- fix bottom corners
 -- หมายเหตุ: เดิมตรงนี้มีแพตช์เหลี่ยมเล็กๆ (TopBarFixLeft/TopBarFixRight) คลุมมุมล่างซ้าย-ขวาของ TopBar
