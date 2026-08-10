@@ -3102,8 +3102,8 @@ return HexChars:sub(hi, hi) .. HexChars:sub(lo, lo)
 end
 
 local function RefreshHex()
--- เดิมใช้ string.format('%02X', ...) แต่บาง executor ไม่รองรับ specifier %X ทำให้ขึ้นเป็น
--- ตัวหนังสือต้นแบบ "#%02X%02X%02X" ดิบๆ (เห็นเป็น # กล่องเทา X กล่องเทา X ...) แทนค่าจริง
+-- เดิมใช้ string.format('X', ...) แต่บาง executor ไม่รองรับ specifier %X ทำให้ขึ้นเป็น
+-- ตัวหนังสือต้นแบบ "#XXX" ดิบๆ (เห็นเป็น # กล่องเทา X กล่องเทา X ...) แทนค่าจริง
 -- จึงเปลี่ยนมาแปลง Hex เองแบบ manual แทน ไม่พึ่ง string.format เลย ปลอดภัยกับทุก executor
 HexLabel.Text = '#' .. ByteToHex(CurrentColor.R * 255) .. ByteToHex(CurrentColor.G * 255) .. ByteToHex(CurrentColor.B * 255)
 end
