@@ -1593,11 +1593,8 @@ local CurrentTeamColor = Config.TeamColor or C.TeamDefault
 -- รายชื่อฟอนต์ที่เลือกได้ — ดึง "ทุกฟอนต์" ที่มีอยู่จริงบน Roblox ในตอนรันสด (Enum.Font:GetEnumItems())
 -- แทนที่จะไล่พิมพ์ชื่อฟอนต์ทีละตัว วิธีนี้ครอบคลุมฟอนต์ทั้งหมดเสมอ แม้ Roblox จะเพิ่มฟอนต์ใหม่ในอนาคต
 -- แต่ละฟอนต์จะพยายามหาคู่ 'Bold' ของตัวเอง (เช่น Gotham -> GothamBold) ถ้าไม่มีคู่ Bold จะใช้ตัวเองแทน
--- ครอบทั้งบล็อกด้วย pcall: บาง executor อาจไม่รองรับ Enum.Font:GetEnumItems() ครบ 100% ถ้าพังจะไม่ทำให้
--- สคริปต์ทั้งตัวหยุดทำงานกลางคัน (ซึ่งจะทำให้ UI ทั้งหน้าต่างไม่ขึ้นเลย) แต่จะสลับไปใช้ลิสต์ฟอนต์สำรองที่ปลอดภัยแทน
 local FontPresets = {}
 local FontPresetOrder = {}
-local fontBuildOk = pcall(function()
 for _, fontEnum in ipairs(Enum.Font:GetEnumItems()) do
 local fontName = fontEnum.Name
 local boldOk, boldEnum = pcall(function()
@@ -1610,17 +1607,6 @@ Bold = (boldOk and boldEnum) or fontEnum,
 table.insert(FontPresetOrder, fontName)
 end
 table.sort(FontPresetOrder)
-end)
-if not fontBuildOk or #FontPresetOrder == 0 then
--- ลิสต์ฟอนต์สำรอง (เดิมที่เคยใช้และรู้อยู่แล้วว่าใช้งานได้แน่นอนทุก executor)
-FontPresets = {
-Gotham          = { Regular = Enum.Font.Gotham,          Bold = Enum.Font.GothamBold },
-GothamBlack     = { Regular = Enum.Font.GothamBlack,     Bold = Enum.Font.GothamBlack },
-SourceSans      = { Regular = Enum.Font.SourceSans,      Bold = Enum.Font.SourceSansBold },
-SourceSansLight = { Regular = Enum.Font.SourceSansLight, Bold = Enum.Font.SourceSansBold },
-}
-FontPresetOrder = { 'Gotham', 'GothamBlack', 'SourceSans', 'SourceSansLight' }
-end
 
 local CurrentFontFamilyName = 'Gotham'
 if Config.FontFamily and FontPresets[Config.FontFamily] then
@@ -2080,15 +2066,12 @@ CustomBgImage.Name = 'CustomBackgroundImage'
 CustomBgImage.Parent = MainFrame
 CustomBgImage.BackgroundTransparency = 1
 CustomBgImage.Size = UDim2.new(1, 0, 1, 0)
-CustomBgImage.ZIndex = 0
+CustomBgImage.ZIndex = -1
 CustomBgImage.Image = CurrentBackgroundImage
 CustomBgImage.ImageTransparency = BackgroundImageTransparency
 CustomBgImage.ScaleType = Enum.ScaleType.Crop
 CustomBgImage.Visible = BackgroundImageEnabled and CurrentBackgroundImage ~= ''
 Instance.new('UICorner', CustomBgImage).CornerRadius = UDim.new(0, 10)
--- หมายเหตุ: ตั้ง ZIndex เท่ากับ PatternBg (0) แทนค่าติดลบ เพราะ ZIndex ติดลบอาจถูกปฏิเสธ/ทำให้สคริปต์ error
--- บน Roblox บางเวอร์ชัน/executor (ซึ่งจะทำให้ UI ทั้งหมดไม่ขึ้นเลยเพราะสคริปต์หยุดทำงานกลางคัน)
--- ให้ลำดับการวาง (สร้างก่อน PatternBg) เป็นตัวกำหนดว่ารูปพื้นหลังอยู่ชั้นล่างสุดแทน
 
 -- ฟังก์ชันอัปเดตรูปภาพพื้นหลังและความโปร่งแสงแบบสด (เรียกจาก Settings หรือจาก config ตอนสร้างหน้าต่าง)
 local function UpdateBackgroundImage(imageId)
@@ -2258,34 +2241,46 @@ end)
 local TopBar = Instance.new('Frame')
 TopBar.Name = 'TopBar'
 TopBar.Parent = MainFrame
-ApplyBackground(TopBar)                        -- ← ผูกกับสีพื้นหลังหลัก (ปรับสดได้จาก Settings/ธีม) แทนสีตายตัวเดิม
+TopBar.BackgroundColor3 = C.BgMid             -- ← ม่วงดำ topbar
 ApplyGlass(TopBar)
 TopBar.Size = UDim2.new(1, 0, 0, 32)
 TopBar.ZIndex = 2
 Instance.new('UICorner', TopBar).CornerRadius = UDim.new(0, 10)
--- ตัด (clip) เนื้อหาลูกทั้งหมดของ TopBar ให้อยู่ในกรอบมุมโค้งเสมอ
--- สาเหตุจริงของสี่เหลี่ยมเล็กๆ ที่โผล่มุมล่างซ้าย-ขวา: TopBarAccent (เส้นเรืองแสงด้านล่าง) เป็นแท่งสี่เหลี่ยมมุมฉาก
--- เต็มความกว้าง พอไม่ได้ตัดขอบ มันจะยื่นพ้นมุมโค้งของ TopBar ออกมาเป็นเหลี่ยมเล็กๆ ให้เห็น
--- เดิมใช้แพตช์สีทึบ (TopBarFixLeft/Right) แปะปิดไว้ แต่เป็นการแก้ปลายเหตุและสีเพี้ยนเวลาสลับธีม/พื้นหลังรูปภาพ
--- ตัด ClipsDescendants ตรงนี้คือการแก้ที่ต้นเหตุจริง ไม่ต้องใช้แพตช์ปิดอีกต่อไป
-TopBar.ClipsDescendants = true
 
 -- fix bottom corners
--- หมายเหตุ: เดิมตรงนี้มีแพตช์เหลี่ยมเล็กๆ (TopBarFixLeft/TopBarFixRight) คลุมมุมล่างซ้าย-ขวาของ TopBar
--- เพื่อกันความโปร่งแสงซ้อนกัน 2 ชั้นตรงมุมโค้ง แต่ผู้ใช้เห็นเป็นแพตช์สี่เหลี่ยมเล็กๆ โผล่ผิดที่ที่มุมบนของ UI
--- (โดยเฉพาะเมื่อใช้พื้นหลังรูปภาพหรือธีมบางสี) จึงเอาออก ให้ TopBar ใช้มุมโค้งของ UICorner ตามปกติไปเลย
+-- เดิม: ใช้เฟรมเดียวคลุมครึ่งล่างทั้งแถบ แล้วสั่ง ApplyGlass ซ้ำ (ค่า GTrans เดียวกับ TopBar)
+-- เพราะเฟรมนี้เป็นลูกของ TopBar จึงวาดทับอยู่บน TopBar ที่โปร่งแสงอยู่แล้ว ทำให้ครึ่งล่าง
+-- โดนความโปร่งแสงซ้อนกัน 2 ชั้น (เข้มกว่าครึ่งบน) กลายเป็นแถบสีเข้มไม่เท่ากันพาดผ่านแนวไอคอนตั้งค่า
+-- แก้โดยคลุมเฉพาะ "มุมโค้ง" ด้วยแพตช์ทึบเล็กๆ (เท่ารัศมี UICorner) แทนการคลุมเต็มความกว้าง
+-- และไม่เรียก ApplyGlass เพื่อไม่ให้ซ้อนความโปร่งแสงอีกชั้น
+local CornerFixSize = 10
+local TopBarFixLeft = Instance.new('Frame')
+TopBarFixLeft.Name = 'TopBarFixLeft'
+TopBarFixLeft.Parent = TopBar
+TopBarFixLeft.BackgroundColor3 = C.BgMid
+TopBarFixLeft.BackgroundTransparency = 0
+TopBarFixLeft.Position = UDim2.new(0, 0, 1, -CornerFixSize)
+TopBarFixLeft.Size = UDim2.new(0, CornerFixSize, 0, CornerFixSize)
+TopBarFixLeft.BorderSizePixel = 0
+TopBarFixLeft.ZIndex = 2
+
+local TopBarFixRight = Instance.new('Frame')
+TopBarFixRight.Name = 'TopBarFixRight'
+TopBarFixRight.Parent = TopBar
+TopBarFixRight.BackgroundColor3 = C.BgMid
+TopBarFixRight.BackgroundTransparency = 0
+TopBarFixRight.Position = UDim2.new(1, -CornerFixSize, 1, -CornerFixSize)
+TopBarFixRight.Size = UDim2.new(0, CornerFixSize, 0, CornerFixSize)
+TopBarFixRight.BorderSizePixel = 0
+TopBarFixRight.ZIndex = 2
 
 -- เส้นเรืองแสงด้านล่าง topbar — ผูกกับสี Accent แบบสด (เดิมค้างเป็นสีเทาตายตัว ไม่ตรงกับสี Accent ที่ปรับใน Settings
 -- ทำให้ดูเหมือนมีสองสีไม่ตรงกันที่แถบด้านบนใกล้ไอคอนตั้งค่า)
--- หมายเหตุสำคัญ: ClipsDescendants ของ TopBar ตัดเนื้อหาแบบ "สี่เหลี่ยมตรง" เท่านั้น ไม่ได้ตัดตามขอบโค้งของ
--- UICorner ดังนั้นถ้าแท่ง TopBarAccent นี้กว้างเต็ม 100% เท่า TopBar พอดี มุมของมันจะยื่นพ้นขอบโค้งของ TopBar
--- ออกมาเป็นเหลี่ยมเล็กๆ ให้เห็นที่มุมล่างซ้าย-ขวา (ซ้อนทับกับความโค้งของขอบ UI) จึงร่นระยะซ้าย-ขวาเข้ามา
--- เท่ารัศมีมุมโค้ง (10) ให้แท่งนี้อยู่แค่ในช่วงขอบตรงตรงกลางเท่านั้น ไม่ยื่นเข้าไปในโซนโค้งของมุม
 local TopBarAccent = Instance.new('Frame')
 TopBarAccent.Parent = TopBar
 TopBarAccent.BorderSizePixel = 0
-TopBarAccent.Position = UDim2.new(0, 10, 1, -2)
-TopBarAccent.Size = UDim2.new(1, -20, 0, 2)
+TopBarAccent.Position = UDim2.new(0, 0, 1, -2)
+TopBarAccent.Size = UDim2.new(1, 0, 0, 2)
 TopBarAccent.ZIndex = 3
 ApplyTheme(TopBarAccent)
 
@@ -3102,8 +3097,8 @@ return HexChars:sub(hi, hi) .. HexChars:sub(lo, lo)
 end
 
 local function RefreshHex()
--- เดิมใช้ string.format('%02X', ...) แต่บาง executor ไม่รองรับ specifier %X ทำให้ขึ้นเป็น
--- ตัวหนังสือต้นแบบ "#%02X%02X%02X" ดิบๆ (เห็นเป็น # กล่องเทา X กล่องเทา X ...) แทนค่าจริง
+-- เดิมใช้ string.format('X', ...) แต่บาง executor ไม่รองรับ specifier %X ทำให้ขึ้นเป็น
+-- ตัวหนังสือต้นแบบ "#XXX" ดิบๆ (เห็นเป็น # กล่องเทา X กล่องเทา X ...) แทนค่าจริง
 -- จึงเปลี่ยนมาแปลง Hex เองแบบ manual แทน ไม่พึ่ง string.format เลย ปลอดภัยกับทุก executor
 HexLabel.Text = '#' .. ByteToHex(CurrentColor.R * 255) .. ByteToHex(CurrentColor.G * 255) .. ByteToHex(CurrentColor.B * 255)
 end
@@ -3304,10 +3299,9 @@ end)
 SetPickerExpanded(false, false)
 end
 
-function CategoryElements:CreateDropdown(DropdownText, IconName, Options, Default, Flag, Callback, HideArrow)
--- ลำดับใหม่: CreateDropdown(Text, IconName, Options, Default, Flag, Callback, HideArrow)
+function CategoryElements:CreateDropdown(DropdownText, IconName, Options, Default, Flag, Callback)
+-- ลำดับใหม่: CreateDropdown(Text, IconName, Options, Default, Flag, Callback)
 -- ตรวจจับอัตโนมัติถ้าเรียกแบบเก่าที่ไม่มี IconName: CreateDropdown(Text, Options, Default, Flag, Callback)
--- HideArrow (optional, ท้ายสุด): true = ไม่แสดงไอคอนหน้ากล่องและลูกศร ▼ ท้ายกล่อง (ใช้กับบางกล่องที่ต้องการหน้าตาเรียบๆ)
 if type(IconName) == 'table' then
 Callback = Flag; Flag = Default; Default = Options; Options = IconName; IconName = nil
 end
@@ -3332,7 +3326,7 @@ local dds = Instance.new('UIStroke', DropdownContainer)
 dds.Thickness = 1; dds.Color = C.AccentDim
 
 local IconOffset = 0
-if not HideArrow and IconName and Icons and Icons[IconName] then
+if IconName and Icons and Icons[IconName] then
 IconOffset = 22
 local DropdownIcon = Instance.new('ImageLabel')
 DropdownIcon.Name = 'ElementIcon'
@@ -3373,14 +3367,7 @@ local ddPad = Instance.new('UIPadding', DropdownBtn)
 ddPad.PaddingLeft = UDim.new(0, IconOffset)
 end
 
--- ArrowIcon ต้องประกาศไว้นอก if-block เพื่อให้ UpdateSize() (ที่นิยามอยู่ถัดไปข้างล่าง) เห็นตัวแปรนี้ได้
--- เดิมประกาศ "local ArrowIcon" ไว้ข้างในบล็อก if แล้วพอ block จบ ตัวแปรก็หลุด scope ไป
--- ทำให้ UpdateSize() อ้างถึง ArrowIcon เป็น global (nil) แล้ว error "attempt to index nil value 'ArrowIcon'"
--- ทุกครั้งที่มีการเปิด/ปิด Dropdown หรือตอนสร้างครั้งแรก (RebuildOptions เรียก UpdateSize ทันที)
--- ซึ่ง error นี้ทำให้สคริปต์ค้างกลางคันตอนสร้าง UI ทั้งหน้า Settings เห็นแค่ Dropdown อันแรกแล้วหยุด
-local ArrowIcon = nil
-if not HideArrow then
-ArrowIcon = Instance.new('TextLabel')
+local ArrowIcon = Instance.new('TextLabel')
 ArrowIcon.Parent = DropdownBtn
 ArrowIcon.BackgroundTransparency = 1
 ArrowIcon.Position = UDim2.new(1, -30, 0, 0)
@@ -3389,24 +3376,13 @@ ApplyFont(ArrowIcon, true)
 ArrowIcon.Text = '▼'
 ApplyFontSize(ArrowIcon, 12)
 ApplyTheme(ArrowIcon, 'TextColor3')
-end
 
--- ใช้ ScrollingFrame แทน Frame ธรรมดา + จำกัดความสูงสูงสุดตอนกางออก (MaxVisibleItems)
--- เพราะถ้ามีตัวเลือกเยอะ (เช่น ธีม 25 แบบ หรือฟอนต์เกือบร้อยแบบ) กล่องแบบเดิมจะขยายสูงจนบัง
--- เนื้อหาอื่นทั้งหน้า Settings ให้เห็นแต่ Dropdown ที่กางอยู่ ทางแก้คือกางแค่บางส่วนแล้วเลื่อนดูที่เหลือแทน
-local MaxVisibleItems = 6
-local ItemHeight = 30
-local OptionList = Instance.new('ScrollingFrame')
+local OptionList = Instance.new('Frame')
 OptionList.Parent = DropdownContainer
 ApplyDropdownListColor(OptionList)           -- ← สีแผงรายการ Dropdown ตอนกางออก (ปรับได้จาก Settings)
 ApplyGlass(OptionList)
 OptionList.Position = UDim2.new(0, 0, 0, 35)
 OptionList.Size = UDim2.new(1, 0, 1, -35)
-OptionList.ScrollBarThickness = 4
-OptionList.ScrollBarImageColor3 = C.Accent
-OptionList.BorderSizePixel = 0
-OptionList.CanvasSize = UDim2.new(0, 0, 0, 0)
-OptionList.AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y
 
 local ListLayout = Instance.new('UIListLayout', OptionList)
 ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -3437,13 +3413,11 @@ local visibleCount = 0
 for _, btn in ipairs(OptionBtns) do
 if btn.Visible then visibleCount = visibleCount + 1 end
 end
--- จำกัดจำนวนแถวที่กางแสดงพร้อมกันไว้ที่ MaxVisibleItems แถว ถ้ามีมากกว่านั้นให้เลื่อนดูใน OptionList แทน
-local shownCount = math.min(visibleCount, MaxVisibleItems)
-local targetHeight = isOpen and (65 + (shownCount * ItemHeight)) or 35
+local targetHeight = isOpen and (65 + (visibleCount * 30)) or 35
 TweenService:Create(DropdownContainer, TweenInfo.new(0.2), {
 Size = UDim2.new(0.95, 0, 0, targetHeight),
 }):Play()
-if ArrowIcon then ArrowIcon.Text = isOpen and '▲' or '▼' end
+ArrowIcon.Text = isOpen and '▲' or '▼'
 end
 
 local function AddOption(option)
@@ -3755,7 +3729,7 @@ ClearSettingsContent()
 SettingsTab:CreateLabel(T.PresetHeader, 'lucide-palette')
 SettingsTab:CreateDropdown(T.PresetLabel, 'lucide-palette', PresetThemeOrder, nil, nil, function(selected)
 ApplyPresetTheme(selected)
-end, true)
+end)
 
 -- ===================== สีหลัก (Essential / Quick Color Settings) =====================
 -- รวม 4 การตั้งค่าสีที่จำเป็นที่สุดไว้ในหมวดเดียว เพื่อให้เข้าถึงง่ายและประหยัดพื้นที่
