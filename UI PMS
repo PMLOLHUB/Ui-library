@@ -2066,12 +2066,15 @@ CustomBgImage.Name = 'CustomBackgroundImage'
 CustomBgImage.Parent = MainFrame
 CustomBgImage.BackgroundTransparency = 1
 CustomBgImage.Size = UDim2.new(1, 0, 1, 0)
-CustomBgImage.ZIndex = -1
+CustomBgImage.ZIndex = 0
 CustomBgImage.Image = CurrentBackgroundImage
 CustomBgImage.ImageTransparency = BackgroundImageTransparency
 CustomBgImage.ScaleType = Enum.ScaleType.Crop
 CustomBgImage.Visible = BackgroundImageEnabled and CurrentBackgroundImage ~= ''
 Instance.new('UICorner', CustomBgImage).CornerRadius = UDim.new(0, 10)
+-- หมายเหตุ: ตั้ง ZIndex เท่ากับ PatternBg (0) แทนค่าติดลบ เพราะ ZIndex ติดลบอาจถูกปฏิเสธ/ทำให้สคริปต์ error
+-- บน Roblox บางเวอร์ชัน/executor (ซึ่งจะทำให้ UI ทั้งหมดไม่ขึ้นเลยเพราะสคริปต์หยุดทำงานกลางคัน)
+-- ให้ลำดับการวาง (สร้างก่อน PatternBg) เป็นตัวกำหนดว่ารูปพื้นหลังอยู่ชั้นล่างสุดแทน
 
 -- ฟังก์ชันอัปเดตรูปภาพพื้นหลังและความโปร่งแสงแบบสด (เรียกจาก Settings หรือจาก config ตอนสร้างหน้าต่าง)
 local function UpdateBackgroundImage(imageId)
