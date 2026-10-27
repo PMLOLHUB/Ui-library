@@ -931,7 +931,7 @@ local Translations = {
         ToggleKeyLabel = "Toggle Key",
         PressKey = "Press a key... (Esc = cancel)",
         MobileStyleLabel = "Mobile Button Style",
-        ToggleSizeLabel = "Toggle Button Size (%)",
+        ToggleSizeLabel = "Toggle Button Size (%) — drag speed scales with size",
         FontHeader = "Font Settings",
         FontFamilyLabel = "Font Family",
         FontSizeLabel = "Font Size (%)",
@@ -966,7 +966,7 @@ th = {
     ToggleKeyLabel = "ปุ่มเปิด/ปิด",
     PressKey = "กดปุ่มบนคีย์บอร์ด... (Esc = ยกเลิก)",
     MobileStyleLabel = "รูปแบบปุ่มเปิด/ปิด (มือถือ)",
-    ToggleSizeLabel = "ขนาดปุ่มเปิด/ปิด (%)",
+    ToggleSizeLabel = "ขนาดปุ่มเปิด/ปิด (%) — ความเร็วการลากขยับตามขนาด",
     FontHeader = "ตั้งค่าฟอนต์",
     FontFamilyLabel = "รูปแบบฟอนต์",
     FontSizeLabel = "ขนาดตัวอักษร (%)",
@@ -1132,8 +1132,8 @@ function Library:CreateWindow(WindowName, Config)
         return false
     end
     local MobileStyle = validStyle(Config.MobileButtonStyle) and Config.MobileButtonStyle or "Classic"
-    -- Toggle button size multiplier (0.5x - 2x). Drag speed follows this value too.
-    local ToggleSizeState = { scale = math.clamp((tonumber(Config.ToggleButtonSize) or 100) / 100, 0.5, 2) }
+    local TOGGLE_SIZE_MIN, TOGGLE_SIZE_MAX = 50, 200
+    local ToggleSize = math.clamp(tonumber(Config.ToggleButtonSize) or 100, TOGGLE_SIZE_MIN, TOGGLE_SIZE_MAX)
 
     local toggleKey = Config.ToggleKey
     if toggleKey == nil then
@@ -1144,7 +1144,9 @@ function Library:CreateWindow(WindowName, Config)
     local savedSize, savedPos, savedFlags, savedTheme = LoadConfig()
     if type(savedTheme) == "table" then
         if validStyle(savedTheme.MobileStyle) then MobileStyle = savedTheme.MobileStyle end
-        if tonumber(savedTheme.ToggleScale) then ToggleSizeState.scale = math.clamp(tonumber(savedTheme.ToggleScale), 0.5, 2) end
+        if tonumber(savedTheme.ToggleButtonSize) then
+            ToggleSize = math.clamp(tonumber(savedTheme.ToggleButtonSize), TOGGLE_SIZE_MIN, TOGGLE_SIZE_MAX)
+        end
         if toggleKey ~= false and type(savedTheme.ToggleKey) == "string" then
             local okK, keyEnum = pcall(function()
                 return Enum.KeyCode[savedTheme.ToggleKey]
@@ -1332,7 +1334,7 @@ local function persistTheme()
     ThemeSettings.BackgroundImageTransparency = BgImageTransparency
     ThemeSettings.BackgroundImageEnabled = BgImageEnabled
     ThemeSettings.MobileStyle = MobileStyle
-    ThemeSettings.ToggleScale = ToggleSizeState.scale
+    ThemeSettings.ToggleButtonSize = ToggleSize
     ThemeSettings.ToggleKey = toggleKey and toggleKey.Name or nil
 end
 persistTheme()
@@ -1341,7 +1343,7 @@ local function save()
     SaveConfig(main)
 end
 
-local function makeDraggable(handle, target, onEnd, speedFn)
+local function makeDraggable(handle, target, onEnd, getSpeed)
     target = target or handle
     local dragging, dragStart, startP, moved = false, nil, nil, false
     connect(handle.InputBegan, function(input)
@@ -1362,12 +1364,13 @@ local function makeDraggable(handle, target, onEnd, speedFn)
     end)
     connect(UserInputService.InputChanged, function(input)
         if dragging and isMove(input) then
-            local d = input.Position - dragStart
-            if d.Magnitude > 4 then
+            local raw = input.Position - dragStart
+            if raw.Magnitude > 4 then
                 moved = true
             end
-            local spd = speedFn and speedFn() or 1
-            target.Position = UDim2.new(startP.X.Scale, startP.X.Offset + d.X * spd, startP.Y.Scale, startP.Y.Offset + d.Y * spd)
+            -- optional speed multiplier (e.g. toggle button: bigger = moves faster)
+            local d = raw * (getSpeed and getSpeed() or 1)
+            target.Position = UDim2.new(startP.X.Scale, startP.X.Offset + d.X, startP.Y.Scale, startP.Y.Offset + d.Y)
         end
     end)
     return function()
@@ -1755,17 +1758,6 @@ local tbVisual = new("Frame", {
 
 local CENTER = Vector2.new(0.5, 0.5)
 
-local tbBaseW, tbBaseH = 44, 44
-local function applyToggleScale()
-    local sc = ToggleSizeState.scale
-    toggleBtn.Size = UDim2.fromOffset(math.floor(tbBaseW * sc + 0.5), math.floor(tbBaseH * sc + 0.5))
-    tbVisual.AnchorPoint = CENTER
-    tbVisual.Position = UDim2.fromScale(0.5, 0.5)
-    tbVisual.Size = UDim2.fromOffset(tbBaseW, tbBaseH)
-    local us = tbVisual:FindFirstChildOfClass("UIScale") or new("UIScale", {}, tbVisual)
-    us.Scale = sc
-end
-
 local function buildToggleVisual(style)
     tbVisual:ClearAllChildren()
     local hasImg = ToggleConfig.Image and ToggleConfig.Image ~= ""
@@ -1910,8 +1902,6 @@ local function buildToggleVisual(style)
         bind(st, "Color", "Line")
         glyph(box, 16, "Cream")
     end
-    tbBaseW, tbBaseH = toggleBtn.Size.X.Offset, toggleBtn.Size.Y.Offset
-    applyToggleScale()
 end
 buildToggleVisual(MobileStyle)
 
@@ -1922,20 +1912,21 @@ local function SetMobileStyle(name)
     persistTheme()
 end
 
+toggleBtn.Visible = isMobile
+
+-- Toggle Button Size: UIScale scales the button and everything inside it,
+-- regardless of which style (Classic / Circle / Diamond / Pill / Bracket) is used.
+local tbScale = new("UIScale", { Scale = ToggleSize / 100 }, toggleBtn)
 local function SetToggleSize(percent)
-    ToggleSizeState.scale = math.clamp((tonumber(percent) or 100) / 100, 0.5, 2)
-    applyToggleScale()
+    ToggleSize = math.clamp(tonumber(percent) or 100, TOGGLE_SIZE_MIN, TOGGLE_SIZE_MAX)
+    tbScale.Scale = ToggleSize / 100
     persistTheme()
 end
-
-toggleBtn.Visible = isMobile
--- movement speed scales with button size (bigger = faster, smaller = finer)
-local tbMoved = makeDraggable(toggleBtn, nil, nil, function()
-    -- read the button's real current size, so speed follows size
-    -- even if something else resizes the button
-    local ratio = toggleBtn.Size.X.Offset / math.max(tbBaseW, 1)
-    return math.clamp(ratio, 0.25, 4)
-end)
+-- Drag speed is proportional to the button size (100% = 1:1 with the finger).
+local function toggleDragSpeed()
+    return ToggleSize / 100
+end
+local tbMoved = makeDraggable(toggleBtn, nil, nil, toggleDragSpeed)
 toggleBtn.MouseButton1Click:Connect(function()
     if not tbMoved() then
         SetWindowOpen(not main.Visible)
@@ -3224,12 +3215,13 @@ function WindowElements:SetToggleKey(key)
         save()
     end
 end
-function WindowElements:SetToggleSize(percent)
-    SetToggleSize(percent)
-end
-
 function WindowElements:SetMobileStyle(name)
     SetMobileStyle(name)
+    save()
+end
+
+function WindowElements:SetToggleButtonSize(percent)
+    SetToggleSize(percent)
     save()
 end
 
@@ -3310,7 +3302,7 @@ if Config.ShowSettingsTab ~= false then
                     SetMobileStyle(selected)
                     save()
                 end)
-                SettingsTab:CreateSlider(T.ToggleSizeLabel, "lucide-sliders-horizontal", 50, 200, math.floor(ToggleSizeState.scale * 100 + 0.5), function(v)
+                SettingsTab:CreateSlider(T.ToggleSizeLabel, "lucide-scaling", TOGGLE_SIZE_MIN, TOGGLE_SIZE_MAX, math.floor(ToggleSize + 0.5), function(v)
                     SetToggleSize(v)
                 end)
             else
