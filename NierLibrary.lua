@@ -985,8 +985,18 @@ local Presets = {
     Rose = { Paper = { 222, 200, 196 }, Row = { 200, 172, 170 }, Input = { 244, 226, 222 }, Accent = { 92, 48, 56 }, Ink = { 86, 52, 58 }, Cream = { 250, 236, 232 }, Line = { 176, 148, 148 }, Team = { 170, 80, 100 } },
     Slate = { Paper = { 190, 196, 200 }, Row = { 164, 172, 178 }, Input = { 218, 224, 228 }, Accent = { 44, 52, 60 }, Ink = { 48, 56, 64 }, Cream = { 232, 238, 242 }, Line = { 140, 148, 154 }, Team = { 70, 110, 150 } },
     Night = { Paper = { 52, 50, 44 }, Row = { 70, 68, 60 }, Input = { 34, 33, 29 }, Accent = { 24, 23, 20 }, Ink = { 222, 216, 192 }, Cream = { 236, 230, 206 }, Line = { 96, 92, 80 }, Team = { 150, 140, 100 } },
+    Ocean = { Paper = { 184, 200, 208 }, Row = { 154, 174, 184 }, Input = { 214, 228, 234 }, Accent = { 34, 58, 74 }, Ink = { 38, 60, 74 }, Cream = { 226, 240, 246 }, Line = { 130, 154, 166 }, Team = { 60, 120, 160 } },
+    Sakura = { Paper = { 236, 214, 218 }, Row = { 214, 184, 192 }, Input = { 250, 236, 240 }, Accent = { 120, 60, 84 }, Ink = { 104, 56, 72 }, Cream = { 255, 240, 244 }, Line = { 196, 162, 172 }, Team = { 210, 110, 140 } },
+    Ember = { Paper = { 206, 182, 160 }, Row = { 184, 154, 128 }, Input = { 230, 210, 190 }, Accent = { 96, 42, 28 }, Ink = { 88, 46, 32 }, Cream = { 250, 232, 214 }, Line = { 160, 130, 108 }, Team = { 196, 92, 52 } },
+    Lavender = { Paper = { 206, 200, 222 }, Row = { 182, 174, 204 }, Input = { 232, 228, 244 }, Accent = { 62, 50, 94 }, Ink = { 62, 52, 92 }, Cream = { 240, 236, 252 }, Line = { 160, 152, 184 }, Team = { 130, 100, 190 } },
+    Sand = { Paper = { 222, 208, 176 }, Row = { 200, 184, 148 }, Input = { 240, 230, 204 }, Accent = { 104, 82, 40 }, Ink = { 92, 74, 40 }, Cream = { 255, 246, 218 }, Line = { 178, 162, 124 }, Team = { 190, 150, 70 } },
+    Mint = { Paper = { 200, 222, 212 }, Row = { 170, 200, 186 }, Input = { 226, 244, 236 }, Accent = { 34, 76, 62 }, Ink = { 38, 70, 58 }, Cream = { 232, 250, 242 }, Line = { 142, 176, 160 }, Team = { 70, 170, 130 } },
+    Forest = { Paper = { 40, 52, 44 }, Row = { 58, 74, 62 }, Input = { 26, 34, 28 }, Accent = { 18, 26, 20 }, Ink = { 200, 222, 200 }, Cream = { 226, 244, 226 }, Line = { 84, 104, 88 }, Team = { 110, 160, 110 } },
+    Midnight = { Paper = { 34, 40, 56 }, Row = { 50, 58, 80 }, Input = { 22, 26, 38 }, Accent = { 16, 20, 32 }, Ink = { 198, 208, 234 }, Cream = { 222, 230, 250 }, Line = { 76, 86, 116 }, Team = { 100, 130, 210 } },
+    Crimson = { Paper = { 56, 34, 38 }, Row = { 78, 48, 54 }, Input = { 36, 22, 24 }, Accent = { 30, 14, 18 }, Ink = { 236, 206, 208 }, Cream = { 250, 226, 228 }, Line = { 108, 70, 76 }, Team = { 200, 70, 80 } },
+    Mono = { Paper = { 44, 44, 46 }, Row = { 64, 64, 67 }, Input = { 28, 28, 30 }, Accent = { 16, 16, 18 }, Ink = { 220, 220, 224 }, Cream = { 240, 240, 244 }, Line = { 92, 92, 96 }, Team = { 160, 160, 170 } },
 }
-local PresetOrder = { "Paper", "Dusk", "Moss", "Rose", "Slate", "Night" }
+local PresetOrder = { "Paper", "Dusk", "Moss", "Rose", "Slate", "Night", "Ocean", "Sakura", "Ember", "Lavender", "Sand", "Mint", "Forest", "Midnight", "Crimson", "Mono" }
 Library.Presets = Presets
 
 local FontPresets, FontPresetOrder = {}, {}
@@ -3053,87 +3063,10 @@ if Config.ShowSettingsTab ~= false then
                 applyPreset(selected)
             end)
 
-            SettingsTab:CreateLabel(T.ColorHeader, "lucide-palette")
-            SettingsTab:CreateColorPicker(T.PaperLabel, "lucide-square", Theme.Paper, colorChanged("Paper"))
-            SettingsTab:CreateColorPicker(T.RowLabel, "lucide-layout-grid", Theme.Row, colorChanged("Row"))
-            SettingsTab:CreateColorPicker(T.InputLabel, "lucide-text-cursor-input", Theme.Input, colorChanged("Input"))
-            SettingsTab:CreateColorPicker(T.AccentLabel, "lucide-check-circle", Theme.Accent, colorChanged("Accent"))
-            SettingsTab:CreateColorPicker(T.InkLabel, "lucide-baseline", Theme.Ink, colorChanged("Ink"))
-            SettingsTab:CreateColorPicker(T.CreamLabel, "lucide-baseline", Theme.Cream, colorChanged("Cream"))
-            SettingsTab:CreateColorPicker(T.LineLabel, "lucide-circle", Theme.Line, colorChanged("Line"))
-            SettingsTab:CreateColorPicker(T.TeamLabel, "lucide-users", Theme.Team, colorChanged("Team"))
             SettingsTab:CreateSlider(T.TransparencyLabel, "lucide-glasses", 0, 90, TransPercent, function(v)
                 TransPercent = v
                 setGlass(v / 100)
                 persistTheme()
-            end)
-
-            SettingsTab:CreateLabel(T.FontHeader, "lucide-baseline")
-            SettingsTab:CreateDropdown(T.FontFamilyLabel, "lucide-baseline", FontPresetOrder, FontFamily, nil, function(selected)
-                if FontPresets[selected] then
-                    FontFamily = selected
-                    refreshFonts()
-                    persistTheme()
-                end
-            end)
-            SettingsTab:CreateSlider(T.FontSizeLabel, nil, 80, 130, FontSizePercent, function(v)
-                FontSizePercent = v
-                FontScale = math.clamp(v / 100, 0.8, 1.3)
-                refreshFonts()
-                persistTheme()
-            end)
-
-            SettingsTab:CreateLabel(T.EffectsHeader, "lucide-wand-2")
-            SettingsTab:CreateToggle(T.AnimToggle, "lucide-wand-2", StripAnim, function(state)
-                StripAnim = state
-                persistTheme()
-            end)
-            SettingsTab:CreateToggle(T.BorderToggle, "lucide-square", BorderEnabled, function(state)
-                BorderEnabled = state
-                mainStroke.Enabled = state
-                persistTheme()
-            end)
-
-            SettingsTab:CreateLabel(T.BgImageHeader, "lucide-image")
-            SettingsTab:CreateToggle(T.BgImageEnable, "lucide-image", BgImageEnabled, function(state)
-                UpdateBackgroundImageEnabled(state)
-                persistTheme()
-            end)
-            SettingsTab:CreateTextbox(T.BgImageLabel, "lucide-image", T.BgImagePlaceholder, "BackgroundImageAssetId", function(text)
-                UpdateBackgroundImage(text)
-                persistTheme()
-            end)
-            SettingsTab:CreateSlider(T.BgImageTransparencyLabel, "lucide-glasses", 0, 100, math.floor(BgImageTransparency * 100 + 0.5), function(v)
-                UpdateBackgroundImageTransparency(v / 100)
-                persistTheme()
-            end)
-
-            SettingsTab:CreateLabel(T.LanguageHeader, "lucide-languages")
-            SettingsTab:CreateDropdown(T.LanguageLabel, "lucide-languages", { "English", "Thai" }, (Language == "th" and "Thai" or "English"), nil, function(selected)
-                Language = (selected == "Thai") and "th" or "en"
-                persistTheme()
-                BuildSettingsUI()
-            end)
-
-            SettingsTab:CreateLabel(T.ManageHeader, "lucide-save")
-            SettingsTab:CreateButton(T.SaveButton, "lucide-save", function()
-                save()
-            end)
-            SettingsTab:CreateButton(T.ResetButton, "lucide-rotate-ccw", function()
-                loadPreset(Presets.Paper)
-                FontFamily, FontScale, FontSizePercent = "Gotham", 1, 100
-                TransPercent, StripAnim, BorderEnabled, Language = 8, true, true, "en"
-                setGlass(0.08)
-                mainStroke.Enabled = true
-                UpdateBackgroundImage("")
-                UpdateBackgroundImageTransparency(0.5)
-                UpdateBackgroundImageEnabled(false)
-                SavedFlags["BackgroundImageAssetId"] = ""
-                refreshTheme()
-                refreshFonts()
-                persistTheme()
-                save()
-                BuildSettingsUI()
             end)
         end
 
