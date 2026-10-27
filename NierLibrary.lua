@@ -2945,7 +2945,7 @@ local tb = new("TextBox", {
     BackgroundTransparency = 1,
     Position = UDim2.fromOffset(32, 0),
     Size = UDim2.new(1, -42, 1, 0),
-    PlaceholderText = Placeholder or "Search...",
+    PlaceholderText = Placeholder or "Search",
     Text = "",
     ClearTextOnFocus = false,
     TextXAlignment = Enum.TextXAlignment.Left,
@@ -3328,7 +3328,7 @@ local function headerText()
     if multi then
         return text .. " : " .. (#selOrder == 0 and "None" or joinList(selOrder))
     end
-    return text .. "  " .. (currentVal ~= nil and tostring(currentVal) or "")
+    return text .. " : " .. (currentVal ~= nil and tostring(currentVal) or "")
 end
 lbl.Text = headerText()
 
@@ -3344,7 +3344,7 @@ local search = new("TextBox", {
     BorderSizePixel = 0,
     Position = UDim2.fromOffset(4, 3),
     Size = UDim2.new(1, -8, 0, 24),
-    PlaceholderText = "Search in Dropdown...",
+    PlaceholderText = "Search",
     Text = "",
     ClearTextOnFocus = false,
     TextXAlignment = Enum.TextXAlignment.Left,
