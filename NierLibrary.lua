@@ -1394,10 +1394,7 @@ local function makeDraggable(handle, target, onEnd, scaleProvider)
                 moved = true
             end
             local scaleFactor = scaleProvider and scaleProvider() or 1
-            scaleFactor = math.clamp(tonumber(scaleFactor) or 1, 0.5, 1.8)
-            -- UIScale scales the button visually. Compensate the positional
-            -- offset inversely so the visible button follows the pointer 1:1
-            -- at every Toggle Button Size (50% through 180%).
+            scaleFactor = math.max(tonumber(scaleFactor) or 1, 0.01)
             local dx, dy = d.X / scaleFactor, d.Y / scaleFactor
             target.Position = UDim2.new(startP.X.Scale, startP.X.Offset + dx, startP.Y.Scale, startP.Y.Offset + dy)
         end
