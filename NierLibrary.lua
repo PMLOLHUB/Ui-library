@@ -3134,8 +3134,14 @@ table.insert(lookers, { row = row, fn = render })
 
 makeDrag(track, function(input)
     local rel = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
-    value = math.clamp(math.floor(Min + (Max - Min) * rel + 0.5), Min, Max)
+    local newValue = math.clamp(math.floor(Min + (Max - Min) * rel + 0.5), Min, Max)
+    local changed = newValue ~= value
+    value = newValue
     render()
+    if changed and Library._sfx then
+        -- tick on every value change; pitch rises with the value (0.8x at Min -> 1.5x at Max)
+        Library._sfx("slider", 0.8 + 0.7 * rel)
+    end
     if Flag then
         Flags[Flag].Value = value
     end
@@ -3817,6 +3823,7 @@ end
 --   select -> tab_toggle_select.ogg  (tab switch / button / dropdown pick)
 --   toggleOn  -> toggle_on.ogg       (CreateToggle switched ON,  rising two-note ping)
 --   toggleOff -> toggle_off.ogg      (CreateToggle switched OFF, falling two-note ping)
+--   slider -> slider_tick.ogg        (CreateSlider drag: a tick on every value change, pitch follows the value)
 --   notify -> notify.ogg             (window:Notify(...) toast; the automatic start-up hint stays silent)
 --
 -- The .ogg files are embedded below (base64). On first run they are written to
@@ -3835,6 +3842,9 @@ do
     Library.SoundVolume = 1
 
     local SFX_FOLDER = "NIER_UI_Sounds"
+    -- Bump this when the embedded sounds change: on the next run every .ogg in the folder is
+    -- rewritten once, so old files left by a previous version can't shadow the new sounds.
+    local SFX_VERSION = "3"
 
     -- gain: per-sound loudness multiplier, gap: minimum seconds between two plays
     local Sfx = {
@@ -3845,6 +3855,7 @@ do
         toggleOn  = { file = "toggle_on.ogg",  gain = 0.9, gap = 0.04 },
         toggleOff = { file = "toggle_off.ogg", gain = 0.9, gap = 0.04 },
         notify    = { file = "notify.ogg",     gain = 0.9, gap = 0.20 },
+        slider    = { file = "slider_tick.ogg", gain = 0.8, gap = 0.045 },
     }
     local SfxData = {}
 
@@ -3914,6 +3925,7 @@ do
 
     -- sounds live in a folder when possible, otherwise in the workspace root with a prefix
     local sfxBase
+    local refreshFiles = false -- true when the folder holds files from another version
     local function resolveBase()
         if sfxBase then
             return sfxBase
@@ -3921,16 +3933,28 @@ do
         sfxBase = "NIER_UI_"
         local makeFolder, isFolder = findFn("makefolder"), findFn("isfolder")
         if makeFolder then
+            local folderReady = false
             if isFolder then
                 local okI, exists = pcall(isFolder, SFX_FOLDER)
-                if okI and exists then
-                    sfxBase = SFX_FOLDER .. "/"
-                    return sfxBase
-                end
+                folderReady = okI and exists == true
             end
-            if pcall(makeFolder, SFX_FOLDER) then
+            if folderReady or pcall(makeFolder, SFX_FOLDER) then
                 sfxBase = SFX_FOLDER .. "/"
             end
+        end
+        -- version marker: if it is missing or different, rewrite the embedded sounds once
+        local marker = sfxBase .. "_version.txt"
+        local current
+        if isFileFn and readFn then
+            local okF, exists = pcall(isFileFn, marker)
+            if okF and exists then
+                local okR, content = pcall(readFn, marker)
+                current = okR and content or nil
+            end
+        end
+        if current ~= SFX_VERSION then
+            refreshFiles = true
+            pcall(writeFn, marker, SFX_VERSION)
         end
         return sfxBase
     end
@@ -3938,7 +3962,7 @@ do
     local function ensureFile(name, entry)
         local path = resolveBase() .. entry.file
         local keep = false
-        if isFileFn then
+        if isFileFn and not refreshFiles then
             local okF, exists = pcall(isFileFn, path)
             if okF and exists then
                 if readFn then
@@ -3969,6 +3993,9 @@ do
             entry.failed = true
             return nil
         end
+        if not SfxData[name] then
+            return nil -- embedded data not defined yet; don't mark the sound as failed
+        end
         entry.busy = true
         local ok, result = pcall(function()
             local path = ensureFile(name, entry)
@@ -3988,7 +4015,17 @@ do
         return nil
     end
 
-    function Library._sfx(name)
+    local ContentProvider = game:GetService("ContentProvider")
+
+    local function playSound(sound, entry, pitch)
+        sound.Volume = entry.gain * math.clamp(tonumber(Library.SoundVolume) or 1, 0, 1)
+        sound.PlaybackSpeed = pitch or 1
+        sound.TimePosition = 0
+        sound:Play()
+    end
+
+    -- pitch (optional): playback speed, 1 = normal. Used by the slider so the tick follows the value.
+    function Library._sfx(name, pitch)
         if not Library.SoundEnabled then
             return
         end
@@ -4005,9 +4042,22 @@ do
             return
         end
         entry.last = now
-        sound.Volume = entry.gain * math.clamp(tonumber(Library.SoundVolume) or 1, 0, 1)
-        sound.TimePosition = 0
-        sound:Play()
+        if sound.IsLoaded then
+            playSound(sound, entry, pitch)
+            return
+        end
+        -- The sound is still loading (typical for the "open" sound when the window opens right after
+        -- the library is loaded). Calling Play() on an unloaded Sound can silently do nothing,
+        -- so wait until it is loaded (max 3 s), then play it.
+        task.spawn(function()
+            local t0 = os.clock()
+            while not sound.IsLoaded and sound.Parent and os.clock() - t0 < 3 do
+                task.wait()
+            end
+            if sound.Parent and Library.SoundEnabled then
+                playSound(sound, entry, pitch)
+            end
+        end)
     end
 
     function Library:SetSoundEnabled(state)
@@ -4045,13 +4095,8 @@ do
         end)
     end
 
-    -- pre-load every sound in the background so the first play is instant
-    task.spawn(function()
-        for _, name in ipairs({ "open", "close", "select", "hover", "toggleOn", "toggleOff", "notify" }) do
-            getSound(name)
-            task.wait(0.05)
-        end
-    end)
+    -- (the pre-load of every sound is at the very end of this block, AFTER the embedded audio data,
+    --  because task.spawn runs immediately and the first sound would otherwise be created with no data)
 
     -- ---------------------------------------------------------------- embedded audio data
 
@@ -5470,6 +5515,95 @@ AADHB3AAwKl3rLjWIMIAAOj/eUsBAD6W/F7m79UuRvklOR9J/1L2EIwl/xztu1nC/OW4PRxBA2nAXS6B
 AAAAAAAAAAAAQNu4fg4AALinUysAAPz1I5WhAADoR2z+PAEAgDMoAAD6vRMAPpbc/GhfMYXwO47c0mEs+e9Rv9EEv3SOhwuQQfKG
 BKQAAAAAAAAAAAAAAAAAAADW+e/vJQAATE9++vPlAABAGytmYACuAQBgfvXbVzMADg==
 ]==]
+
+    -- slider_tick.ogg
+    SfxData.slider = [==[
+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
+E0UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABxNAzTP
+AzTPAwAAAAAAAADL8wBPFAHPEwEAAAAAAABA8zzAE0XAE0UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAABDgAAARZCoSErAoA4AQCHJEGSIEnQ
+NIBkWdA0aBpMEyBZFjQNmgbTBAAAAAAAAAAAAEDyNGgaNA2iCJA0D5oGTYMoAgAAAAAAAAAAACBpGjQNmgZRBEiaBk2DpkEUAQAA
+AAAAAAAAANBME6IIUYRpAjzThChCFGGaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAIABBwCAABPKQKEhKwKAOAEAh6JYFgAAOJJj
+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
+DjCW/O+sX7oADgAAAAAAAAAAAAAAAAAAAA==
+]==]
+
+    -- ---------------------------------------------------------------- pre-load (must stay LAST)
+    -- Create + pre-load every sound in the background so the first play is instant.
+    -- This has to run after all SfxData.* assignments above: task.spawn runs immediately,
+    -- so placing it earlier makes the first sound ("open") fail to be created.
+    task.spawn(function()
+        for _, name in ipairs({ "open", "close", "select", "hover", "toggleOn", "toggleOff", "notify", "slider" }) do
+            local sound = getSound(name)
+            if sound then
+                task.spawn(function()
+                    pcall(function()
+                        ContentProvider:PreloadAsync({ sound })
+                    end)
+                end)
+            end
+            task.wait(0.05)
+        end
+    end)
 
 end
 
