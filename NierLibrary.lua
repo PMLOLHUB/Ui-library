@@ -15,8 +15,28 @@ local ThemeSettings = {}
 
 local WHITE = Color3.new(1, 1, 1)
 
+-- Executor compatibility: filesystem APIs are optional and may be missing or restricted.
+local function getExecutorFunction(name)
+    local ok, value = pcall(function()
+        return _G and _G[name] or nil
+    end)
+    if ok and type(value) == "function" then
+        return value
+    end
+    -- Some executors expose APIs as environment globals rather than _G entries.
+    ok, value = pcall(function()
+        return getfenv and getfenv(0)[name] or nil
+    end)
+    if ok and type(value) == "function" then
+        return value
+    end
+    return nil
+end
+
 local function fileApiReady()
-    return type(writefile) == "function" and type(readfile) == "function" and type(isfile) == "function"
+    return getExecutorFunction("writefile") ~= nil
+        and getExecutorFunction("readfile") ~= nil
+        and getExecutorFunction("isfile") ~= nil
 end
 
 local function SaveConfig(frame)
@@ -54,15 +74,27 @@ local function SaveConfig(frame)
         return HttpService:JSONEncode(data)
     end)
     if ok then
-        pcall(writefile, ConfigFileName, json)
+        local write = getExecutorFunction("writefile")
+        if write then
+            pcall(write, ConfigFileName, json)
+        end
     end
 end
 
 local function LoadConfig()
-    if not EnableSave or not fileApiReady() or not isfile(ConfigFileName) then
+    if not EnableSave or not fileApiReady() then
         return
     end
-    local ok, content = pcall(readfile, ConfigFileName)
+    local isFile = getExecutorFunction("isfile")
+    local read = getExecutorFunction("readfile")
+    if not isFile or not read then
+        return
+    end
+    local existsOk, exists = pcall(isFile, ConfigFileName)
+    if not existsOk or not exists then
+        return
+    end
+    local ok, content = pcall(read, ConfigFileName)
     if not ok or not content then
         return
     end
@@ -1282,20 +1314,44 @@ function Library:CreateWindow(WindowName, Config)
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
         DisplayOrder = Config.DisplayOrder or 999,
     })
+-- Try the common GUI containers used by different executors, then fall back to PlayerGui.
+-- Every attempt is protected because some executors block one or more parent locations.
 do
     local placed = false
-    if type(gethui) == "function" then
-        placed = pcall(function()
-            gui.Parent = gethui()
-        end)
+    local getHiddenUI = getExecutorFunction("gethui")
+    if getHiddenUI then
+        local ok, hiddenUI = pcall(getHiddenUI)
+        if ok and hiddenUI then
+            placed = pcall(function()
+                gui.Parent = hiddenUI
+            end) and gui.Parent ~= nil
+        end
     end
+
     if not placed then
-        placed = pcall(function()
-            gui.Parent = game:GetService("CoreGui")
+        local ok, coreGui = pcall(function()
+            return game:GetService("CoreGui")
         end)
+        if ok and coreGui then
+            placed = pcall(function()
+                gui.Parent = coreGui
+            end) and gui.Parent ~= nil
+        end
     end
-    if not placed or not gui.Parent then
-        gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    if not placed then
+        local ok, playerGui = pcall(function()
+            return LocalPlayer and (LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 10))
+        end)
+        if ok and playerGui then
+            placed = pcall(function()
+                gui.Parent = playerGui
+            end) and gui.Parent ~= nil
+        end
+    end
+
+    if not placed then
+        error("[NierLibrary] Unable to parent ScreenGui. This executor may restrict GUI access.")
     end
 end
 
