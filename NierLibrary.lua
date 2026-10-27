@@ -928,6 +928,9 @@ local Translations = {
         LineLabel = "Lines / Border",
         TeamLabel = "Team Color",
         TransparencyLabel = "Transparency (%)",
+        ToggleKeyLabel = "Toggle Key",
+        PressKey = "Press a key... (Esc = cancel)",
+        MobileStyleLabel = "Mobile Button Style",
         FontHeader = "Font Settings",
         FontFamilyLabel = "Font Family",
         FontSizeLabel = "Font Size (%)",
@@ -959,6 +962,9 @@ th = {
     LineLabel = "สีเส้น / ขอบ",
     TeamLabel = "สีทีม (Team)",
     TransparencyLabel = "ความโปร่งแสง (%)",
+    ToggleKeyLabel = "ปุ่มเปิด/ปิด",
+    PressKey = "กดปุ่มบนคีย์บอร์ด... (Esc = ยกเลิก)",
+    MobileStyleLabel = "รูปแบบปุ่มเปิด/ปิด (มือถือ)",
     FontHeader = "ตั้งค่าฟอนต์",
     FontFamilyLabel = "รูปแบบฟอนต์",
     FontSizeLabel = "ขนาดตัวอักษร (%)",
@@ -1115,8 +1121,31 @@ function Library:CreateWindow(WindowName, Config)
         BgImageEnabled = Config.BackgroundImageEnabled
     end
 
+    local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+    local MobileStyleOrder = { "Classic", "Circle", "Diamond", "Pill", "Bracket" }
+    local function validStyle(name)
+        for _, n in ipairs(MobileStyleOrder) do
+            if n == name then return true end
+        end
+        return false
+    end
+    local MobileStyle = validStyle(Config.MobileButtonStyle) and Config.MobileButtonStyle or "Classic"
+
+    local toggleKey = Config.ToggleKey
+    if toggleKey == nil then
+        toggleKey = Enum.KeyCode.RightShift
+    end
+    local listeningKey = false
+
     local savedSize, savedPos, savedFlags, savedTheme = LoadConfig()
     if type(savedTheme) == "table" then
+        if validStyle(savedTheme.MobileStyle) then MobileStyle = savedTheme.MobileStyle end
+        if toggleKey ~= false and type(savedTheme.ToggleKey) == "string" then
+            local okK, keyEnum = pcall(function()
+                return Enum.KeyCode[savedTheme.ToggleKey]
+            end)
+            if okK and keyEnum then toggleKey = keyEnum end
+        end
         if type(savedTheme.Colors) == "table" then
             for token, v in pairs(savedTheme.Colors) do
                 if Theme[token] and type(v) == "table" and v[3] then
@@ -1297,6 +1326,8 @@ local function persistTheme()
     ThemeSettings.BackgroundImage = BgImage
     ThemeSettings.BackgroundImageTransparency = BgImageTransparency
     ThemeSettings.BackgroundImageEnabled = BgImageEnabled
+    ThemeSettings.MobileStyle = MobileStyle
+    ThemeSettings.ToggleKey = toggleKey and toggleKey.Name or nil
 end
 persistTheme()
 local function save()
@@ -1703,25 +1734,175 @@ local toggleBtn = new("ImageButton", {
     Name = "ToggleBtn",
     Position = UDim2.fromOffset(20, 20),
     Size = UDim2.fromOffset(44, 44),
-    BorderSizePixel = 0,
-    AutoButtonColor = true,
-    ImageTransparency = 1,
-}, gui)
-bind(toggleBtn, "BackgroundColor3", "Accent")
-local tbStroke = new("UIStroke", { Thickness = 1 }, toggleBtn)
-bind(tbStroke, "Color", "Line")
-if ToggleConfig.Image and ToggleConfig.Image ~= "" then
-    toggleBtn.Image = ToggleConfig.Image
-    toggleBtn.ImageTransparency = 0
-end
-local tbText = new("TextLabel", {
     BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    AutoButtonColor = false,
+    Image = "",
+}, gui)
+local tbVisual = new("Frame", {
+    Name = "Visual",
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
     Size = UDim2.fromScale(1, 1),
-    Text = ToggleConfig.Text or (ToggleConfig.Image and "" or "◆"),
 }, toggleBtn)
-bindFont(tbText, 16, true)
-bind(tbText, "TextColor3", "Cream")
-toggleBtn.Visible = Config.ToggleConfig ~= nil or (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
+
+local CENTER = Vector2.new(0.5, 0.5)
+
+local function buildToggleVisual(style)
+    tbVisual:ClearAllChildren()
+    local hasImg = ToggleConfig.Image and ToggleConfig.Image ~= ""
+
+    local function glyph(parent, size, colorToken, imgScale)
+        if hasImg then
+            return new("ImageLabel", {
+                BackgroundTransparency = 1,
+                AnchorPoint = CENTER,
+                Position = UDim2.fromScale(0.5, 0.5),
+                Size = UDim2.fromScale(imgScale or 0.6, imgScale or 0.6),
+                Image = ToggleConfig.Image,
+                ZIndex = 3,
+            }, parent)
+        end
+        local t = new("TextLabel", {
+            BackgroundTransparency = 1,
+            Size = UDim2.fromScale(1, 1),
+            Text = ToggleConfig.Text or "◆",
+            ZIndex = 3,
+        }, parent)
+        bindFont(t, size, true)
+        bind(t, "TextColor3", colorToken)
+        return t
+    end
+
+    if style == "Circle" then
+        -- 2 | Circle: round disc with an inner ring
+        toggleBtn.Size = UDim2.fromOffset(46, 46)
+        local disc = new("Frame", { Size = UDim2.fromScale(1, 1), BorderSizePixel = 0 }, tbVisual)
+        bind(disc, "BackgroundColor3", "Accent")
+        new("UICorner", { CornerRadius = UDim.new(1, 0) }, disc)
+        local st = new("UIStroke", { Thickness = 2 }, disc)
+        bind(st, "Color", "Line")
+        local ring = new("Frame", {
+            AnchorPoint = CENTER,
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.new(1, -10, 1, -10),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+        }, disc)
+        new("UICorner", { CornerRadius = UDim.new(1, 0) }, ring)
+        local rs = new("UIStroke", { Thickness = 1, Transparency = 0.55 }, ring)
+        bind(rs, "Color", "Cream")
+        glyph(disc, 16, "Cream")
+
+    elseif style == "Diamond" then
+        -- 3 | Diamond: double rotated square
+        toggleBtn.Size = UDim2.fromOffset(56, 56)
+        local outer = new("Frame", {
+            AnchorPoint = CENTER,
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(38, 38),
+            Rotation = 45,
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+        }, tbVisual)
+        local os = new("UIStroke", { Thickness = 1 }, outer)
+        bind(os, "Color", "Accent")
+        local inner = new("Frame", {
+            AnchorPoint = CENTER,
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(30, 30),
+            Rotation = 45,
+            BorderSizePixel = 0,
+        }, tbVisual)
+        bind(inner, "BackgroundColor3", "Accent")
+        local ist = new("UIStroke", { Thickness = 1 }, inner)
+        bind(ist, "Color", "Line")
+        glyph(tbVisual, 16, "Cream", 0.45)
+
+    elseif style == "Pill" then
+        -- 4 | Pill: wide capsule with a label
+        toggleBtn.Size = UDim2.fromOffset(80, 30)
+        local pill = new("Frame", { Size = UDim2.fromScale(1, 1), BorderSizePixel = 0 }, tbVisual)
+        bind(pill, "BackgroundColor3", "Accent")
+        new("UICorner", { CornerRadius = UDim.new(1, 0) }, pill)
+        local st = new("UIStroke", { Thickness = 1 }, pill)
+        bind(st, "Color", "Line")
+        if hasImg then
+            new("ImageLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0, 9, 0.5, -8),
+                Size = UDim2.fromOffset(16, 16),
+                Image = ToggleConfig.Image,
+                ZIndex = 3,
+            }, pill)
+        else
+            local dia = new("Frame", {
+                Position = UDim2.new(0, 13, 0.5, -4),
+                Size = UDim2.fromOffset(8, 8),
+                Rotation = 45,
+                BorderSizePixel = 0,
+                ZIndex = 3,
+            }, pill)
+            bind(dia, "BackgroundColor3", "Cream")
+        end
+        local lab = new("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(30, 0),
+            Size = UDim2.new(1, -38, 1, 0),
+            Text = ToggleConfig.Text or "MENU",
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            ZIndex = 3,
+        }, pill)
+        bindFont(lab, 12, true)
+        bind(lab, "TextColor3", "Cream")
+
+    elseif style == "Bracket" then
+        -- 5 | Bracket: glass panel with corner brackets
+        toggleBtn.Size = UDim2.fromOffset(46, 46)
+        local panel = new("Frame", {
+            Size = UDim2.fromScale(1, 1),
+            BorderSizePixel = 0,
+            BackgroundTransparency = 0.15,
+        }, tbVisual)
+        bind(panel, "BackgroundColor3", "Paper")
+        for _, c in ipairs({ { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } }) do
+            local anchor = Vector2.new(c[1], c[2])
+            local pos = UDim2.fromScale(c[1], c[2])
+            local h = new("Frame", {
+                AnchorPoint = anchor, Position = pos,
+                Size = UDim2.fromOffset(12, 2), BorderSizePixel = 0, ZIndex = 2,
+            }, panel)
+            bind(h, "BackgroundColor3", "Accent")
+            local v = new("Frame", {
+                AnchorPoint = anchor, Position = pos,
+                Size = UDim2.fromOffset(2, 12), BorderSizePixel = 0, ZIndex = 2,
+            }, panel)
+            bind(v, "BackgroundColor3", "Accent")
+        end
+        glyph(panel, 16, "Accent")
+
+    else
+        -- 1 | Classic: solid square
+        style = "Classic"
+        toggleBtn.Size = UDim2.fromOffset(44, 44)
+        local box = new("Frame", { Size = UDim2.fromScale(1, 1), BorderSizePixel = 0 }, tbVisual)
+        bind(box, "BackgroundColor3", "Accent")
+        local st = new("UIStroke", { Thickness = 1 }, box)
+        bind(st, "Color", "Line")
+        glyph(box, 16, "Cream")
+    end
+end
+buildToggleVisual(MobileStyle)
+
+local function SetMobileStyle(name)
+    if not validStyle(name) then return end
+    MobileStyle = name
+    buildToggleVisual(MobileStyle)
+    persistTheme()
+end
+
+toggleBtn.Visible = isMobile
 local tbMoved = makeDraggable(toggleBtn)
 toggleBtn.MouseButton1Click:Connect(function()
     if not tbMoved() then
@@ -1751,10 +1932,10 @@ local function Notify(text, duration)
         Text = text,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextTruncate = Enum.TextTruncate.AtEnd,
-        TextColor3 = Color3.fromRGB(104, 100, 82),
         ZIndex = 2,
     })
 bindFont(lab, 14, false)
+bind(lab, "TextColor3", "Ink")
 local okW, sz = pcall(function()
     return TextService:GetTextSize(text, lab.TextSize, lab.Font, Vector2.new(600, 40))
 end)
@@ -1769,9 +1950,13 @@ local card = new("Frame", {
     Size = UDim2.fromScale(1, 1),
     Position = UDim2.fromScale(-1, 0),
     BorderSizePixel = 0,
-    BackgroundColor3 = Color3.fromRGB(250, 244, 206),
 }, slot)
-local bar = new("Frame", { Size = UDim2.new(0, 4, 1, 0), BorderSizePixel = 0, ZIndex = 2 }, card)
+bind(card, "BackgroundColor3", function(t)
+    return t.Paper:Lerp(t.Cream, 0.12)
+end)
+local cardStroke = new("UIStroke", { Thickness = 1 }, card)
+bind(cardStroke, "Color", "Line")
+local bar =new("Frame", { Size = UDim2.new(0, 4, 1, 0), BorderSizePixel = 0, ZIndex = 2 }, card)
 bind(bar, "BackgroundColor3", "Accent")
 lab.Size = UDim2.new(1, -24, 1, 0)
 lab.Parent = card
@@ -2216,6 +2401,12 @@ row.MouseButton1Click:Connect(function()
         task.spawn(Callback)
     end
 end)
+
+return {
+    SetText = function(t)
+        lbl.Text = tostring(t)
+    end,
+}
 end
 
 function CategoryElements:CreateTextbox(TextboxText, IconName, Placeholder, Flag, Callback)
@@ -2985,16 +3176,25 @@ function WindowElements:Destroy()
     gui:Destroy()
 end
 
-local toggleKey = Config.ToggleKey
-if toggleKey == nil then
-    toggleKey = Enum.KeyCode.RightShift
+connect(UserInputService.InputBegan, function(input, processed)
+    if listeningKey or processed or not toggleKey then
+        return
+    end
+    if input.KeyCode == toggleKey then
+        SetWindowOpen(not main.Visible)
+    end
+end)
+
+function WindowElements:SetToggleKey(key)
+    if typeof(key) == "EnumItem" and key.EnumType == Enum.KeyCode then
+        toggleKey = key
+        persistTheme()
+        save()
+    end
 end
-if toggleKey then
-    connect(UserInputService.InputBegan, function(input, processed)
-        if not processed and input.KeyCode == toggleKey then
-            SetWindowOpen(not main.Visible)
-        end
-    end)
+function WindowElements:SetMobileStyle(name)
+    SetMobileStyle(name)
+    save()
 end
 
 if Config.ShowSettingsTab ~= false then
@@ -3068,6 +3268,38 @@ if Config.ShowSettingsTab ~= false then
                 setGlass(v / 100)
                 persistTheme()
             end)
+
+            if isMobile then
+                SettingsTab:CreateDropdown(T.MobileStyleLabel, "lucide-smartphone", MobileStyleOrder, MobileStyle, nil, function(selected)
+                    SetMobileStyle(selected)
+                    save()
+                end)
+            else
+                local keyBtn
+                local function keyText()
+                    return T.ToggleKeyLabel .. " : " .. (toggleKey and toggleKey.Name or "None")
+                end
+                keyBtn = SettingsTab:CreateButton(keyText(), "lucide-keyboard", function()
+                    if listeningKey then return end
+                    listeningKey = true
+                    keyBtn.SetText(T.PressKey)
+                    local conn
+                    conn = UserInputService.InputBegan:Connect(function(input)
+                        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+                        if input.KeyCode == Enum.KeyCode.Unknown then return end
+                        conn:Disconnect()
+                        if input.KeyCode ~= Enum.KeyCode.Escape then
+                            toggleKey = input.KeyCode
+                            persistTheme()
+                            save()
+                        end
+                        keyBtn.SetText(keyText())
+                        task.defer(function()
+                            listeningKey = false
+                        end)
+                    end)
+                end)
+            end
         end
 
         BuildSettingsUI()
@@ -3077,7 +3309,7 @@ end
 if Config.StartOpen ~= false then
     task.defer(function()
         SetWindowOpen(true)
-        if toggleKey and Config.ToggleHint ~= false then
+        if toggleKey and not isMobile and Config.ToggleHint ~= false then
             Notify("Press [ " .. toggleKey.Name .. " ] to hide GUI", 4)
         end
     end)
