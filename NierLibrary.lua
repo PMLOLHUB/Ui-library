@@ -1231,6 +1231,12 @@ function Library:CreateWindow(WindowName, Config)
     end
 
     local themed, lookers, fonts, glass = {}, {}, {}, {}
+    local themeTweens = setmetatable({}, { __mode = "k" })
+    local pageFadeTargets = setmetatable({}, { __mode = "k" })
+    local pageFadeTweens = setmetatable({}, { __mode = "k" })
+    local pageFadeScheduled = setmetatable({}, { __mode = "k" })
+    local pageAnimationTokens = setmetatable({}, { __mode = "k" })
+    local themeTweenInfo = TweenInfo.new(0.36, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
 
     local function resolve(spec)
         if type(spec) == "function" then
@@ -1238,18 +1244,51 @@ function Library:CreateWindow(WindowName, Config)
         end
         return Theme[spec]
     end
+
+    local function setThemedProperty(inst, prop, value)
+        local ok, current = pcall(function()
+            return inst[prop]
+        end)
+        if not ok then return end
+
+        if typeof(value) == "Color3" and typeof(current) == "Color3" and current ~= value then
+            local byProperty = themeTweens[inst]
+            if not byProperty then
+                byProperty = {}
+                themeTweens[inst] = byProperty
+            end
+            local previous = byProperty[prop]
+            if previous then
+                previous:Cancel()
+                byProperty[prop] = nil
+            end
+
+            local tween = TweenService:Create(inst, themeTweenInfo, { [prop] = value })
+            byProperty[prop] = tween
+            tween.Completed:Connect(function()
+                if byProperty[prop] == tween then
+                    byProperty[prop] = nil
+                end
+            end)
+            tween:Play()
+        else
+            inst[prop] = value
+        end
+    end
+
     local function bind(inst, prop, spec)
         inst[prop] = resolve(spec)
         table.insert(themed, { inst, prop, spec })
         return inst
     end
+
     local function refreshTheme()
         for i = #themed, 1, -1 do
             local e = themed[i]
             if e[1].Parent == nil then
                 table.remove(themed, i)
             else
-                e[1][e[2]] = resolve(e[3])
+                setThemedProperty(e[1], e[2], resolve(e[3]))
             end
         end
         for i = #lookers, 1, -1 do
@@ -1257,7 +1296,7 @@ function Library:CreateWindow(WindowName, Config)
             if l.row.Parent == nil then
                 table.remove(lookers, i)
             else
-                l.fn(false)
+                l.fn(true)
             end
         end
     end
@@ -1293,6 +1332,10 @@ function Library:CreateWindow(WindowName, Config)
                 table.remove(glass, i)
             else
                 glass[i].BackgroundTransparency = GTrans
+                local targets = pageFadeTargets[glass[i]]
+                if targets then
+                    targets.BackgroundTransparency = GTrans
+                end
             end
         end
     end
@@ -2110,181 +2153,124 @@ gearBtn.MouseButton1Click:Connect(function()
     ToggleSettingsVisibility()
 end)
 
+local pageFadeInfo = TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+
 local function AnimatePageIn(page)
     if not page then return end
+    if page:IsA("ScrollingFrame") then
+        page.CanvasPosition = Vector2.new(0, 0)
+    end
+
     local basePos = page:GetAttribute("BasePosition")
     if not basePos then
         basePos = page.Position
         page:SetAttribute("BasePosition", basePos)
     end
     page.Position = UDim2.new(basePos.X.Scale, basePos.X.Offset, basePos.Y.Scale, basePos.Y.Offset + 10)
-    TweenService:Create(page, TweenInfo.new(0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = basePos }):Play()
+    TweenService:Create(page, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = basePos }):Play()
+
+    local token = (pageAnimationTokens[page] or 0) + 1
+    pageAnimationTokens[page] = token
+
+    local items = {}
+    for _, child in ipairs(page:GetChildren()) do
+        if child:IsA("GuiObject") then
+            table.insert(items, child)
+        end
+    end
+    table.sort(items, function(a, b)
+        if a.LayoutOrder == b.LayoutOrder then
+            return a.Name < b.Name
+        end
+        return a.LayoutOrder < b.LayoutOrder
+    end)
+
+    local function fadeProperties(inst)
+        local result = {}
+        if inst:IsA("GuiObject") then
+            result.BackgroundTransparency = inst.BackgroundTransparency
+        end
+        if inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox") then
+            result.TextTransparency = inst.TextTransparency
+            result.TextStrokeTransparency = inst.TextStrokeTransparency
+        end
+        if inst:IsA("ImageLabel") or inst:IsA("ImageButton") then
+            result.ImageTransparency = inst.ImageTransparency
+        end
+        if inst:IsA("UIStroke") then
+            result.Transparency = inst.Transparency
+        end
+        return result
+    end
+
+    for itemIndex, item in ipairs(items) do
+        local descendants = { item }
+        for _, descendant in ipairs(item:GetDescendants()) do
+            table.insert(descendants, descendant)
+        end
+
+        local animatedInstances = {}
+        for _, inst in ipairs(descendants) do
+            local properties = fadeProperties(inst)
+            if next(properties) ~= nil then
+                local previous = pageFadeTweens[inst]
+                local isScheduled = pageFadeScheduled[inst] ~= nil
+                local targets = pageFadeTargets[inst]
+                if not targets then
+                    targets = {}
+                    pageFadeTargets[inst] = targets
+                end
+
+                for prop, currentValue in pairs(properties) do
+                    if targets[prop] == nil or (not previous and not isScheduled) then
+                        targets[prop] = currentValue
+                    end
+                end
+
+                if previous then
+                    previous:Cancel()
+                    pageFadeTweens[inst] = nil
+                end
+
+                pageFadeScheduled[inst] = token
+                for prop in pairs(properties) do
+                    inst[prop] = 1
+                end
+                table.insert(animatedInstances, inst)
+            end
+        end
+
+        task.delay((itemIndex - 1) * 0.028, function()
+            if pageAnimationTokens[page] ~= token then
+                for _, inst in ipairs(animatedInstances) do
+                    if pageFadeScheduled[inst] == token then
+                        pageFadeScheduled[inst] = nil
+                    end
+                end
+                return
+            end
+
+            for _, inst in ipairs(animatedInstances) do
+                if pageFadeScheduled[inst] == token then
+                    pageFadeScheduled[inst] = nil
+                    if inst.Parent then
+                        local targets = pageFadeTargets[inst]
+                        local tween = TweenService:Create(inst, pageFadeInfo, targets)
+                        pageFadeTweens[inst] = tween
+                        tween.Completed:Connect(function()
+                            if pageFadeTweens[inst] == tween then
+                                pageFadeTweens[inst] = nil
+                            end
+                        end)
+                        tween:Play()
+                    end
+                end
+            end
+        end)
+    end
 end
 
 local WindowElements = {}
-
--- Page changes use a cover/reveal strip animation inspired by the window
--- open/close animation. This is independent from the main window animation.
-local pageTransitioning = false
-local pageTransitionOverlay = new("Frame", {
-    Name = "PageTransitionOverlay",
-    Position = UDim2.fromScale(0, 0),
-    Size = UDim2.fromScale(1, 1),
-    BackgroundTransparency = 1,
-    BorderSizePixel = 0,
-    ClipsDescendants = true,
-    Visible = false,
-    ZIndex = 60,
-}, ContentContainer)
-
-local function SwitchContentPage(targetPage, onActivated)
-    if not targetPage or not targetPage.Parent or pageTransitioning then
-        return false
-    end
-
-    local currentPage
-    for _, page in ipairs(ContentContainer:GetChildren()) do
-        if page:IsA("ScrollingFrame") and page.Visible then
-            currentPage = page
-            break
-        end
-    end
-
-    if currentPage == targetPage then
-        if onActivated then onActivated() end
-        return true
-    end
-
-    local function activateTarget()
-        for _, page in ipairs(ContentContainer:GetChildren()) do
-            if page:IsA("ScrollingFrame") then
-                page.Visible = false
-            end
-        end
-        targetPage.Visible = true
-        AnimatePageIn(targetPage)
-        if onActivated then
-            local ok, err = pcall(onActivated)
-            if not ok then warn("[NierLibrary] Page activation callback failed:", err) end
-        end
-    end
-
-    -- Do not animate during initial setup or while the window is hidden.
-    local absSize = ContentContainer.AbsoluteSize
-    if not currentPage or not main.Visible or absSize.X <= 1 or absSize.Y <= 1 then
-        activateTarget()
-        return true
-    end
-
-    pageTransitioning = true
-    pageTransitionOverlay.Visible = true
-    pageTransitionOverlay:ClearAllChildren()
-
-    local scaleFactor = math.max((tonumber(OverallScalePercent) or 100) / 100, 0.01)
-    local W = math.max(1, absSize.X / scaleFactor)
-    local H = math.max(1, absSize.Y / scaleFactor)
-    local strips = {}
-    local maxDelay = 0
-    local maxCoverDelay = 0
-    local stripCount = 9
-    local stripAngle = 16
-
-    for i = 1, stripCount do
-        local r = rng:NextNumber(0.1, 0.9)
-        local xc = -0.08 * W + (i - 1) * (1.2 * W / (stripCount - 1))
-
-        -- Alternate each strip's slant and vertical offset to form a saw-tooth edge.
-        -- The paired delays make the teeth interlock instead of sweeping as one solid direction.
-        local tooth = (i % 2 == 0) and -1 or 1
-        local yCenter = H / 2 + tooth * H * 0.07
-        local coverDelay = math.floor((i - 1) / 2) * 0.035 + ((i % 2 == 0) and 0.018 or 0)
-        local revealDelay = math.floor((stripCount - i) / 2) * 0.035 + ((i % 2 == 0) and 0 or 0.018)
-        maxCoverDelay = math.max(maxCoverDelay, coverDelay)
-        maxDelay = math.max(maxDelay, revealDelay)
-
-        local band = new("Frame", {
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            ClipsDescendants = true,
-            ZIndex = 61,
-            Position = UDim2.fromOffset(0, 0),
-            Size = UDim2.fromOffset(W, H),
-        }, pageTransitionOverlay)
-        local bar = new("Frame", {
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            BorderSizePixel = 0,
-            ZIndex = 62,
-            Position = UDim2.fromOffset(xc, yCenter),
-            Size = UDim2.fromOffset(W * 0.22, H * 1.8),
-            Rotation = stripAngle * tooth,
-            BackgroundColor3 = Theme.Paper,
-            BackgroundTransparency = 1,
-        }, band)
-        local stroke = new("UIStroke", {
-            Thickness = 1,
-            Color = Theme.Line,
-            Transparency = 1,
-        }, bar)
-        strips[i] = {
-            band = band,
-            bar = bar,
-            stroke = stroke,
-            r = r,
-            xc = xc,
-            yCenter = yCenter,
-            tooth = tooth,
-            coverDelay = coverDelay,
-            revealDelay = revealDelay,
-        }
-    end
-
-    local coverInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    local revealInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
-
-    -- Cover in paired, alternating teeth rather than using a single-direction sweep.
-    for _, strip in ipairs(strips) do
-        task.delay(strip.coverDelay, function()
-            if strip.bar.Parent then
-                TweenService:Create(strip.bar, coverInfo, { BackgroundTransparency = 0 }):Play()
-                TweenService:Create(strip.stroke, coverInfo, { Transparency = 0.4 }):Play()
-            end
-        end)
-    end
-
-    task.delay(maxCoverDelay + 0.23, function()
-        if not gui.Parent or not targetPage.Parent then
-            pageTransitionOverlay.Visible = false
-            pageTransitionOverlay:ClearAllChildren()
-            pageTransitioning = false
-            return
-        end
-
-        activateTarget()
-
-        -- Reveal in reverse paired order, keeping the alternating saw-tooth rhythm.
-        for _, strip in ipairs(strips) do
-            task.delay(strip.revealDelay, function()
-                if strip.band.Parent and strip.bar.Parent then
-                    TweenService:Create(strip.band, revealInfo, {
-                        Position = UDim2.fromOffset(0, strip.r * H),
-                        Size = UDim2.fromOffset(W, 0),
-                    }):Play()
-                    TweenService:Create(strip.bar, revealInfo, {
-                        Position = UDim2.fromOffset(strip.xc, strip.yCenter - strip.r * H),
-                    }):Play()
-                end
-            end)
-        end
-
-        task.delay(maxDelay + 0.36, function()
-            pageTransitionOverlay.Visible = false
-            pageTransitionOverlay:ClearAllChildren()
-            pageTransitioning = false
-        end)
-    end)
-
-    return true
-end
 
 function WindowElements:OpenSettings() OpenSettingsFn() end
 function WindowElements:CloseSettings() CloseSettingsFn() end
@@ -2364,9 +2350,9 @@ local function catLook(animate)
     tw(catLabel, dur, { TextColor3 = lit and Theme.Cream or Theme.Ink })
     local markCol = lit and Theme.Cream or Theme.Accent
     if catAsset then
-        catMarker.ImageColor3 = markCol
+        tw(catMarker, dur, { ImageColor3 = markCol })
     else
-        catMarker.BackgroundColor3 = markCol
+        tw(catMarker, dur, { BackgroundColor3 = markCol })
     end
 end
 btn.MouseEnter:Connect(function() catHover = true; catLook(true) end)
@@ -2452,16 +2438,20 @@ local function nextOrder()
 end
 
 local function SelectTab()
-    if pageTransitioning then return end
     SettingsState.open = false
-    SwitchContentPage(CategoryPage, function()
-        for _, b in ipairs(Sidebar:GetChildren()) do
-            if b:IsA("TextButton") then
-                b:SetAttribute("CategorySelected", false)
-            end
+    for _, page in ipairs(ContentContainer:GetChildren()) do
+        if page:IsA("ScrollingFrame") then
+            page.Visible = false
         end
-        btn:SetAttribute("CategorySelected", true)
-    end)
+    end
+    for _, b in ipairs(Sidebar:GetChildren()) do
+        if b:IsA("TextButton") then
+            b:SetAttribute("CategorySelected", false)
+        end
+    end
+    CategoryPage.Visible = true
+    AnimatePageIn(CategoryPage)
+    btn:SetAttribute("CategorySelected", true)
 end
 if not Hidden then
     btn.MouseButton1Click:Connect(SelectTab)
@@ -2572,9 +2562,9 @@ local function look(animate)
     end
     local active = o.active and o.active() or false
     if o.hasIcon then
-        o.marker.ImageColor3 = h and Theme.Cream or Theme.Accent
+        tw(o.marker, dur, { ImageColor3 = h and Theme.Cream or Theme.Accent })
     else
-        o.marker.BackgroundColor3 = (h or active) and Theme.Cream or Theme.Accent
+        tw(o.marker, dur, { BackgroundColor3 = (h or active) and Theme.Cream or Theme.Accent })
     end
     if dia then
         dia.Visible = h
@@ -2932,16 +2922,17 @@ local thumb = new("Frame", {
 }, track)
 bind(thumb, "BackgroundColor3", "Ink")
 
-local function render()
+local function render(animateTheme)
     local f = (Max == Min) and 0 or (value - Min) / (Max - Min)
     badge.Text = tostring(value)
     layout()
     thumb.Position = UDim2.new(f, 0, 0.5, 0)
+    local colorDuration = animateTheme and 0.36 or 0
     for i = 1, N do
         local filled = ((i - 0.5) / N) <= f
-        ticks[i].BackgroundColor3 = Theme.Ink
+        tw(ticks[i], colorDuration, { BackgroundColor3 = Theme.Ink })
         ticks[i].BackgroundTransparency = filled and 0 or 1
-        dots[i].BackgroundColor3 = Theme.Ink
+        tw(dots[i], colorDuration, { BackgroundColor3 = Theme.Ink })
         dots[i].BackgroundTransparency = filled and 1 or 0.35
     end
 end
@@ -3488,31 +3479,26 @@ if Config.ShowSettingsTab ~= false then
         local PreviousPage = nil
 
         local function ShowSettingsPanel()
-            if SettingsState.open or pageTransitioning then return end
+            if SettingsState.open then return end
             PreviousPage = nil
             for _, page in ipairs(ContentContainer:GetChildren()) do
                 if page:IsA("ScrollingFrame") and page ~= SettingsPage and page.Visible then
                     PreviousPage = page
-                    break
+                    page.Visible = false
                 end
             end
-            SwitchContentPage(SettingsPage, function()
-                SettingsState.open = true
-            end)
+            SettingsPage.Visible = true
+            AnimatePageIn(SettingsPage)
+            SettingsState.open = true
         end
         local function HideSettingsPanel()
-            if not SettingsState.open or pageTransitioning then return end
-            local returnPage = PreviousPage
-            if returnPage and returnPage.Parent then
-                SwitchContentPage(returnPage, function()
-                    SettingsState.open = false
-                    PreviousPage = nil
-                end)
-            else
-                SettingsPage.Visible = false
-                SettingsState.open = false
-                PreviousPage = nil
+            if not SettingsState.open then return end
+            SettingsPage.Visible = false
+            if PreviousPage and PreviousPage.Parent then
+                PreviousPage.Visible = true
+                AnimatePageIn(PreviousPage)
             end
+            SettingsState.open = false
         end
         ToggleSettingsVisibility = function()
             if SettingsState.open then HideSettingsPanel() else ShowSettingsPanel() end
