@@ -921,6 +921,7 @@ local Translations = {
         ColorHeader = "Colors",
         PaperLabel = "Background (Paper)",
         RowLabel = "Elements (Rows)",
+        InputLabel = "Textbox / Input",
         AccentLabel = "Accent (Title Bar / Selected Tab)",
         InkLabel = "Text",
         CreamLabel = "Text on Accent",
@@ -951,6 +952,7 @@ th = {
     ColorHeader = "สี",
     PaperLabel = "พื้นหลัง (กระดาษ)",
     RowLabel = "สีแถว (Element)",
+    InputLabel = "สีช่องกรอก (Textbox)",
     AccentLabel = "สี Accent (แถบหัว / แท็บที่เลือก)",
     InkLabel = "สีตัวอักษร",
     CreamLabel = "สีตัวอักษรบน Accent",
@@ -977,12 +979,12 @@ th = {
 }
 
 local Presets = {
-    Paper = { Paper = { 204, 198, 174 }, Row = { 172, 166, 149 }, Accent = { 54, 50, 44 }, Ink = { 72, 66, 52 }, Cream = { 252, 248, 220 }, Line = { 158, 152, 129 }, Team = { 120, 110, 80 } },
-    Dusk = { Paper = { 196, 184, 170 }, Row = { 172, 158, 144 }, Accent = { 70, 52, 58 }, Ink = { 70, 54, 56 }, Cream = { 244, 232, 222 }, Line = { 150, 134, 124 }, Team = { 150, 90, 100 } },
-    Moss = { Paper = { 198, 202, 176 }, Row = { 172, 178, 148 }, Accent = { 46, 60, 44 }, Ink = { 52, 64, 48 }, Cream = { 236, 242, 218 }, Line = { 146, 154, 124 }, Team = { 90, 130, 80 } },
-    Rose = { Paper = { 222, 200, 196 }, Row = { 200, 172, 170 }, Accent = { 92, 48, 56 }, Ink = { 86, 52, 58 }, Cream = { 250, 236, 232 }, Line = { 176, 148, 148 }, Team = { 170, 80, 100 } },
-    Slate = { Paper = { 190, 196, 200 }, Row = { 164, 172, 178 }, Accent = { 44, 52, 60 }, Ink = { 48, 56, 64 }, Cream = { 232, 238, 242 }, Line = { 140, 148, 154 }, Team = { 70, 110, 150 } },
-    Night = { Paper = { 52, 50, 44 }, Row = { 70, 68, 60 }, Accent = { 24, 23, 20 }, Ink = { 222, 216, 192 }, Cream = { 236, 230, 206 }, Line = { 96, 92, 80 }, Team = { 150, 140, 100 } },
+    Paper = { Paper = { 204, 198, 174 }, Row = { 172, 166, 149 }, Input = { 226, 220, 198 }, Accent = { 54, 50, 44 }, Ink = { 72, 66, 52 }, Cream = { 252, 248, 220 }, Line = { 158, 152, 129 }, Team = { 120, 110, 80 } },
+    Dusk = { Paper = { 196, 184, 170 }, Row = { 172, 158, 144 }, Input = { 228, 216, 204 }, Accent = { 70, 52, 58 }, Ink = { 70, 54, 56 }, Cream = { 244, 232, 222 }, Line = { 150, 134, 124 }, Team = { 150, 90, 100 } },
+    Moss = { Paper = { 198, 202, 176 }, Row = { 172, 178, 148 }, Input = { 224, 230, 200 }, Accent = { 46, 60, 44 }, Ink = { 52, 64, 48 }, Cream = { 236, 242, 218 }, Line = { 146, 154, 124 }, Team = { 90, 130, 80 } },
+    Rose = { Paper = { 222, 200, 196 }, Row = { 200, 172, 170 }, Input = { 244, 226, 222 }, Accent = { 92, 48, 56 }, Ink = { 86, 52, 58 }, Cream = { 250, 236, 232 }, Line = { 176, 148, 148 }, Team = { 170, 80, 100 } },
+    Slate = { Paper = { 190, 196, 200 }, Row = { 164, 172, 178 }, Input = { 218, 224, 228 }, Accent = { 44, 52, 60 }, Ink = { 48, 56, 64 }, Cream = { 232, 238, 242 }, Line = { 140, 148, 154 }, Team = { 70, 110, 150 } },
+    Night = { Paper = { 52, 50, 44 }, Row = { 70, 68, 60 }, Input = { 34, 33, 29 }, Accent = { 24, 23, 20 }, Ink = { 222, 216, 192 }, Cream = { 236, 230, 206 }, Line = { 96, 92, 80 }, Team = { 150, 140, 100 } },
 }
 local PresetOrder = { "Paper", "Dusk", "Moss", "Rose", "Slate", "Night" }
 Library.Presets = Presets
@@ -1080,6 +1082,7 @@ function Library:CreateWindow(WindowName, Config)
     cfgColor("BackgroundColor", "Paper")
     cfgColor("ElementColor", "Row")
     cfgColor("ButtonColor", "Row")
+    cfgColor("InputColor", "Input")
     cfgColor("ThemeColor", "Accent")
     cfgColor("CategoryColor", "Accent")
     cfgColor("TextColor", "Ink")
@@ -1194,7 +1197,7 @@ function Library:CreateWindow(WindowName, Config)
     end
 
     local function inputColor(t)
-        return t.Row:Lerp(WHITE, 0.45)
+        return t.Input
     end
     local function listColor(t)
         return t.Row:Lerp(t.Paper, 0.5)
@@ -3053,6 +3056,7 @@ if Config.ShowSettingsTab ~= false then
             SettingsTab:CreateLabel(T.ColorHeader, "lucide-palette")
             SettingsTab:CreateColorPicker(T.PaperLabel, "lucide-square", Theme.Paper, colorChanged("Paper"))
             SettingsTab:CreateColorPicker(T.RowLabel, "lucide-layout-grid", Theme.Row, colorChanged("Row"))
+            SettingsTab:CreateColorPicker(T.InputLabel, "lucide-text-cursor-input", Theme.Input, colorChanged("Input"))
             SettingsTab:CreateColorPicker(T.AccentLabel, "lucide-check-circle", Theme.Accent, colorChanged("Accent"))
             SettingsTab:CreateColorPicker(T.InkLabel, "lucide-baseline", Theme.Ink, colorChanged("Ink"))
             SettingsTab:CreateColorPicker(T.CreamLabel, "lucide-baseline", Theme.Cream, colorChanged("Cream"))
