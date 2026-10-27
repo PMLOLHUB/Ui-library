@@ -25,23 +25,14 @@ local function SaveConfig(frame)
     end
     local camera = workspace.CurrentCamera
     local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
-    local pos = frame.AbsolutePosition
-    local baseSize = frame.Size
-    local absoluteSize = frame.AbsoluteSize
+    local pos, size = frame.AbsolutePosition, frame.AbsoluteSize
 
-    -- Save the base dimensions, not AbsoluteSize, because UIScale changes the rendered size.
-    local data = {
-        Width = baseSize.X.Scale == 0 and baseSize.X.Offset or absoluteSize.X,
-        Height = baseSize.Y.Scale == 0 and baseSize.Y.Offset or absoluteSize.Y,
-    }
-    if pos.X < 0 or pos.Y < 0 or pos.X + absoluteSize.X > viewport.X or pos.Y + absoluteSize.Y > viewport.Y then
-        data.PosScaleX, data.PosScaleY = 0.5, 0.5
-        data.PosX = -(baseSize.X.Offset / 2)
-        data.PosY = -(baseSize.Y.Offset / 2)
+    local data = { Width = size.X, Height = size.Y }
+    if pos.X < 0 or pos.Y < 0 or pos.X + size.X > viewport.X or pos.Y + size.Y > viewport.Y then
+        data.PosX = viewport.X / 2 - size.X / 2
+        data.PosY = viewport.Y / 2 - size.Y / 2
     else
-        -- Preserve UDim2 scale/offset values so the window stays in place at any UI scale.
-        data.PosScaleX, data.PosScaleY = frame.Position.X.Scale, frame.Position.Y.Scale
-        data.PosX, data.PosY = frame.Position.X.Offset, frame.Position.Y.Offset
+        data.PosX, data.PosY = pos.X, pos.Y
     end
 
     data.Flags = {}
@@ -71,15 +62,7 @@ local function LoadConfig()
     end)
     if ok2 and type(data) == "table" and data.Width and data.Height then
         local size = UDim2.fromOffset(data.Width, data.Height)
-        local pos
-        if data.PosX ~= nil and data.PosY ~= nil then
-            pos = UDim2.new(
-                tonumber(data.PosScaleX) or 0,
-                tonumber(data.PosX) or 0,
-                tonumber(data.PosScaleY) or 0,
-                tonumber(data.PosY) or 0
-            )
-        end
+        local pos = (data.PosX and data.PosY) and UDim2.fromOffset(data.PosX, data.PosY) or nil
         return size, pos, data.Flags, data.Theme
     end
 end
@@ -945,11 +928,10 @@ local Translations = {
         LineLabel = "Lines / Border",
         TeamLabel = "Team Color",
         TransparencyLabel = "Transparency (%)",
-        OverallScaleLabel = "Overall UI Scale (%)",
-        ToggleButtonScaleLabel = "Toggle Button Size (%)",
         ToggleKeyLabel = "Toggle Key",
         PressKey = "Press a key... (Esc = cancel)",
         MobileStyleLabel = "Mobile Button Style",
+        ToggleSizeLabel = "Toggle Button Size (%)",
         FontHeader = "Font Settings",
         FontFamilyLabel = "Font Family",
         FontSizeLabel = "Font Size (%)",
@@ -981,11 +963,10 @@ th = {
     LineLabel = "สีเส้น / ขอบ",
     TeamLabel = "สีทีม (Team)",
     TransparencyLabel = "ความโปร่งแสง (%)",
-    OverallScaleLabel = "ขนาด UI โดยรวม (%)",
-    ToggleButtonScaleLabel = "ขนาดปุ่มเปิด/ปิด (%)",
     ToggleKeyLabel = "ปุ่มเปิด/ปิด",
     PressKey = "กดปุ่มบนคีย์บอร์ด... (Esc = ยกเลิก)",
     MobileStyleLabel = "รูปแบบปุ่มเปิด/ปิด (มือถือ)",
+    ToggleSizeLabel = "ขนาดปุ่มเปิด/ปิด (%)",
     FontHeader = "ตั้งค่าฟอนต์",
     FontFamilyLabel = "รูปแบบฟอนต์",
     FontSizeLabel = "ขนาดตัวอักษร (%)",
@@ -1127,9 +1108,6 @@ function Library:CreateWindow(WindowName, Config)
 
     local GTrans = math.clamp(Config.ElementTransparency or 0.08, 0, 0.9)
     local FontScale = Config.FontScale or 1
-    local OverallScalePercent = math.clamp(tonumber(Config.OverallScale) or 100, 70, 130)
-    local ToggleButtonScalePercent = math.clamp(tonumber(Config.ToggleButtonScale) or 100, 50, 180)
-    local mainUIScale, stripUIScale, toggleUIScale
     local FontFamily = (Config.FontFamily and FontPresets[Config.FontFamily]) and Config.FontFamily or "Gotham"
     local Language = "en"
     local cfgLang = Config.Language and string.lower(tostring(Config.Language))
@@ -1154,6 +1132,8 @@ function Library:CreateWindow(WindowName, Config)
         return false
     end
     local MobileStyle = validStyle(Config.MobileButtonStyle) and Config.MobileButtonStyle or "Classic"
+    -- Toggle button size multiplier (0.5x - 2x). Drag speed follows this value too.
+    local ToggleSizeState = { scale = math.clamp((tonumber(Config.ToggleButtonSize) or 100) / 100, 0.5, 2) }
 
     local toggleKey = Config.ToggleKey
     if toggleKey == nil then
@@ -1164,6 +1144,7 @@ function Library:CreateWindow(WindowName, Config)
     local savedSize, savedPos, savedFlags, savedTheme = LoadConfig()
     if type(savedTheme) == "table" then
         if validStyle(savedTheme.MobileStyle) then MobileStyle = savedTheme.MobileStyle end
+        if tonumber(savedTheme.ToggleScale) then ToggleSizeState.scale = math.clamp(tonumber(savedTheme.ToggleScale), 0.5, 2) end
         if toggleKey ~= false and type(savedTheme.ToggleKey) == "string" then
             local okK, keyEnum = pcall(function()
                 return Enum.KeyCode[savedTheme.ToggleKey]
@@ -1179,12 +1160,6 @@ function Library:CreateWindow(WindowName, Config)
         end
         if savedTheme.Transparency ~= nil then GTrans = savedTheme.Transparency end
         if savedTheme.FontScale ~= nil then FontScale = savedTheme.FontScale end
-        if savedTheme.OverallScalePercent ~= nil then
-            OverallScalePercent = math.clamp(tonumber(savedTheme.OverallScalePercent) or 100, 70, 130)
-        end
-        if savedTheme.ToggleButtonScalePercent ~= nil then
-            ToggleButtonScalePercent = math.clamp(tonumber(savedTheme.ToggleButtonScalePercent) or 100, 50, 180)
-        end
         if savedTheme.FontFamily and FontPresets[savedTheme.FontFamily] then FontFamily = savedTheme.FontFamily end
         if savedTheme.Language == "th" or savedTheme.Language == "en" then Language = savedTheme.Language end
         if savedTheme.StripAnimation ~= nil then StripAnim = savedTheme.StripAnimation end
@@ -1312,7 +1287,6 @@ local main = new("Frame", {
     ClipsDescendants = true,
     Visible = false,
 }, gui)
-mainUIScale = new("UIScale", { Scale = OverallScalePercent / 100 }, main)
 bind(main, "BackgroundColor3", "Paper")
 bindGlass(main)
 local mainStroke = new("UIStroke", { Thickness = 1, Enabled = BorderEnabled }, main)
@@ -1358,9 +1332,8 @@ local function persistTheme()
     ThemeSettings.BackgroundImageTransparency = BgImageTransparency
     ThemeSettings.BackgroundImageEnabled = BgImageEnabled
     ThemeSettings.MobileStyle = MobileStyle
+    ThemeSettings.ToggleScale = ToggleSizeState.scale
     ThemeSettings.ToggleKey = toggleKey and toggleKey.Name or nil
-    ThemeSettings.OverallScalePercent = OverallScalePercent
-    ThemeSettings.ToggleButtonScalePercent = ToggleButtonScalePercent
 end
 persistTheme()
 local function save()
@@ -1368,7 +1341,7 @@ local function save()
     SaveConfig(main)
 end
 
-local function makeDraggable(handle, target, onEnd, scaleProvider)
+local function makeDraggable(handle, target, onEnd, speedFn)
     target = target or handle
     local dragging, dragStart, startP, moved = false, nil, nil, false
     connect(handle.InputBegan, function(input)
@@ -1393,10 +1366,8 @@ local function makeDraggable(handle, target, onEnd, scaleProvider)
             if d.Magnitude > 4 then
                 moved = true
             end
-            local scaleFactor = scaleProvider and scaleProvider() or 1
-            scaleFactor = math.max(tonumber(scaleFactor) or 1, 0.01)
-            local dx, dy = d.X / scaleFactor, d.Y / scaleFactor
-            target.Position = UDim2.new(startP.X.Scale, startP.X.Offset + dx, startP.Y.Scale, startP.Y.Offset + dy)
+            local spd = speedFn and speedFn() or 1
+            target.Position = UDim2.new(startP.X.Scale, startP.X.Offset + d.X * spd, startP.Y.Scale, startP.Y.Offset + d.Y * spd)
         end
     end)
     return function()
@@ -1612,8 +1583,6 @@ bind(railStroke, "Color", "Line")
 
 makeDraggable(top, main, function()
     save()
-end, function()
-    return OverallScalePercent / 100
 end)
 
 local resizeBtn = new("TextButton", {
@@ -1631,19 +1600,13 @@ do
     local resizing, resizeStart, startAbs = false, nil, nil
     connect(resizeBtn.InputBegan, function(input)
         if isPointer(input) then
-            resizing = true
-            resizeStart = input.Position
-            startAbs = Vector2.new(main.Size.X.Offset, main.Size.Y.Offset)
+            resizing, resizeStart, startAbs = true, input.Position, main.AbsoluteSize
         end
     end)
     connect(UserInputService.InputChanged, function(input)
         if resizing and isMove(input) then
             local d = input.Position - resizeStart
-            local scaleFactor = math.max(OverallScalePercent / 100, 0.01)
-            main.Size = UDim2.fromOffset(
-                math.clamp(startAbs.X + d.X / scaleFactor, 360, 900),
-                math.clamp(startAbs.Y + d.Y / scaleFactor, 240, 650)
-            )
+            main.Size = UDim2.fromOffset(math.clamp(startAbs.X + d.X, 360, 900), math.clamp(startAbs.Y + d.Y, 240, 650))
         end
     end)
     connect(UserInputService.InputEnded, function(input)
@@ -1661,19 +1624,13 @@ local stripHost = new("Frame", {
     Visible = false,
     ZIndex = 60,
 }, gui)
-stripUIScale = new("UIScale", { Scale = OverallScalePercent / 100 }, stripHost)
 local STRIP_N = 9
 local STRIP_ANGLE = -13
 local rng = Random.new()
 local animating = false
 
 local function buildStrips(W, H, collapsed)
-    -- Keep the host UIScale alive when rebuilding the animation strips.
-    for _, child in ipairs(stripHost:GetChildren()) do
-        if child ~= stripUIScale then
-            child:Destroy()
-        end
-    end
+    stripHost:ClearAllChildren()
     local list = {}
     for i = 1, STRIP_N do
         local r = rng:NextNumber(0.1, 0.9)
@@ -1723,11 +1680,7 @@ local function playStrips(opening)
 
     local function finish()
         stripHost.Visible = false
-        for _, child in ipairs(stripHost:GetChildren()) do
-            if child ~= stripUIScale then
-                child:Destroy()
-            end
-        end
+        stripHost:ClearAllChildren()
         animating = false
     end
 
@@ -1793,7 +1746,6 @@ local toggleBtn = new("ImageButton", {
     AutoButtonColor = false,
     Image = "",
 }, gui)
-toggleUIScale = new("UIScale", { Scale = ToggleButtonScalePercent / 100 }, toggleBtn)
 local tbVisual = new("Frame", {
     Name = "Visual",
     BackgroundTransparency = 1,
@@ -1802,6 +1754,17 @@ local tbVisual = new("Frame", {
 }, toggleBtn)
 
 local CENTER = Vector2.new(0.5, 0.5)
+
+local tbBaseW, tbBaseH = 44, 44
+local function applyToggleScale()
+    local sc = ToggleSizeState.scale
+    toggleBtn.Size = UDim2.fromOffset(math.floor(tbBaseW * sc + 0.5), math.floor(tbBaseH * sc + 0.5))
+    tbVisual.AnchorPoint = CENTER
+    tbVisual.Position = UDim2.fromScale(0.5, 0.5)
+    tbVisual.Size = UDim2.fromOffset(tbBaseW, tbBaseH)
+    local us = tbVisual:FindFirstChildOfClass("UIScale") or new("UIScale", {}, tbVisual)
+    us.Scale = sc
+end
 
 local function buildToggleVisual(style)
     tbVisual:ClearAllChildren()
@@ -1947,6 +1910,8 @@ local function buildToggleVisual(style)
         bind(st, "Color", "Line")
         glyph(box, 16, "Cream")
     end
+    tbBaseW, tbBaseH = toggleBtn.Size.X.Offset, toggleBtn.Size.Y.Offset
+    applyToggleScale()
 end
 buildToggleVisual(MobileStyle)
 
@@ -1957,22 +1922,19 @@ local function SetMobileStyle(name)
     persistTheme()
 end
 
-local function SetOverallScale(percent)
-    OverallScalePercent = math.clamp(math.floor((tonumber(percent) or 100) + 0.5), 70, 130)
-    if mainUIScale then mainUIScale.Scale = OverallScalePercent / 100 end
-    if stripUIScale then stripUIScale.Scale = OverallScalePercent / 100 end
-    persistTheme()
-end
-
-local function SetToggleButtonScale(percent)
-    ToggleButtonScalePercent = math.clamp(math.floor((tonumber(percent) or 100) + 0.5), 50, 180)
-    if toggleUIScale then toggleUIScale.Scale = ToggleButtonScalePercent / 100 end
+local function SetToggleSize(percent)
+    ToggleSizeState.scale = math.clamp((tonumber(percent) or 100) / 100, 0.5, 2)
+    applyToggleScale()
     persistTheme()
 end
 
 toggleBtn.Visible = isMobile
+-- movement speed scales with button size (bigger = faster, smaller = finer)
 local tbMoved = makeDraggable(toggleBtn, nil, nil, function()
-    return ToggleButtonScalePercent / 100
+    -- read the button's real current size, so speed follows size
+    -- even if something else resizes the button
+    local ratio = toggleBtn.Size.X.Offset / math.max(tbBaseW, 1)
+    return math.clamp(ratio, 0.25, 4)
 end)
 toggleBtn.MouseButton1Click:Connect(function()
     if not tbMoved() then
@@ -3262,6 +3224,10 @@ function WindowElements:SetToggleKey(key)
         save()
     end
 end
+function WindowElements:SetToggleSize(percent)
+    SetToggleSize(percent)
+end
+
 function WindowElements:SetMobileStyle(name)
     SetMobileStyle(name)
     save()
@@ -3333,10 +3299,6 @@ if Config.ShowSettingsTab ~= false then
                 applyPreset(selected)
             end)
 
-            SettingsTab:CreateSlider(T.OverallScaleLabel, "lucide-scaling", 70, 130, OverallScalePercent, "OverallScalePercent", function(v)
-                SetOverallScale(v)
-            end)
-
             SettingsTab:CreateSlider(T.TransparencyLabel, "lucide-glasses", 0, 90, TransPercent, function(v)
                 TransPercent = v
                 setGlass(v / 100)
@@ -3348,9 +3310,8 @@ if Config.ShowSettingsTab ~= false then
                     SetMobileStyle(selected)
                     save()
                 end)
-
-                SettingsTab:CreateSlider(T.ToggleButtonScaleLabel, "lucide-move", 50, 180, ToggleButtonScalePercent, "ToggleButtonScalePercent", function(v)
-                    SetToggleButtonScale(v)
+                SettingsTab:CreateSlider(T.ToggleSizeLabel, "lucide-sliders-horizontal", 50, 200, math.floor(ToggleSizeState.scale * 100 + 0.5), function(v)
+                    SetToggleSize(v)
                 end)
             else
                 local keyBtn
