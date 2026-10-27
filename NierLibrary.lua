@@ -2185,14 +2185,22 @@ local function SwitchContentPage(targetPage, onActivated)
     local H = math.max(1, absSize.Y / scaleFactor)
     local strips = {}
     local maxDelay = 0
+    local maxCoverDelay = 0
     local stripCount = 9
-    local stripAngle = -13
+    local stripAngle = 16
 
     for i = 1, stripCount do
         local r = rng:NextNumber(0.1, 0.9)
         local xc = -0.08 * W + (i - 1) * (1.2 * W / (stripCount - 1))
-        local delay = rng:NextNumber(0, 0.18)
-        maxDelay = math.max(maxDelay, delay)
+
+        -- Alternate each strip's slant and vertical offset to form a saw-tooth edge.
+        -- The paired delays make the teeth interlock instead of sweeping as one solid direction.
+        local tooth = (i % 2 == 0) and -1 or 1
+        local yCenter = H / 2 + tooth * H * 0.07
+        local coverDelay = math.floor((i - 1) / 2) * 0.035 + ((i % 2 == 0) and 0.018 or 0)
+        local revealDelay = math.floor((stripCount - i) / 2) * 0.035 + ((i % 2 == 0) and 0 or 0.018)
+        maxCoverDelay = math.max(maxCoverDelay, coverDelay)
+        maxDelay = math.max(maxDelay, revealDelay)
 
         local band = new("Frame", {
             BackgroundTransparency = 1,
@@ -2206,9 +2214,9 @@ local function SwitchContentPage(targetPage, onActivated)
             AnchorPoint = Vector2.new(0.5, 0.5),
             BorderSizePixel = 0,
             ZIndex = 62,
-            Position = UDim2.fromOffset(xc, H / 2),
+            Position = UDim2.fromOffset(xc, yCenter),
             Size = UDim2.fromOffset(W * 0.22, H * 1.8),
-            Rotation = stripAngle,
+            Rotation = stripAngle * tooth,
             BackgroundColor3 = Theme.Paper,
             BackgroundTransparency = 1,
         }, band)
@@ -2217,15 +2225,25 @@ local function SwitchContentPage(targetPage, onActivated)
             Color = Theme.Line,
             Transparency = 1,
         }, bar)
-        strips[i] = { band = band, bar = bar, stroke = stroke, r = r, xc = xc, delay = delay }
+        strips[i] = {
+            band = band,
+            bar = bar,
+            stroke = stroke,
+            r = r,
+            xc = xc,
+            yCenter = yCenter,
+            tooth = tooth,
+            coverDelay = coverDelay,
+            revealDelay = revealDelay,
+        }
     end
 
     local coverInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     local revealInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
 
-    -- Cover the current page with the same angled strips used by the UI toggle.
-    for i, strip in ipairs(strips) do
-        task.delay((stripCount - i) * 0.025, function()
+    -- Cover in paired, alternating teeth rather than using a single-direction sweep.
+    for _, strip in ipairs(strips) do
+        task.delay(strip.coverDelay, function()
             if strip.bar.Parent then
                 TweenService:Create(strip.bar, coverInfo, { BackgroundTransparency = 0 }):Play()
                 TweenService:Create(strip.stroke, coverInfo, { Transparency = 0.4 }):Play()
@@ -2233,7 +2251,7 @@ local function SwitchContentPage(targetPage, onActivated)
         end)
     end
 
-    task.delay((stripCount - 1) * 0.025 + 0.23, function()
+    task.delay(maxCoverDelay + 0.23, function()
         if not gui.Parent or not targetPage.Parent then
             pageTransitionOverlay.Visible = false
             pageTransitionOverlay:ClearAllChildren()
@@ -2243,16 +2261,16 @@ local function SwitchContentPage(targetPage, onActivated)
 
         activateTarget()
 
-        -- Reveal the new page by collapsing the strips away from it.
+        -- Reveal in reverse paired order, keeping the alternating saw-tooth rhythm.
         for _, strip in ipairs(strips) do
-            task.delay(strip.delay, function()
+            task.delay(strip.revealDelay, function()
                 if strip.band.Parent and strip.bar.Parent then
                     TweenService:Create(strip.band, revealInfo, {
                         Position = UDim2.fromOffset(0, strip.r * H),
                         Size = UDim2.fromOffset(W, 0),
                     }):Play()
                     TweenService:Create(strip.bar, revealInfo, {
-                        Position = UDim2.fromOffset(strip.xc, H / 2 - strip.r * H),
+                        Position = UDim2.fromOffset(strip.xc, strip.yCenter - strip.r * H),
                     }):Play()
                 end
             end)
