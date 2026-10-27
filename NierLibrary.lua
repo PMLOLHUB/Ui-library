@@ -1231,12 +1231,6 @@ function Library:CreateWindow(WindowName, Config)
     end
 
     local themed, lookers, fonts, glass = {}, {}, {}, {}
-    local themeTweens = setmetatable({}, { __mode = "k" })
-    local pageFadeTargets = setmetatable({}, { __mode = "k" })
-    local pageFadeTweens = setmetatable({}, { __mode = "k" })
-    local pageFadeScheduled = setmetatable({}, { __mode = "k" })
-    local pageAnimationTokens = setmetatable({}, { __mode = "k" })
-    local themeTweenInfo = TweenInfo.new(0.36, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
 
     local function resolve(spec)
         if type(spec) == "function" then
@@ -1244,51 +1238,18 @@ function Library:CreateWindow(WindowName, Config)
         end
         return Theme[spec]
     end
-
-    local function setThemedProperty(inst, prop, value)
-        local ok, current = pcall(function()
-            return inst[prop]
-        end)
-        if not ok then return end
-
-        if typeof(value) == "Color3" and typeof(current) == "Color3" and current ~= value then
-            local byProperty = themeTweens[inst]
-            if not byProperty then
-                byProperty = {}
-                themeTweens[inst] = byProperty
-            end
-            local previous = byProperty[prop]
-            if previous then
-                previous:Cancel()
-                byProperty[prop] = nil
-            end
-
-            local tween = TweenService:Create(inst, themeTweenInfo, { [prop] = value })
-            byProperty[prop] = tween
-            tween.Completed:Connect(function()
-                if byProperty[prop] == tween then
-                    byProperty[prop] = nil
-                end
-            end)
-            tween:Play()
-        else
-            inst[prop] = value
-        end
-    end
-
     local function bind(inst, prop, spec)
         inst[prop] = resolve(spec)
         table.insert(themed, { inst, prop, spec })
         return inst
     end
-
     local function refreshTheme()
         for i = #themed, 1, -1 do
             local e = themed[i]
             if e[1].Parent == nil then
                 table.remove(themed, i)
             else
-                setThemedProperty(e[1], e[2], resolve(e[3]))
+                e[1][e[2]] = resolve(e[3])
             end
         end
         for i = #lookers, 1, -1 do
@@ -1296,7 +1257,7 @@ function Library:CreateWindow(WindowName, Config)
             if l.row.Parent == nil then
                 table.remove(lookers, i)
             else
-                l.fn(true)
+                l.fn(false)
             end
         end
     end
@@ -1332,10 +1293,6 @@ function Library:CreateWindow(WindowName, Config)
                 table.remove(glass, i)
             else
                 glass[i].BackgroundTransparency = GTrans
-                local targets = pageFadeTargets[glass[i]]
-                if targets then
-                    targets.BackgroundTransparency = GTrans
-                end
             end
         end
     end
@@ -1765,6 +1722,20 @@ local STRIP_N = 9
 local STRIP_ANGLE = -13
 local rng = Random.new()
 local animating = false
+local pendingThemeAction = nil
+local runThemeTransition
+
+local function flushPendingThemeAction()
+    local action = pendingThemeAction
+    pendingThemeAction = nil
+    if action then
+        task.defer(function()
+            if runThemeTransition then
+                runThemeTransition(action)
+            end
+        end)
+    end
+end
 
 local function buildStrips(W, H, collapsed)
     -- Keep the host UIScale alive when rebuilding the animation strips.
@@ -1828,6 +1799,7 @@ local function playStrips(opening)
             end
         end
         animating = false
+        flushPendingThemeAction()
     end
 
     if opening then
@@ -1881,6 +1853,97 @@ local function SetWindowOpen(shouldOpen)
     end
     animating = true
     playStrips(shouldOpen)
+end
+
+-- Cover the window before changing its palette, then reveal the updated UI.
+-- The strip overlay reuses the same visual language as the window open/close effect.
+runThemeTransition = function(applyChange)
+    if type(applyChange) ~= "function" then
+        return
+    end
+    if animating then
+        pendingThemeAction = applyChange
+        return
+    end
+    if not main.Visible then
+        applyChange()
+        return
+    end
+
+    animating = true
+    local W, H = main.Size.X.Offset, main.Size.Y.Offset
+    local oldPaper = Theme.Paper
+    stripHost.Position = main.Position
+    stripHost.Size = main.Size
+    local list = buildStrips(W, H, false)
+    local cover = new("Frame", {
+        Name = "ThemeCover",
+        Position = UDim2.fromOffset(0, 0),
+        Size = UDim2.fromOffset(W, H),
+        BackgroundColor3 = oldPaper,
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ZIndex = 59,
+        Active = false,
+    }, stripHost)
+    stripHost.Visible = true
+
+    local coverIn = TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+    local colorTween = TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+    local revealTween = TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+    local stripeTween = TweenInfo.new(0.30, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local maxStripeDelay = (#list - 1) * 0.025
+
+    local function finish()
+        stripHost.Visible = false
+        for _, child in ipairs(stripHost:GetChildren()) do
+            if child ~= stripUIScale then
+                child:Destroy()
+            end
+        end
+        animating = false
+        flushPendingThemeAction()
+    end
+
+    -- Closing: stagger the diagonal strips while an opaque curtain fills their gaps.
+    TweenService:Create(cover, coverIn, { BackgroundTransparency = 0 }):Play()
+    for i, strip in ipairs(list) do
+        task.delay((#list - i) * 0.025, function()
+            if not strip.bar.Parent then return end
+            TweenService:Create(strip.bar, coverIn, { BackgroundTransparency = 0 }):Play()
+            TweenService:Create(strip.stroke, coverIn, { Transparency = 0.4 }):Play()
+        end)
+    end
+
+    task.delay(maxStripeDelay + 0.29, function()
+        local ok, err = pcall(applyChange)
+        if not ok then
+            warn("[NierLibrary] Theme transition failed: " .. tostring(err))
+        end
+
+        local newPaper, newLine = Theme.Paper, Theme.Line
+        -- The window is fully covered here, so the palette swap cannot flash underneath.
+        for _, strip in ipairs(list) do
+            if strip.bar.Parent then
+                TweenService:Create(strip.bar, colorTween, { BackgroundColor3 = newPaper }):Play()
+                TweenService:Create(strip.stroke, colorTween, { Color = newLine }):Play()
+            end
+        end
+        TweenService:Create(cover, colorTween, { BackgroundColor3 = newPaper }):Play()
+
+        task.delay(0.25, function()
+            -- Opening: fade the cover and each strip away in sequence to reveal the new theme.
+            TweenService:Create(cover, revealTween, { BackgroundTransparency = 1 }):Play()
+            for i, strip in ipairs(list) do
+                task.delay((i - 1) * 0.025, function()
+                    if not strip.bar.Parent then return end
+                    TweenService:Create(strip.bar, stripeTween, { BackgroundTransparency = 1 }):Play()
+                    TweenService:Create(strip.stroke, stripeTween, { Transparency = 1 }):Play()
+                end)
+            end
+            task.delay(maxStripeDelay + 0.36, finish)
+        end)
+    end)
 end
 
 local toggleBtn = new("ImageButton", {
@@ -2153,13 +2216,48 @@ gearBtn.MouseButton1Click:Connect(function()
     ToggleSettingsVisibility()
 end)
 
-local pageFadeInfo = TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+local pageAnimationStates = {}
+local function getFadeProperties(instance)
+    local props = {}
+    if instance:IsA("GuiObject") then
+        props.BackgroundTransparency = instance.BackgroundTransparency
+    end
+    if instance:IsA("TextLabel") or instance:IsA("TextButton") or instance:IsA("TextBox") then
+        props.TextTransparency = instance.TextTransparency
+        props.TextStrokeTransparency = instance.TextStrokeTransparency
+    end
+    if instance:IsA("ImageLabel") or instance:IsA("ImageButton") then
+        props.ImageTransparency = instance.ImageTransparency
+    end
+    if instance:IsA("ScrollingFrame") then
+        props.ScrollBarImageTransparency = instance.ScrollBarImageTransparency
+    end
+    if instance:IsA("UIStroke") then
+        props.Transparency = instance.Transparency
+    end
+    return props
+end
+
+local function cancelPageAnimation(page)
+    local state = pageAnimationStates[page]
+    if not state then return end
+    state.cancelled = true
+    for _, tween in ipairs(state.tweens) do
+        pcall(function() tween:Cancel() end)
+    end
+    for _, original in ipairs(state.originals) do
+        if original.instance.Parent then
+            pcall(function()
+                original.instance[original.property] = original.value
+            end)
+        end
+    end
+    pageAnimationStates[page] = nil
+end
 
 local function AnimatePageIn(page)
     if not page then return end
-    if page:IsA("ScrollingFrame") then
-        page.CanvasPosition = Vector2.new(0, 0)
-    end
+    cancelPageAnimation(page)
 
     local basePos = page:GetAttribute("BasePosition")
     if not basePos then
@@ -2167,10 +2265,11 @@ local function AnimatePageIn(page)
         page:SetAttribute("BasePosition", basePos)
     end
     page.Position = UDim2.new(basePos.X.Scale, basePos.X.Offset, basePos.Y.Scale, basePos.Y.Offset + 10)
-    TweenService:Create(page, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = basePos }):Play()
-
-    local token = (pageAnimationTokens[page] or 0) + 1
-    pageAnimationTokens[page] = token
+    local pageSlideTween = TweenService:Create(
+        page,
+        TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+        { Position = basePos }
+    )
 
     local items = {}
     for _, child in ipairs(page:GetChildren()) do
@@ -2180,94 +2279,72 @@ local function AnimatePageIn(page)
     end
     table.sort(items, function(a, b)
         if a.LayoutOrder == b.LayoutOrder then
-            return a.Name < b.Name
+            return a.AbsolutePosition.Y < b.AbsolutePosition.Y
         end
         return a.LayoutOrder < b.LayoutOrder
     end)
 
-    local function fadeProperties(inst)
-        local result = {}
-        if inst:IsA("GuiObject") then
-            result.BackgroundTransparency = inst.BackgroundTransparency
+    local state = { tweens = { pageSlideTween }, originals = {}, cancelled = false }
+    pageAnimationStates[page] = state
+    pageSlideTween:Play()
+    local itemTargets = {}
+
+    -- Hide each row first, then restore its original transparency with a top-to-bottom stagger.
+    for _, item in ipairs(items) do
+        local targets = {}
+        local objects = { item }
+        for _, descendant in ipairs(item:GetDescendants()) do
+            table.insert(objects, descendant)
         end
-        if inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox") then
-            result.TextTransparency = inst.TextTransparency
-            result.TextStrokeTransparency = inst.TextStrokeTransparency
+        for _, object in ipairs(objects) do
+            local canFade = (object:IsA("GuiObject") and object.Visible)
+                or (object:IsA("UIStroke") and object.Enabled)
+            if canFade then
+                local properties = getFadeProperties(object)
+                for property, originalValue in pairs(properties) do
+                    if type(originalValue) == "number" and originalValue < 0.999 then
+                        local target = {
+                            instance = object,
+                            property = property,
+                            value = originalValue,
+                        }
+                        table.insert(state.originals, target)
+                        table.insert(targets, target)
+                        pcall(function()
+                            object[property] = 1
+                        end)
+                    end
+                end
+            end
         end
-        if inst:IsA("ImageLabel") or inst:IsA("ImageButton") then
-            result.ImageTransparency = inst.ImageTransparency
-        end
-        if inst:IsA("UIStroke") then
-            result.Transparency = inst.Transparency
-        end
-        return result
+        table.insert(itemTargets, targets)
     end
 
-    for itemIndex, item in ipairs(items) do
-        local descendants = { item }
-        for _, descendant in ipairs(item:GetDescendants()) do
-            table.insert(descendants, descendant)
-        end
-
-        local animatedInstances = {}
-        for _, inst in ipairs(descendants) do
-            local properties = fadeProperties(inst)
-            if next(properties) ~= nil then
-                local previous = pageFadeTweens[inst]
-                local isScheduled = pageFadeScheduled[inst] ~= nil
-                local targets = pageFadeTargets[inst]
-                if not targets then
-                    targets = {}
-                    pageFadeTargets[inst] = targets
-                end
-
-                for prop, currentValue in pairs(properties) do
-                    if targets[prop] == nil or (not previous and not isScheduled) then
-                        targets[prop] = currentValue
-                    end
-                end
-
-                if previous then
-                    previous:Cancel()
-                    pageFadeTweens[inst] = nil
-                end
-
-                pageFadeScheduled[inst] = token
-                for prop in pairs(properties) do
-                    inst[prop] = 1
-                end
-                table.insert(animatedInstances, inst)
-            end
-        end
-
-        task.delay((itemIndex - 1) * 0.028, function()
-            if pageAnimationTokens[page] ~= token then
-                for _, inst in ipairs(animatedInstances) do
-                    if pageFadeScheduled[inst] == token then
-                        pageFadeScheduled[inst] = nil
-                    end
-                end
+    local stagger = 0.035
+    local fadeInfo = TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+    for index, item in ipairs(items) do
+        local targets = itemTargets[index]
+        task.delay((index - 1) * stagger, function()
+            if pageAnimationStates[page] ~= state or state.cancelled or not page.Visible then
                 return
             end
-
-            for _, inst in ipairs(animatedInstances) do
-                if pageFadeScheduled[inst] == token then
-                    pageFadeScheduled[inst] = nil
-                    if inst.Parent then
-                        local targets = pageFadeTargets[inst]
-                        local tween = TweenService:Create(inst, pageFadeInfo, targets)
-                        pageFadeTweens[inst] = tween
-                        tween.Completed:Connect(function()
-                            if pageFadeTweens[inst] == tween then
-                                pageFadeTweens[inst] = nil
-                            end
-                        end)
-                        tween:Play()
-                    end
+            for _, target in ipairs(targets) do
+                if target.instance.Parent then
+                    local tween = TweenService:Create(target.instance, fadeInfo, {
+                        [target.property] = target.value,
+                    })
+                    table.insert(state.tweens, tween)
+                    tween:Play()
                 end
             end
         end)
     end
+
+    task.delay(math.max(#items - 1, 0) * stagger + 0.28, function()
+        if pageAnimationStates[page] == state then
+            pageAnimationStates[page] = nil
+        end
+    end)
 end
 
 local WindowElements = {}
@@ -2350,9 +2427,9 @@ local function catLook(animate)
     tw(catLabel, dur, { TextColor3 = lit and Theme.Cream or Theme.Ink })
     local markCol = lit and Theme.Cream or Theme.Accent
     if catAsset then
-        tw(catMarker, dur, { ImageColor3 = markCol })
+        catMarker.ImageColor3 = markCol
     else
-        tw(catMarker, dur, { BackgroundColor3 = markCol })
+        catMarker.BackgroundColor3 = markCol
     end
 end
 btn.MouseEnter:Connect(function() catHover = true; catLook(true) end)
@@ -2441,6 +2518,7 @@ local function SelectTab()
     SettingsState.open = false
     for _, page in ipairs(ContentContainer:GetChildren()) do
         if page:IsA("ScrollingFrame") then
+            cancelPageAnimation(page)
             page.Visible = false
         end
     end
@@ -2562,9 +2640,9 @@ local function look(animate)
     end
     local active = o.active and o.active() or false
     if o.hasIcon then
-        tw(o.marker, dur, { ImageColor3 = h and Theme.Cream or Theme.Accent })
+        o.marker.ImageColor3 = h and Theme.Cream or Theme.Accent
     else
-        tw(o.marker, dur, { BackgroundColor3 = (h or active) and Theme.Cream or Theme.Accent })
+        o.marker.BackgroundColor3 = (h or active) and Theme.Cream or Theme.Accent
     end
     if dia then
         dia.Visible = h
@@ -2922,17 +3000,16 @@ local thumb = new("Frame", {
 }, track)
 bind(thumb, "BackgroundColor3", "Ink")
 
-local function render(animateTheme)
+local function render()
     local f = (Max == Min) and 0 or (value - Min) / (Max - Min)
     badge.Text = tostring(value)
     layout()
     thumb.Position = UDim2.new(f, 0, 0.5, 0)
-    local colorDuration = animateTheme and 0.36 or 0
     for i = 1, N do
         local filled = ((i - 0.5) / N) <= f
-        tw(ticks[i], colorDuration, { BackgroundColor3 = Theme.Ink })
+        ticks[i].BackgroundColor3 = Theme.Ink
         ticks[i].BackgroundTransparency = filled and 0 or 1
-        tw(dots[i], colorDuration, { BackgroundColor3 = Theme.Ink })
+        dots[i].BackgroundColor3 = Theme.Ink
         dots[i].BackgroundTransparency = filled and 1 or 0.35
     end
 end
@@ -3415,8 +3492,10 @@ WindowElements.ApplyTeamColor = function(instance, property)
     bind(instance, property or "BackgroundColor3", "Team")
 end
 WindowElements.UpdateTeamColor = function(color)
-    Theme.Team = color
-    refreshTheme()
+    runThemeTransition(function()
+        Theme.Team = color
+        refreshTheme()
+    end)
 end
 WindowElements.GetTeamColor = function()
     return Theme.Team
@@ -3484,6 +3563,7 @@ if Config.ShowSettingsTab ~= false then
             for _, page in ipairs(ContentContainer:GetChildren()) do
                 if page:IsA("ScrollingFrame") and page ~= SettingsPage and page.Visible then
                     PreviousPage = page
+                    cancelPageAnimation(page)
                     page.Visible = false
                 end
             end
@@ -3493,6 +3573,7 @@ if Config.ShowSettingsTab ~= false then
         end
         local function HideSettingsPanel()
             if not SettingsState.open then return end
+            cancelPageAnimation(SettingsPage)
             SettingsPage.Visible = false
             if PreviousPage and PreviousPage.Parent then
                 PreviousPage.Visible = true
@@ -3512,18 +3593,22 @@ if Config.ShowSettingsTab ~= false then
 
         local function colorChanged(token)
             return function(color)
-                Theme[token] = color
-                refreshTheme()
-                persistTheme()
+                runThemeTransition(function()
+                    Theme[token] = color
+                    refreshTheme()
+                    persistTheme()
+                end)
             end
         end
 
         local function applyPreset(name)
             if not Presets[name] then return end
-            loadPreset(Presets[name])
-            refreshTheme()
-            persistTheme()
-            BuildSettingsUI()
+            runThemeTransition(function()
+                loadPreset(Presets[name])
+                refreshTheme()
+                persistTheme()
+                BuildSettingsUI()
+            end)
         end
 
         BuildSettingsUI = function()
