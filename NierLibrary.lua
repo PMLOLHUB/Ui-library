@@ -2123,6 +2123,151 @@ end
 
 local WindowElements = {}
 
+-- Page changes use a cover/reveal strip animation inspired by the window
+-- open/close animation. This is independent from the main window animation.
+local pageTransitioning = false
+local pageTransitionOverlay = new("Frame", {
+    Name = "PageTransitionOverlay",
+    Position = UDim2.fromScale(0, 0),
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    ClipsDescendants = true,
+    Visible = false,
+    ZIndex = 60,
+}, ContentContainer)
+
+local function SwitchContentPage(targetPage, onActivated)
+    if not targetPage or not targetPage.Parent or pageTransitioning then
+        return false
+    end
+
+    local currentPage
+    for _, page in ipairs(ContentContainer:GetChildren()) do
+        if page:IsA("ScrollingFrame") and page.Visible then
+            currentPage = page
+            break
+        end
+    end
+
+    if currentPage == targetPage then
+        if onActivated then onActivated() end
+        return true
+    end
+
+    local function activateTarget()
+        for _, page in ipairs(ContentContainer:GetChildren()) do
+            if page:IsA("ScrollingFrame") then
+                page.Visible = false
+            end
+        end
+        targetPage.Visible = true
+        AnimatePageIn(targetPage)
+        if onActivated then
+            local ok, err = pcall(onActivated)
+            if not ok then warn("[NierLibrary] Page activation callback failed:", err) end
+        end
+    end
+
+    -- Do not animate during initial setup or while the window is hidden.
+    local absSize = ContentContainer.AbsoluteSize
+    if not currentPage or not main.Visible or absSize.X <= 1 or absSize.Y <= 1 then
+        activateTarget()
+        return true
+    end
+
+    pageTransitioning = true
+    pageTransitionOverlay.Visible = true
+    pageTransitionOverlay:ClearAllChildren()
+
+    local scaleFactor = math.max((tonumber(OverallScalePercent) or 100) / 100, 0.01)
+    local W = math.max(1, absSize.X / scaleFactor)
+    local H = math.max(1, absSize.Y / scaleFactor)
+    local strips = {}
+    local maxDelay = 0
+    local stripCount = 9
+    local stripAngle = -13
+
+    for i = 1, stripCount do
+        local r = rng:NextNumber(0.1, 0.9)
+        local xc = -0.08 * W + (i - 1) * (1.2 * W / (stripCount - 1))
+        local delay = rng:NextNumber(0, 0.18)
+        maxDelay = math.max(maxDelay, delay)
+
+        local band = new("Frame", {
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            ClipsDescendants = true,
+            ZIndex = 61,
+            Position = UDim2.fromOffset(0, 0),
+            Size = UDim2.fromOffset(W, H),
+        }, pageTransitionOverlay)
+        local bar = new("Frame", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            BorderSizePixel = 0,
+            ZIndex = 62,
+            Position = UDim2.fromOffset(xc, H / 2),
+            Size = UDim2.fromOffset(W * 0.22, H * 1.8),
+            Rotation = stripAngle,
+            BackgroundColor3 = Theme.Paper,
+            BackgroundTransparency = 1,
+        }, band)
+        local stroke = new("UIStroke", {
+            Thickness = 1,
+            Color = Theme.Line,
+            Transparency = 1,
+        }, bar)
+        strips[i] = { band = band, bar = bar, stroke = stroke, r = r, xc = xc, delay = delay }
+    end
+
+    local coverInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local revealInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+
+    -- Cover the current page with the same angled strips used by the UI toggle.
+    for i, strip in ipairs(strips) do
+        task.delay((stripCount - i) * 0.025, function()
+            if strip.bar.Parent then
+                TweenService:Create(strip.bar, coverInfo, { BackgroundTransparency = 0 }):Play()
+                TweenService:Create(strip.stroke, coverInfo, { Transparency = 0.4 }):Play()
+            end
+        end)
+    end
+
+    task.delay((stripCount - 1) * 0.025 + 0.23, function()
+        if not gui.Parent or not targetPage.Parent then
+            pageTransitionOverlay.Visible = false
+            pageTransitionOverlay:ClearAllChildren()
+            pageTransitioning = false
+            return
+        end
+
+        activateTarget()
+
+        -- Reveal the new page by collapsing the strips away from it.
+        for _, strip in ipairs(strips) do
+            task.delay(strip.delay, function()
+                if strip.band.Parent and strip.bar.Parent then
+                    TweenService:Create(strip.band, revealInfo, {
+                        Position = UDim2.fromOffset(0, strip.r * H),
+                        Size = UDim2.fromOffset(W, 0),
+                    }):Play()
+                    TweenService:Create(strip.bar, revealInfo, {
+                        Position = UDim2.fromOffset(strip.xc, H / 2 - strip.r * H),
+                    }):Play()
+                end
+            end)
+        end
+
+        task.delay(maxDelay + 0.36, function()
+            pageTransitionOverlay.Visible = false
+            pageTransitionOverlay:ClearAllChildren()
+            pageTransitioning = false
+        end)
+    end)
+
+    return true
+end
+
 function WindowElements:OpenSettings() OpenSettingsFn() end
 function WindowElements:CloseSettings() CloseSettingsFn() end
 function WindowElements:ToggleSettings() ToggleSettingsVisibility() end
@@ -2289,20 +2434,16 @@ local function nextOrder()
 end
 
 local function SelectTab()
+    if pageTransitioning then return end
     SettingsState.open = false
-    for _, page in ipairs(ContentContainer:GetChildren()) do
-        if page:IsA("ScrollingFrame") then
-            page.Visible = false
+    SwitchContentPage(CategoryPage, function()
+        for _, b in ipairs(Sidebar:GetChildren()) do
+            if b:IsA("TextButton") then
+                b:SetAttribute("CategorySelected", false)
+            end
         end
-    end
-    for _, b in ipairs(Sidebar:GetChildren()) do
-        if b:IsA("TextButton") then
-            b:SetAttribute("CategorySelected", false)
-        end
-    end
-    CategoryPage.Visible = true
-    AnimatePageIn(CategoryPage)
-    btn:SetAttribute("CategorySelected", true)
+        btn:SetAttribute("CategorySelected", true)
+    end)
 end
 if not Hidden then
     btn.MouseButton1Click:Connect(SelectTab)
@@ -3329,26 +3470,31 @@ if Config.ShowSettingsTab ~= false then
         local PreviousPage = nil
 
         local function ShowSettingsPanel()
-            if SettingsState.open then return end
+            if SettingsState.open or pageTransitioning then return end
             PreviousPage = nil
             for _, page in ipairs(ContentContainer:GetChildren()) do
                 if page:IsA("ScrollingFrame") and page ~= SettingsPage and page.Visible then
                     PreviousPage = page
-                    page.Visible = false
+                    break
                 end
             end
-            SettingsPage.Visible = true
-            AnimatePageIn(SettingsPage)
-            SettingsState.open = true
+            SwitchContentPage(SettingsPage, function()
+                SettingsState.open = true
+            end)
         end
         local function HideSettingsPanel()
-            if not SettingsState.open then return end
-            SettingsPage.Visible = false
-            if PreviousPage and PreviousPage.Parent then
-                PreviousPage.Visible = true
-                AnimatePageIn(PreviousPage)
+            if not SettingsState.open or pageTransitioning then return end
+            local returnPage = PreviousPage
+            if returnPage and returnPage.Parent then
+                SwitchContentPage(returnPage, function()
+                    SettingsState.open = false
+                    PreviousPage = nil
+                end)
+            else
+                SettingsPage.Visible = false
+                SettingsState.open = false
+                PreviousPage = nil
             end
-            SettingsState.open = false
         end
         ToggleSettingsVisibility = function()
             if SettingsState.open then HideSettingsPanel() else ShowSettingsPanel() end
