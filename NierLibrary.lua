@@ -3328,7 +3328,7 @@ local function headerText()
     if multi then
         return text .. " : " .. (#selOrder == 0 and "None" or joinList(selOrder))
     end
-    return text .. " : " .. (currentVal ~= nil and tostring(currentVal) or "Select Option")
+    return text .. "  " .. (currentVal ~= nil and tostring(currentVal) or "")
 end
 lbl.Text = headerText()
 
@@ -3792,3 +3792,62 @@ return WindowElements
 end
 
 return Library
+
+
+
+
+local Window = Library:CreateWindow('PMS UI Test', {
+    DisplayOrder = 999,
+})
+
+local MainTab = Window:CreateCategory('Main', 'lucide-home')
+local MyTab = Window:CreateCategory('ESP', 'lucide-eye')
+
+MyTab:CreateColorPicker('ESP Color', 'lucide-palette', Color3.fromRGB(255, 0, 0), function(newColor)
+    ESPColor = newColor
+end)
+
+MainTab:CreateLabel('UI Library Test - Successfully Loaded', 'lucide-check-circle')
+
+MainTab:CreateButton('Test Button', 'lucide-mouse-pointer-click', nil, function()
+    print('[Test] Button Clicked')
+end)
+
+MainTab:CreateToggle('Enable Auto Farm', 'lucide-bot', false, 'AutoFarm', function(value)
+    print('[Test] AutoFarm =', value)
+end)
+
+MainTab:CreateSlider('Speed', 'lucide-gauge', 1, 100, 50, 'Speed', function(value)
+    print('[Test] Speed =', value)
+end)
+
+MainTab:CreateDropdown('Select Mode', 'lucide-list', {'Easy', 'Normal', 'Hard'}, 'Normal', 'GameMode', function(value)
+    print('[Test] GameMode =', value)
+end)
+
+MainTab:CreateTextbox('Player Name', 'lucide-user', 'Enter player name...', 'PlayerName', function(value)
+    print('[Test] PlayerName =', value)
+end)
+
+MainTab:CreateNumberTextbox('Starting Cash', 'lucide-banknote', 100, 'StartCash', function(value)
+    print('[Test] StartCash =', value)
+end)
+
+MainTab:CreateSearchBar('Search...', nil, function(value)
+    print('[Test] Search =', value)
+end)
+
+MainTab:CreateToggle('Toggle Without Icon', nil, true, 'NoIconToggle', function(value)
+    print('[Test] NoIconToggle =', value)
+end)
+
+MainTab:CreateMultiDropdown(
+    'Select Targets',
+    'lucide-users',
+    {'Player1', 'Player2', 'Player3'},
+    {'Player1'},
+    'MyTargets',
+    function(selected)
+        print('Selected Targets:', table.concat(selected, ', '))
+    end
+)
