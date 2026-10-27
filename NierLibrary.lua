@@ -2217,6 +2217,77 @@ gearBtn.MouseButton1Click:Connect(function()
 end)
 
 local pageAnimationStates = {}
+
+local SCRAMBLE_GLYPHS = {
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "+", "-", "=", "/", "\\", "<", ">", "#", "$", "%", "*"
+}
+
+local function splitTextCharacters(value)
+    local characters = {}
+    local ok = pcall(function()
+        if utf8 and utf8.graphemes then
+            for first, last in utf8.graphemes(value) do
+                table.insert(characters, string.sub(value, first, last))
+            end
+        else
+            for _, codepoint in utf8.codes(value) do
+                table.insert(characters, utf8.char(codepoint))
+            end
+        end
+    end)
+    if not ok or #characters == 0 then
+        return { value }
+    end
+    return characters
+end
+
+local function scramblePageText(entry, state, page)
+    local instance = entry.instance
+    if not instance or not instance.Parent then return end
+
+    entry.target = instance.Text
+    local characters = splitTextCharacters(entry.target)
+    if #characters == 0 or entry.target:match("^%s*$") then return end
+
+    local duration = math.clamp(#characters * 0.022, 0.18, 0.42)
+    local started = os.clock()
+    while os.clock() - started < duration do
+        if pageAnimationStates[page] ~= state or state.cancelled or not page.Visible or not instance.Parent then
+            return
+        end
+
+        local currentText = instance.Text
+        if entry.lastRendered == nil or currentText ~= entry.lastRendered then
+            entry.target = currentText
+            characters = splitTextCharacters(entry.target)
+            duration = math.clamp(#characters * 0.022, 0.18, 0.42)
+        end
+
+        local progress = math.clamp((os.clock() - started) / duration, 0, 1)
+        local lockedCount = math.floor(progress * #characters)
+        local output = {}
+        for index, character in ipairs(characters) do
+            if index <= lockedCount or character:match("^%s+$") then
+                output[index] = character
+            else
+                output[index] = SCRAMBLE_GLYPHS[math.random(1, #SCRAMBLE_GLYPHS)]
+            end
+        end
+
+        local rendered = table.concat(output)
+        entry.lastRendered = rendered
+        instance.Text = rendered
+        task.wait(0.035)
+    end
+
+    if instance.Parent and entry.lastRendered ~= nil and instance.Text == entry.lastRendered then
+        instance.Text = entry.target
+    end
+    entry.lastRendered = nil
+end
+
 local function getFadeProperties(instance)
     local props = {}
     if instance:IsA("GuiObject") then
@@ -2244,6 +2315,14 @@ local function cancelPageAnimation(page)
     state.cancelled = true
     for _, tween in ipairs(state.tweens) do
         pcall(function() tween:Cancel() end)
+    end
+    for _, entry in ipairs(state.textEntries or {}) do
+        if entry.instance and entry.instance.Parent and entry.lastRendered ~= nil and entry.instance.Text == entry.lastRendered then
+            pcall(function()
+                entry.instance.Text = entry.target
+            end)
+        end
+        entry.lastRendered = nil
     end
     for _, original in ipairs(state.originals) do
         if original.instance.Parent then
@@ -2288,10 +2367,12 @@ local function AnimatePageIn(page)
     pageAnimationStates[page] = state
     pageSlideTween:Play()
     local itemTargets = {}
+    local itemTextTargets = {}
 
     -- Hide each row first, then restore its original transparency with a top-to-bottom stagger.
     for _, item in ipairs(items) do
         local targets = {}
+        local textTargets = {}
         local objects = { item }
         for _, descendant in ipairs(item:GetDescendants()) do
             table.insert(objects, descendant)
@@ -2316,14 +2397,34 @@ local function AnimatePageIn(page)
                     end
                 end
             end
+
+            if (object:IsA("TextLabel") or object:IsA("TextButton"))
+                and object.Visible
+                and object.Text ~= ""
+                and not object.RichText then
+                table.insert(textTargets, {
+                    instance = object,
+                    target = object.Text,
+                    lastRendered = nil,
+                })
+            end
         end
         table.insert(itemTargets, targets)
+        table.insert(itemTextTargets, textTargets)
+    end
+
+    state.textEntries = {}
+    for _, entries in ipairs(itemTextTargets) do
+        for _, entry in ipairs(entries) do
+            table.insert(state.textEntries, entry)
+        end
     end
 
     local stagger = 0.035
     local fadeInfo = TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
     for index, item in ipairs(items) do
         local targets = itemTargets[index]
+        local textTargets = itemTextTargets[index]
         task.delay((index - 1) * stagger, function()
             if pageAnimationStates[page] ~= state or state.cancelled or not page.Visible then
                 return
@@ -2337,10 +2438,13 @@ local function AnimatePageIn(page)
                     tween:Play()
                 end
             end
+            for _, entry in ipairs(textTargets) do
+                task.spawn(scramblePageText, entry, state, page)
+            end
         end)
     end
 
-    task.delay(math.max(#items - 1, 0) * stagger + 0.28, function()
+    task.delay(math.max(#items - 1, 0) * stagger + 0.75, function()
         if pageAnimationStates[page] == state then
             pageAnimationStates[page] = nil
         end
