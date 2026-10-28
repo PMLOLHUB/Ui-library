@@ -308,12 +308,20 @@ function Library:CreateWindow(WindowName, Config)
     if cfgLang == "th" or cfgLang == "thai" then
         Language = "th"
     end
-    -- Page transitions: Classic, staggered Cascade, text Glitch, Slide Left,
-    -- Zoom, Pop, and Slide Up.
-    local PageAnimationOrder = { "Classic", "Cascade", "Glitch", "Slide Left", "Zoom", "Pop", "Slide Up" }
+    local StripAnim = Config.StripAnimation ~= false
 
-    -- Window open/close styles available in Settings.
-    local OpenCloseAnimationOrder = { "Classic", "Shutter", "Pinstripe", "Crosscut" }
+    -- Page Transition Style: Classic + 3 new styles
+    --   Cascade    : rows fade in one after another while the page slides in from the left
+    --   Glitch     : page jitters in and the text scrambles (like Classic, but with a glitch shake)
+    --   Slide Left : the whole page slides in from the right while rows fade in
+    local PageAnimationOrder = { "Classic", "Cascade", "Glitch", "Slide Left" }
+
+    -- Window Open / Close Style:
+    --   Pop           : the window scales up from the center with a soft fade (default)
+    --   Shutter       : straight vertical bars with a centered collapse
+    --   Pinstripe     : thin vertical bars with a quicker stagger
+    --   Crosscut      : alternating diagonal bars for a crossed-strip effect
+    local OpenCloseAnimationOrder = { "Pop", "Shutter", "Pinstripe", "Crosscut" }
 
     local function containsOption(options, value)
         for _, option in ipairs(options) do
@@ -322,7 +330,8 @@ function Library:CreateWindow(WindowName, Config)
         return false
     end
     local PageAnimation = "Classic"
-    local OpenCloseAnimation = "Classic"
+    local OpenCloseAnimation = "Pop"
+    StripAnim = true
     local CurrentPreset = (type(Config.Theme) == "string" and Presets[Config.Theme]) and Config.Theme or "Paper"
     local BorderEnabled = Config.BorderEnabled ~= false
     local BgImage = Config.BackgroundImage or ""
@@ -354,6 +363,7 @@ function Library:CreateWindow(WindowName, Config)
         if type(savedTheme.PresetName) == "string" and Presets[savedTheme.PresetName] then CurrentPreset = savedTheme.PresetName end
         if containsOption(PageAnimationOrder, savedTheme.PageAnimation) then PageAnimation = savedTheme.PageAnimation end
         if containsOption(OpenCloseAnimationOrder, savedTheme.OpenCloseAnimation) then OpenCloseAnimation = savedTheme.OpenCloseAnimation end
+        StripAnim = true
         if toggleKey ~= false and type(savedTheme.ToggleKey) == "string" then
             local okK, keyEnum = pcall(function()
                 return Enum.KeyCode[savedTheme.ToggleKey]
@@ -556,6 +566,7 @@ local function persistTheme()
     ThemeSettings.FontFamily = FontFamily
     ThemeSettings.FontScale = FontScale
     ThemeSettings.Language = Language
+    ThemeSettings.StripAnimation = StripAnim
     ThemeSettings.BorderEnabled = BorderEnabled
     ThemeSettings.BackgroundImage = BgImage
     ThemeSettings.BackgroundImageTransparency = BgImageTransparency
@@ -880,10 +891,14 @@ local runThemeTransition
 --   fixedR          : collapse each strip to this height (0..1) instead of a random one
 --   step            : seconds between strips (sequential). Without it the timing is random
 --   dynamicPad      : widen the strip range so angled strips still cover the whole window
+-- Internal only (used by the theme-change transition, not selectable as a window style).
+local ThemeStripVariant = { n = 9, angle = -13, barW = 0.22 }
+
 local StripVariants = {
-    Classic = { n = 9, angle = -13, barW = 0.22 },
     Shutter = { n = 12, angle = 0, barW = 0.2, fixedR = 0.5, step = 0.018, dynamicPad = true },
+    Slash = { n = 7, angle = 24, barW = 0.3, dynamicPad = true },
     Pinstripe = { n = 16, angle = 0, barW = 0.095, step = 0.012, dynamicPad = true },
+    ["Reverse Slash"] = { n = 8, angle = -27, barW = 0.27, dynamicPad = true },
     -- Wider, denser alternating diagonals prevent gaps on tall and narrow windows.
     Crosscut = { n = 22, angle = 35, alternateAngle = -35, barW = 1.08, step = 0.010, dynamicPad = true },
 }
@@ -901,7 +916,7 @@ local function flushPendingThemeAction()
 end
 
 local function buildStrips(W, H, collapsed, variant)
-    variant = variant or StripVariants.Classic
+    variant = variant or ThemeStripVariant
     local n = variant.n
 
     for _, child in ipairs(stripHost:GetChildren()) do
@@ -929,6 +944,8 @@ local function buildStrips(W, H, collapsed, variant)
         local r
         if variant.fixedR then
             r = variant.fixedR
+        elseif variant.rByIndex then
+            r = 0.1 + 0.8 * ((i - 1) / math.max(n - 1, 1))
         else
             r = rng:NextNumber(0.1, 0.9)
         end
@@ -1034,6 +1051,116 @@ local function offsetUDim2(position, dx, dy)
     return UDim2.new(position.X.Scale, position.X.Offset + dx, position.Y.Scale, position.Y.Offset + dy)
 end
 
+local function collectTransparencyTargets(root)
+    local targets = {}
+    local objects = { root }
+    for _, descendant in ipairs(root:GetDescendants()) do
+        table.insert(objects, descendant)
+    end
+    for _, object in ipairs(objects) do
+        local props = {}
+        if object:IsA("GuiObject") then
+            props.BackgroundTransparency = object.BackgroundTransparency
+        end
+        if object:IsA("TextLabel") or object:IsA("TextButton") or object:IsA("TextBox") then
+            props.TextTransparency = object.TextTransparency
+            props.TextStrokeTransparency = object.TextStrokeTransparency
+        end
+        if object:IsA("ImageLabel") or object:IsA("ImageButton") then
+            props.ImageTransparency = object.ImageTransparency
+        end
+        if object:IsA("ScrollingFrame") then
+            props.ScrollBarImageTransparency = object.ScrollBarImageTransparency
+        end
+        if object:IsA("UIStroke") then
+            props.Transparency = object.Transparency
+        end
+        for property, value in pairs(props) do
+            if type(value) == "number" and value < 0.999 then
+                table.insert(targets, { instance = object, property = property, value = value })
+            end
+        end
+    end
+    return targets
+end
+
+local function restoreTransparencyTargets(targets)
+    for _, target in ipairs(targets) do
+        if target.instance and target.instance.Parent then
+            pcall(function() target.instance[target.property] = target.value end)
+        end
+    end
+end
+
+local POP_START_SCALE = 0.86
+
+-- Pop open / close.
+-- Animates a UIScale (and a matching Position shift so it scales around the center)
+-- instead of tweening Size, so no layout is recalculated on every frame.
+local function playWindowStyle(shouldOpen, style)
+    if style == "None" or not mainUIScale then
+        main.Visible = shouldOpen
+        return
+    end
+
+    animating = true
+    local baseScale = OverallScalePercent / 100
+    local basePosition = main.Position
+    local startScale = baseScale * POP_START_SCALE
+    local visW = main.AbsoluteSize.X > 1 and main.AbsoluteSize.X or main.Size.X.Offset * baseScale
+    local visH = main.AbsoluteSize.Y > 1 and main.AbsoluteSize.Y or main.Size.Y.Offset * baseScale
+    local smallPosition = offsetUDim2(basePosition, visW * (1 - POP_START_SCALE) / 2, visH * (1 - POP_START_SCALE) / 2)
+
+    local targets = collectTransparencyTargets(main)
+
+    local function settle()
+        if main.Parent then
+            mainUIScale.Scale = OverallScalePercent / 100
+            main.Position = basePosition
+        end
+        animating = false
+        flushPendingThemeAction()
+    end
+
+    if shouldOpen then
+        mainUIScale.Scale = startScale
+        main.Position = smallPosition
+        for _, t in ipairs(targets) do
+            pcall(function() t.instance[t.property] = 1 end)
+        end
+        main.Visible = true
+
+        local moveInfo = TweenInfo.new(0.34, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0)
+        local fadeInfo = TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        TweenService:Create(mainUIScale, moveInfo, { Scale = baseScale }):Play()
+        TweenService:Create(main, moveInfo, { Position = basePosition }):Play()
+        for _, t in ipairs(targets) do
+            if t.instance and t.instance.Parent then
+                TweenService:Create(t.instance, fadeInfo, { [t.property] = t.value }):Play()
+            end
+        end
+        task.delay(0.36, function()
+            restoreTransparencyTargets(targets)
+            settle()
+        end)
+    else
+        local moveInfo = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        local fadeInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        TweenService:Create(mainUIScale, moveInfo, { Scale = startScale }):Play()
+        TweenService:Create(main, moveInfo, { Position = smallPosition }):Play()
+        for _, t in ipairs(targets) do
+            if t.instance and t.instance.Parent then
+                TweenService:Create(t.instance, fadeInfo, { [t.property] = 1 }):Play()
+            end
+        end
+        task.delay(0.24, function()
+            main.Visible = false
+            restoreTransparencyTargets(targets)
+            settle()
+        end)
+    end
+end
+
 local function SetWindowOpen(shouldOpen)
     if animating or shouldOpen == main.Visible then
         return
@@ -1046,8 +1173,13 @@ local function SetWindowOpen(shouldOpen)
         Library._sfx(shouldOpen and "open" or "close")
     end
 
-    animating = true
-    playStrips(shouldOpen, StripVariants[OpenCloseAnimation] or StripVariants.Classic)
+    local stripVariant = StripVariants[OpenCloseAnimation]
+    if stripVariant then
+        animating = true
+        playStrips(shouldOpen, stripVariant)
+        return
+    end
+    playWindowStyle(shouldOpen, OpenCloseAnimation)
 end
 
 runThemeTransition = function(applyChange)
@@ -1541,16 +1673,24 @@ local function AnimatePageIn(page)
         page:SetAttribute("BasePosition", basePos)
     end
 
-    if PageAnimation ~= "Classic" then
+    if PageAnimation ~= "Cipher" and PageAnimation ~= "Classic" then
         local style = PageAnimation
         page.Position = basePos
+        if style == "None" then
+            return
+        end
+
         local width = math.max(page.AbsoluteSize.X, 1)
         local height = math.max(page.AbsoluteSize.Y, 1)
         local startPosition = basePos
         if style == "Slide Left" then
             startPosition = offsetUDim2(basePos, width * 0.075, 0)
+        elseif style == "Slide Right" then
+            startPosition = offsetUDim2(basePos, -width * 0.075, 0)
         elseif style == "Slide Up" then
             startPosition = offsetUDim2(basePos, 0, height * 0.075)
+        elseif style == "Slide Down" then
+            startPosition = offsetUDim2(basePos, 0, -height * 0.075)
         elseif style == "Cascade" then
             startPosition = offsetUDim2(basePos, -width * 0.05, 0)
         elseif style == "Glitch" then
@@ -1563,17 +1703,16 @@ local function AnimatePageIn(page)
         if style == "Zoom" or style == "Pop" then
             local scaleObject = Instance.new("UIScale")
             scaleObject.Name = "NierPageTransitionScale"
-            scaleObject.Scale = style == "Pop" and 0.74 or 0.82
+            scaleObject.Scale = style == "Pop" and 0.78 or 0.90
             scaleObject.Parent = page
             state.scaleObject = scaleObject
-            scaleTween = TweenService:Create(scaleObject, TweenInfo.new(style == "Pop" and 0.34 or 0.32, style == "Pop" and Enum.EasingStyle.Back or Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Scale = 1 })
+            scaleTween = TweenService:Create(scaleObject, TweenInfo.new(0.30, style == "Pop" and Enum.EasingStyle.Back or Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Scale = 1 })
             table.insert(state.tweens, scaleTween)
             scaleTween:Play()
         end
 
         page.Position = startPosition
-        local moveDuration = style == "Glitch" and 0.24 or (style == "Pop" and 0.34 or 0.28)
-        local moveTween = TweenService:Create(page, TweenInfo.new(moveDuration, style == "Pop" and Enum.EasingStyle.Back or Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = basePos })
+        local moveTween = TweenService:Create(page, TweenInfo.new(style == "Glitch" and 0.24 or 0.28, style == "Pop" and Enum.EasingStyle.Back or Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = basePos })
         table.insert(state.tweens, moveTween)
         moveTween:Play()
         if style == "Glitch" then
@@ -1638,11 +1777,11 @@ local function AnimatePageIn(page)
         end
 
         local stagger = style == "Cascade" and 0.045 or 0.018
-        local fadeInfo = TweenInfo.new(style == "Glitch" and 0.18 or (style == "Pop" and 0.28 or 0.24), Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+        local fadeInfo = TweenInfo.new(style == "Glitch" and 0.18 or 0.24, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
         for index, item in ipairs(items) do
             local targets = itemTargets[index]
             local textTargets = itemTextTargets[index]
-            task.delay((index - 1) * stagger, function()
+            task.delay((style == "Fade" and 0 or (index - 1) * stagger), function()
                 if pageAnimationStates[page] ~= state or state.cancelled or not page.Visible then
                     return
                 end
