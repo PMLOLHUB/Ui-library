@@ -5661,12 +5661,89 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
         end
     end
 
+    -- Warm each distinct audio asset by playing it silently during startup.
+    -- A temporary Sound is used so the live voice pool is never stopped or reset
+    -- while the user is interacting with the UI. Volume is forced to 0 for the
+    -- entire warm-up, then the temporary Sound is stopped, reset, and destroyed.
+    local warmedAssets = {}
+    local function warmAssetMuted(soundId)
+        if type(soundId) ~= "string" or soundId == "" or warmedAssets[soundId] then
+            return
+        end
+        warmedAssets[soundId] = true
+
+        local warm = Instance.new("Sound")
+        warm.Name = "NIER_UI_Sfx_MutedWarmup"
+        warm.SoundId = soundId
+        warm.Volume = 0
+        warm.PlaybackSpeed = 1
+        warm.Looped = false
+        warm.Parent = SoundService
+
+        local started = os.clock()
+        pcall(function()
+            -- Play at zero volume to make the client fetch/decode the audio without
+            -- leaking a click or changing the user's configured master volume.
+            warm:Play()
+        end)
+
+        while warm.Parent and not warm.IsLoaded and os.clock() - started < 6 do
+            task.wait(0.05)
+        end
+
+        if warm.Parent and warm.IsLoaded then
+            -- Let playback advance briefly so the decoder/buffer is actually warmed,
+            -- not merely requested. These are short UI sound effects.
+            local length = tonumber(warm.TimeLength) or 0
+            local playbackWindow = math.clamp(length > 0 and length or 0.18, 0.12, 0.45)
+            local playStarted = os.clock()
+            while warm.Parent and warm.IsPlaying and os.clock() - playStarted < playbackWindow do
+                task.wait(0.025)
+            end
+        end
+
+        pcall(function()
+            warm:Stop()
+            warm.TimePosition = 0
+            warm.Volume = 0 -- restore the muted preload state before cleanup
+            warm:Destroy()
+        end)
+    end
+
     local function preloadBatch(voices)
         if #voices == 0 then
             return
         end
-        pcall(function()
-            ContentProvider:PreloadAsync(voices)
+
+        -- Ask Roblox to preload the actual playback voices independently. Run this
+        -- in its own task so a slow ContentProvider call cannot prevent silent warming
+        -- from progressing on lower-end devices.
+        task.spawn(function()
+            pcall(function()
+                ContentProvider:PreloadAsync(voices)
+            end)
+        end)
+
+        -- Warm one temporary, muted instance per unique asset. The persistent voice
+        -- pool remains untouched, so new UI interactions cannot be cut off by warm-up.
+        for _, voice in ipairs(voices) do
+            if voice and voice.Parent then
+                local ok, soundId = pcall(function()
+                    return voice.SoundId
+                end)
+                if ok then
+                    warmAssetMuted(soundId)
+                end
+            end
+            task.wait()
+        end
+
+        -- A second preload pass helps each persistent voice become ready after the
+        -- asset has been silently played and cached. This still runs in the background.
+        task.spawn(function()
+            pcall(function()
+                ContentProvider:PreloadAsync(voices)
+            end)
         end)
     end
 
