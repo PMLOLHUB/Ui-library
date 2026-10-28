@@ -329,20 +329,17 @@ function Library:CreateWindow(WindowName, Config)
         Language = "th"
     end
     local StripAnim = Config.StripAnimation ~= false
-    local PageAnimationOrder = { "Cipher", "Cascade", "Fade", "Slide Left", "Slide Right", "Slide Up", "Slide Down", "Zoom", "Glitch", "Pop", "None" }
-    local OpenCloseAnimationOrder = { "Strips", "Fade", "Zoom", "Slide Left", "Slide Right", "Slide Up", "Slide Down", "Glitch", "Pop", "None" }
+    local PageAnimationOrder = { "Classic" }
+    local OpenCloseAnimationOrder = { "Classic" }
     local function containsOption(options, value)
         for _, option in ipairs(options) do
             if option == value then return true end
         end
         return false
     end
-    local PageAnimation = containsOption(PageAnimationOrder, Config.PageAnimation) and Config.PageAnimation or "Cipher"
-    local defaultOpenClose = StripAnim and "Strips" or "Fade"
-    local OpenCloseAnimation = containsOption(OpenCloseAnimationOrder, Config.OpenCloseAnimation) and Config.OpenCloseAnimation or defaultOpenClose
-    if containsOption(OpenCloseAnimationOrder, Config.OpenCloseAnimation) then
-        StripAnim = OpenCloseAnimation == "Strips"
-    end
+    local PageAnimation = "Classic"
+    local OpenCloseAnimation = "Classic"
+    StripAnim = true
     local CurrentPreset = (type(Config.Theme) == "string" and Presets[Config.Theme]) and Config.Theme or "Paper"
     local BorderEnabled = Config.BorderEnabled ~= false
     local BgImage = Config.BackgroundImage or ""
@@ -374,7 +371,7 @@ function Library:CreateWindow(WindowName, Config)
         if type(savedTheme.PresetName) == "string" and Presets[savedTheme.PresetName] then CurrentPreset = savedTheme.PresetName end
         if containsOption(PageAnimationOrder, savedTheme.PageAnimation) then PageAnimation = savedTheme.PageAnimation end
         if containsOption(OpenCloseAnimationOrder, savedTheme.OpenCloseAnimation) then OpenCloseAnimation = savedTheme.OpenCloseAnimation end
-        StripAnim = OpenCloseAnimation == "Strips"
+        StripAnim = OpenCloseAnimation == "Classic"
         if toggleKey ~= false and type(savedTheme.ToggleKey) == "string" then
             local okK, keyEnum = pcall(function()
                 return Enum.KeyCode[savedTheme.ToggleKey]
@@ -399,8 +396,8 @@ function Library:CreateWindow(WindowName, Config)
         if savedTheme.FontFamily and FontPresets[savedTheme.FontFamily] then FontFamily = savedTheme.FontFamily end
         if savedTheme.Language == "th" or savedTheme.Language == "en" then Language = savedTheme.Language end
         if savedTheme.StripAnimation ~= nil and not containsOption(OpenCloseAnimationOrder, savedTheme.OpenCloseAnimation) then
-            StripAnim = savedTheme.StripAnimation
-            if not StripAnim and OpenCloseAnimation == "Strips" then OpenCloseAnimation = "Fade" end
+            StripAnim = true
+            OpenCloseAnimation = "Classic"
         end
         if savedTheme.BorderEnabled ~= nil then BorderEnabled = savedTheme.BorderEnabled end
         if savedTheme.BackgroundImage ~= nil then BgImage = savedTheme.BackgroundImage end
@@ -1194,7 +1191,7 @@ local function SetWindowOpen(shouldOpen)
         Library._sfx(shouldOpen and "open" or "close")
     end
 
-    if OpenCloseAnimation == "Strips" and StripAnim then
+    if OpenCloseAnimation == "Classic" and StripAnim then
         animating = true
         playStrips(shouldOpen)
         return
@@ -1693,7 +1690,7 @@ local function AnimatePageIn(page)
         page:SetAttribute("BasePosition", basePos)
     end
 
-    if PageAnimation ~= "Cipher" then
+    if PageAnimation ~= "Cipher" and PageAnimation ~= "Classic" then
         local style = PageAnimation
         page.Position = basePos
         if style == "None" then
@@ -3226,7 +3223,7 @@ if Config.ShowSettingsTab ~= false then
             SettingsTab:CreateDropdown(T.OpenCloseAnimationLabel, "lucide-sparkles", OpenCloseAnimationOrder, OpenCloseAnimation, nil, function(selected)
                 if not containsOption(OpenCloseAnimationOrder, selected) then return end
                 OpenCloseAnimation = selected
-                StripAnim = selected == "Strips"
+                StripAnim = selected == "Classic"
                 persistTheme()
                 save()
             end)
