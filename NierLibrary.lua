@@ -1792,6 +1792,11 @@ local function SetWindowOpen(shouldOpen)
     if animating or shouldOpen == main.Visible then
         return
     end
+    -- Rebuild and preload every UI sound on each actual open/close transition.
+    -- This function is installed by the sound system at the end of the library.
+    if Library._reloadAllSfx then
+        Library._reloadAllSfx()
+    end
     if Library._sfx then
         Library._sfx(shouldOpen and "open" or "close")
     end
@@ -3801,22 +3806,15 @@ do
     }
     local SfxData = {}
 
-    -- Keep our versioned Sound instances alive between library reloads. Reusing these
-    -- instances preserves Roblox's loaded audio buffers instead of starting from cold each time.
-    -- Old/unmanaged sound instances are removed once; current cache entries survive reloads.
+    -- Start each library execution with fresh Sound instances so every sound is
+    -- reloaded/preloaded again. The local .ogg files and custom-asset IDs remain cached.
+    -- This clears both persistent voices and temporary warm-up sounds from prior runs.
     for _, old in ipairs(SoundService:GetChildren()) do
         if old:IsA("Sound") and string.find(old.Name, "^NIER_UI_Sfx_") then
-            local cachedName = old:GetAttribute("NIER_UI_SfxName")
-            -- Open/close sounds are transient now, so discard any persistent voices
-            -- left behind by an earlier execution of this library.
-            if old:GetAttribute("NIER_UI_SfxCacheVersion") ~= SFX_VERSION
-                or cachedName == "open"
-                or cachedName == "close" then
-                pcall(function()
-                    old:Stop()
-                    old:Destroy()
-                end)
-            end
+            pcall(function()
+                old:Stop()
+                old:Destroy()
+            end)
         end
     end
 
@@ -5729,144 +5727,90 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
         end
     end
 
-    -- ---------------------------------------------------------------- prioritized background preload
-    -- Load slider + window-open first, then common interaction sounds, then secondary sounds.
-    -- Work stays in background and yields between file builds to avoid a startup hitch on slower
-    -- devices. Loaded Sound objects are reused across executions, so this work is usually skipped
-    -- altogether after the first successful warm-up.
-    local function collectUnloaded(pool, target)
-        if not pool then
-            return
-        end
-        for _, voice in ipairs(pool.voices) do
-            local ok, loaded = pcall(function()
-                return voice.IsLoaded
-            end)
-            if ok and not loaded then
-                target[#target + 1] = voice
-            end
-        end
-    end
+    -- ---------------------------------------------------------------- full sound reload on every UI open/close
+    -- Every transition destroys and recreates all Sound instances, clears runtime pools,
+    -- resolves the audio asset paths again, then requests PreloadAsync for every sound.
+    -- The .ogg files themselves remain cached on disk; Roblox may also retain its own
+    -- internal audio cache, which this library cannot forcibly clear.
+    local reloadGeneration = 0
 
-    -- Warm each distinct audio asset by playing it silently during startup.
-    -- A temporary Sound is used so the live voice pool is never stopped or reset
-    -- while the user is interacting with the UI. Volume is forced to 0 for the
-    -- entire warm-up, then the temporary Sound is stopped, reset, and destroyed.
-    local warmedAssets = {}
-    local function warmAssetMuted(soundId)
-        if type(soundId) ~= "string" or soundId == "" or warmedAssets[soundId] then
-            return
-        end
-        warmedAssets[soundId] = true
+    function Library._reloadAllSfx()
+        reloadGeneration += 1
+        local myGeneration = reloadGeneration
 
-        local warm = Instance.new("Sound")
-        warm.Name = "NIER_UI_Sfx_MutedWarmup"
-        warm.SoundId = soundId
-        warm.Volume = 0
-        warm.PlaybackSpeed = 1
-        warm.Looped = false
-        warm.Parent = SoundService
-
-        local started = os.clock()
-        pcall(function()
-            -- Play at zero volume to make the client fetch/decode the audio without
-            -- leaking a click or changing the user's configured master volume.
-            warm:Play()
-        end)
-
-        while warm.Parent and not warm.IsLoaded and os.clock() - started < 6 do
-            task.wait(0.05)
-        end
-
-        if warm.Parent and warm.IsLoaded then
-            -- Let playback advance briefly so the decoder/buffer is actually warmed,
-            -- not merely requested. These are short UI sound effects.
-            local length = tonumber(warm.TimeLength) or 0
-            local playbackWindow = math.clamp(length > 0 and length or 0.18, 0.12, 0.45)
-            local playStarted = os.clock()
-            while warm.Parent and warm.IsPlaying and os.clock() - playStarted < playbackWindow do
-                task.wait(0.025)
-            end
-        end
-
-        pcall(function()
-            warm:Stop()
-            warm.TimePosition = 0
-            warm.Volume = 0 -- restore the muted preload state before cleanup
-            warm:Destroy()
-        end)
-    end
-
-    local function preloadBatch(voices)
-        if #voices == 0 then
-            return
-        end
-
-        -- Ask Roblox to preload the actual playback voices independently. Run this
-        -- in its own task so a slow ContentProvider call cannot prevent silent warming
-        -- from progressing on lower-end devices.
-        task.spawn(function()
-            pcall(function()
-                ContentProvider:PreloadAsync(voices)
-            end)
-        end)
-
-        -- Warm one temporary, muted instance per unique asset. The persistent voice
-        -- pool remains untouched, so new UI interactions cannot be cut off by warm-up.
-        for _, voice in ipairs(voices) do
-            if voice and voice.Parent then
-                local ok, soundId = pcall(function()
-                    return voice.SoundId
+        for _, old in ipairs(SoundService:GetChildren()) do
+            if old:IsA("Sound") and string.find(old.Name, "^NIER_UI_Sfx_") then
+                pcall(function()
+                    old:Stop()
+                    old:Destroy()
                 end)
-                if ok then
-                    warmAssetMuted(soundId)
+            end
+        end
+
+        pools = {}
+        building = {}
+        transientAssetIds = {}
+        for _, entry in pairs(Sfx) do
+            entry.failed = nil
+            entry.last = nil
+        end
+
+        local allVoices = {}
+        local order = { "open", "close", "slider", "select", "hover", "toggleOn", "toggleOff", "notify" }
+
+        -- Build fresh playback voices for all interactive sounds. Open/close have their
+        -- own temporary preload Sound as well as the per-transition playback Sound.
+        for _, name in ipairs(order) do
+            if myGeneration ~= reloadGeneration then
+                return
+            end
+
+            if name == "open" or name == "close" then
+                local entry = Sfx[name]
+                if entry and checkApi() and SfxData[name] then
+                    local okAsset, assetId = pcall(function()
+                        return assetFn(ensureFile(name, entry))
+                    end)
+                    if okAsset and type(assetId) == "string" and assetId ~= "" then
+                        transientAssetIds[name] = assetId
+                        local preloadSound = Instance.new("Sound")
+                        preloadSound.Name = "NIER_UI_Sfx_Preload_" .. name
+                        preloadSound.SoundId = assetId
+                        preloadSound.Volume = 0
+                        preloadSound.Looped = false
+                        preloadSound.Parent = SoundService
+                        allVoices[#allVoices + 1] = preloadSound
+                    end
+                end
+            else
+                local pool = buildPool(name)
+                if pool then
+                    for _, voice in ipairs(pool.voices) do
+                        allVoices[#allVoices + 1] = voice
+                    end
                 end
             end
-            task.wait()
         end
 
-        -- A second preload pass helps each persistent voice become ready after the
-        -- asset has been silently played and cached. This still runs in the background.
+        -- Do not show a loading window or block the toggle animation.
         task.spawn(function()
-            pcall(function()
-                ContentProvider:PreloadAsync(voices)
-            end)
+            if myGeneration ~= reloadGeneration then
+                return
+            end
+            if #allVoices > 0 then
+                pcall(function()
+                    ContentProvider:PreloadAsync(allVoices)
+                end)
+            end
+            for _, sound in ipairs(allVoices) do
+                if sound and sound.Parent and string.find(sound.Name, "^NIER_UI_Sfx_Preload_") then
+                    pcall(function()
+                        sound:Destroy()
+                    end)
+                end
+            end
         end)
     end
-
-    task.spawn(function()
-        -- Let the caller finish setting up the UI before doing any local-file work.
-        task.wait()
-
-        local critical = {}
-        for _, name in ipairs({ "slider" }) do
-            collectUnloaded(buildPool(name), critical)
-        end
-        if #critical > 0 then
-            preloadBatch(critical)
-        end
-
-        task.wait()
-        local interactive = {}
-        for _, name in ipairs({ "select", "hover" }) do
-            collectUnloaded(buildPool(name), interactive)
-            task.wait()
-        end
-        if #interactive > 0 then
-            task.spawn(preloadBatch, interactive)
-        end
-
-        local secondary = {}
-        for _, name in ipairs({ "toggleOn", "toggleOff", "notify" }) do
-            collectUnloaded(buildPool(name), secondary)
-            task.wait()
-        end
-        if #secondary > 0 then
-            preloadBatch(secondary)
-        end
-
-        -- Audio preloading stays in the background and never displays a loading UI.
-    end)
 end
 
 return Library
