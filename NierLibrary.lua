@@ -3075,7 +3075,7 @@ makeDrag(track, function(input)
     value = newValue
     render()
     if changed and Library._sfx then
-        -- Play the same preloaded tick at a fixed pitch, regardless of slider position.
+        -- tick on every value change; pitch rises with the value (0.8x at Min -> 1.5x at Max)
         Library._sfx("slider")
     end
     if Flag then
@@ -3963,7 +3963,7 @@ do
         sound:Play()
     end
 
-    -- pitch (optional): playback speed, 1 = normal. Used by the slider so the tick follows the value.
+    -- pitch is retained for compatibility with older callers; slider sound always uses normal speed.
     function Library._sfx(name, pitch)
         if not Library.SoundEnabled then
             return
@@ -5557,8 +5557,8 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
     -- at play time, and quick repeats (slider drag, hover) overlap instead of cutting each other off.
     -- This block replaces the old getSound / playSound path: Library._sfx below overrides the old one.
     local VOICES = { open = 1, close = 1, select = 2, hover = 3, toggleOn = 2, toggleOff = 2, notify = 1, slider = 4 }
-    -- Hover ticks may be skipped while loading; slider ticks are preloaded before the library returns.
-    local DROP_WHILE_LOADING = { hover = true }
+    -- tick-type sounds are simply skipped while their file is still loading (a late tick sounds wrong)
+    local DROP_WHILE_LOADING = { hover = true, slider = true }
     local pools, building = {}, {}
 
     local function buildPool(name)
@@ -5614,7 +5614,7 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
         voice:Play()
     end
 
-    -- pitch is retained for compatibility with older callers; slider sound always uses normal speed.
+    -- pitch (optional): playback speed, 1 = normal. Used by the slider so the tick follows the value.
     function Library._sfx(name, pitch)
         if not Library.SoundEnabled then
             return
@@ -5632,7 +5632,7 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
             return
         end
         entry.last = now
-        -- Slider ticks never change pitch based on value; always play at normal speed.
+        -- Slider ticks always use a fixed playback speed; slider position never changes pitch.
         if name == "slider" then
             pitch = 1
         end
@@ -5640,13 +5640,13 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
         if voice.IsLoaded then
             playNow(pool, entry, pitch)
         elseif not DROP_WHILE_LOADING[name] then
-            -- Fallback only: the slider pool is preloaded before this library returns.
+            -- still loading (e.g. the window opens right after the library is loaded): wait max 3 s, then play
             task.spawn(function()
                 local t0 = os.clock()
-                while not voice.IsLoaded and voice.Parent and os.clock() - t0 < 8 do
+                while not voice.IsLoaded and voice.Parent and os.clock() - t0 < 3 do
                     task.wait()
                 end
-                if voice.Parent and Library.SoundEnabled and voice.IsLoaded then
+                if voice.Parent and Library.SoundEnabled then
                     playNow(pool, entry, pitch)
                 end
             end)
@@ -5654,41 +5654,22 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
     end
 
     -- ---------------------------------------------------------------- pre-load (must stay LAST)
-    -- Prepare and preload the slider voices BEFORE returning the library. This makes the tick
-    -- ready before users can drag a slider. Playback only reuses these cached Sound instances.
-    local sliderPool = buildPool("slider")
-    if sliderPool then
-        pcall(function()
-            ContentProvider:PreloadAsync(sliderPool.voices)
-        end)
-        -- Some executors report PreloadAsync completion just before IsLoaded flips true.
-        -- Wait briefly for the same load to settle; never load or create a Sound on each tick.
-        local deadline = os.clock() + 2
-        while os.clock() < deadline do
-            local allLoaded = true
-            for _, voice in ipairs(sliderPool.voices) do
-                if not voice.IsLoaded then
-                    allLoaded = false
-                    break
-                end
-            end
-            if allLoaded then
-                break
-            end
-            task.wait()
-        end
-    end
-
-    -- Preload the remaining sounds in the background so startup stays responsive.
+    -- Build + pre-load every sound in the background so the first play is instant.
+    -- Slider is first so its voices start loading immediately. This must stay after all
+    -- SfxData.* assignments: task.spawn runs immediately and would otherwise see no data.
     task.spawn(function()
-        for _, name in ipairs({ "open", "close", "hover", "select", "toggleOn", "toggleOff", "notify" }) do
+        -- Yield before building files/sounds so the caller can finish initializing the UI first.
+        task.wait()
+        for _, name in ipairs({ "slider", "open", "close", "hover", "select", "toggleOn", "toggleOff", "notify" }) do
             local pool = buildPool(name)
             if pool then
-                pcall(function()
-                    ContentProvider:PreloadAsync(pool.voices)
+                task.spawn(function()
+                    pcall(function()
+                        ContentProvider:PreloadAsync(pool.voices)
+                    end)
                 end)
             end
-            task.wait() -- spread file decoding across frames
+            task.wait() -- one frame between sounds so the base64 decoding never freezes the game
         end
     end)
 
