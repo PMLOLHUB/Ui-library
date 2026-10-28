@@ -338,9 +338,9 @@ function Library:CreateWindow(WindowName, Config)
     end
 
     local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-    local MobileStyleOrder = { "Classic", "Circle", "Diamond", "Pill", "Bracket", "Hexagon", "NeonRing", "Minimal", "Orbit", "SoftSquare" }
-    local PageTransitionOrder = { "Glitch", "Fade", "Slide", "Zoom", "Cascade", "Instant" }
-    local WindowTransitionOrder = { "Strips", "Fade", "Zoom", "Slide", "Drop", "Pop", "Instant" }
+    local MobileStyleOrder = { "Classic", "Circle", "Diamond", "Pill", "Bracket" }
+    local PageTransitionOrder = { "Fade", "Slide", "Instant" }
+    local WindowTransitionOrder = { "Fade", "Slide", "Instant" }
     local function containsChoice(options, name)
         for _, value in ipairs(options) do
             if value == name then return true end
@@ -351,8 +351,8 @@ function Library:CreateWindow(WindowName, Config)
         return containsChoice(MobileStyleOrder, name)
     end
     local MobileStyle = validStyle(Config.MobileButtonStyle) and Config.MobileButtonStyle or "Classic"
-    local PageTransitionStyle = containsChoice(PageTransitionOrder, Config.PageTransitionStyle) and Config.PageTransitionStyle or "Glitch"
-    local WindowTransitionStyle = containsChoice(WindowTransitionOrder, Config.WindowTransitionStyle) and Config.WindowTransitionStyle or "Strips"
+    local PageTransitionStyle = containsChoice(PageTransitionOrder, Config.PageTransitionStyle) and Config.PageTransitionStyle or "Fade"
+    local WindowTransitionStyle = containsChoice(WindowTransitionOrder, Config.WindowTransitionStyle) and Config.WindowTransitionStyle or "Fade"
 
     local toggleKey = Config.ToggleKey
     if toggleKey == nil then
