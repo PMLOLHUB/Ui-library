@@ -322,7 +322,7 @@ function Library:CreateWindow(WindowName, Config)
     --   Pinstripe     : thin vertical bars with a quicker stagger
     --   Reverse Slash : wide diagonal bars angled in the opposite direction
     --   Crosscut      : alternating diagonal bars for a crossed-strip effect
-    local OpenCloseAnimationOrder = { "Classic", "Shutter", "Slash", "Pinstripe", "Reverse Slash", "Crosscut" }
+    local OpenCloseAnimationOrder = { "Classic", "Shutter", "Pinstripe", "Crosscut" }
 
     local function containsOption(options, value)
         for _, option in ipairs(options) do
