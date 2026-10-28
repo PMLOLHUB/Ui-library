@@ -336,11 +336,13 @@ function Library:CreateWindow(WindowName, Config)
     --   Slide Left : the whole page slides in from the right while rows fade in
     local PageAnimationOrder = { "Classic", "Cascade", "Glitch", "Slide Left" }
 
-    -- Window Open / Close Style: Classic + 3 new strip styles (same strip-wipe family as Classic)
-    --   Shutter : straight vertical bars that close/open like a shutter, left to right
-    --   Slash   : wide bars slanted the opposite way, random timing
-    --   Wave    : steep slanted bars that sweep across like a wave
-    local OpenCloseAnimationOrder = { "Classic", "Shutter", "Slash", "Wave" }
+    -- Window Open / Close Style: all options use the same strip-wipe animation family.
+    --   Shutter       : straight vertical bars with a centered collapse
+    --   Slash         : wide diagonal bars angled upward
+    --   Pinstripe     : thin vertical bars with a quicker stagger
+    --   Reverse Slash : wide diagonal bars angled in the opposite direction
+    --   Crosscut      : alternating diagonal bars for a crossed-strip effect
+    local OpenCloseAnimationOrder = { "Classic", "Shutter", "Slash", "Pinstripe", "Reverse Slash", "Crosscut" }
 
     local function containsOption(options, value)
         for _, option in ipairs(options) do
@@ -902,19 +904,21 @@ local pendingThemeAction = nil
 local runThemeTransition
 
 -- Strip-wipe variants (Window Open / Close Style).
--- Every variant is a strip-wipe like Classic, only the look / timing differs.
---   n          : number of strips
---   angle      : strip rotation in degrees
---   barW       : strip width as a fraction of the window width
---   fixedR     : every strip collapses to this height (0..1) instead of a random one
---   rByIndex   : collapse height follows the strip index (staircase / wave)
---   step       : seconds between strips (sequential). Without it the timing is random
---   dynamicPad : widen the strip range so steep angles still cover the whole window
+-- Each style uses the same strip system; settings control the strip count, angle, width and timing.
+--   n               : number of strips
+--   angle           : strip rotation in degrees
+--   alternateAngle  : optional angle used on every second strip
+--   barW            : strip width as a fraction of the window width
+--   fixedR          : collapse each strip to this height (0..1) instead of a random one
+--   step            : seconds between strips (sequential). Without it the timing is random
+--   dynamicPad      : widen the strip range so angled strips still cover the whole window
 local StripVariants = {
     Classic = { n = 9, angle = -13, barW = 0.22 },
     Shutter = { n = 12, angle = 0, barW = 0.2, fixedR = 0.5, step = 0.018, dynamicPad = true },
     Slash = { n = 7, angle = 24, barW = 0.3, dynamicPad = true },
-    Wave = { n = 11, angle = -28, barW = 0.22, rByIndex = true, step = 0.025, dynamicPad = true },
+    Pinstripe = { n = 16, angle = 0, barW = 0.095, step = 0.012, dynamicPad = true },
+    ["Reverse Slash"] = { n = 8, angle = -27, barW = 0.27, dynamicPad = true },
+    Crosscut = { n = 10, angle = 27, alternateAngle = -27, barW = 0.23, step = 0.015, dynamicPad = true },
 }
 
 local function flushPendingThemeAction()
@@ -958,6 +962,7 @@ local function buildStrips(W, H, collapsed, variant)
             r = rng:NextNumber(0.1, 0.9)
         end
         local xc = x0 + (i - 1) * ((x1 - x0) / math.max(n - 1, 1))
+        local stripAngle = variant.alternateAngle and (i % 2 == 0 and variant.alternateAngle or variant.angle) or variant.angle
 
         local band = new("Frame", {
             BackgroundTransparency = 1,
@@ -972,7 +977,7 @@ local function buildStrips(W, H, collapsed, variant)
         ZIndex = 60,
         Position = UDim2.fromOffset(xc, H / 2 - (collapsed and r * H or 0)),
         Size = UDim2.fromOffset(W * variant.barW, H * 1.8),
-        Rotation = variant.angle,
+        Rotation = stripAngle,
         BackgroundColor3 = Theme.Paper,
         BackgroundTransparency = collapsed and 0 or 1,
     }, band)
