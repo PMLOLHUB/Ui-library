@@ -329,8 +329,19 @@ function Library:CreateWindow(WindowName, Config)
         Language = "th"
     end
     local StripAnim = Config.StripAnimation ~= false
-    local PageAnimationOrder = { "Classic" }
-    local OpenCloseAnimationOrder = { "Classic" }
+
+    -- Page Transition Style: Classic + 3 new styles
+    --   Cascade    : rows fade in one after another while the page slides in from the left
+    --   Glitch     : page jitters in and the text scrambles (like Classic, but with a glitch shake)
+    --   Slide Left : the whole page slides in from the right while rows fade in
+    local PageAnimationOrder = { "Classic", "Cascade", "Glitch", "Slide Left" }
+
+    -- Window Open / Close Style: Classic + 3 new strip styles (same strip-wipe family as Classic)
+    --   Shutter : straight vertical bars that close/open like a shutter, left to right
+    --   Slash   : wide bars slanted the opposite way, random timing
+    --   Wave    : steep slanted bars that sweep across like a wave
+    local OpenCloseAnimationOrder = { "Classic", "Shutter", "Slash", "Wave" }
+
     local function containsOption(options, value)
         for _, option in ipairs(options) do
             if option == value then return true end
@@ -371,7 +382,7 @@ function Library:CreateWindow(WindowName, Config)
         if type(savedTheme.PresetName) == "string" and Presets[savedTheme.PresetName] then CurrentPreset = savedTheme.PresetName end
         if containsOption(PageAnimationOrder, savedTheme.PageAnimation) then PageAnimation = savedTheme.PageAnimation end
         if containsOption(OpenCloseAnimationOrder, savedTheme.OpenCloseAnimation) then OpenCloseAnimation = savedTheme.OpenCloseAnimation end
-        StripAnim = OpenCloseAnimation == "Classic"
+        StripAnim = true
         if toggleKey ~= false and type(savedTheme.ToggleKey) == "string" then
             local okK, keyEnum = pcall(function()
                 return Enum.KeyCode[savedTheme.ToggleKey]
@@ -395,10 +406,6 @@ function Library:CreateWindow(WindowName, Config)
         end
         if savedTheme.FontFamily and FontPresets[savedTheme.FontFamily] then FontFamily = savedTheme.FontFamily end
         if savedTheme.Language == "th" or savedTheme.Language == "en" then Language = savedTheme.Language end
-        if savedTheme.StripAnimation ~= nil and not containsOption(OpenCloseAnimationOrder, savedTheme.OpenCloseAnimation) then
-            StripAnim = true
-            OpenCloseAnimation = "Classic"
-        end
         if savedTheme.BorderEnabled ~= nil then BorderEnabled = savedTheme.BorderEnabled end
         if savedTheme.BackgroundImage ~= nil then BgImage = savedTheme.BackgroundImage end
         if savedTheme.BackgroundImageTransparency ~= nil then BgImageTransparency = savedTheme.BackgroundImageTransparency end
@@ -889,12 +896,26 @@ local stripHost = new("Frame", {
     ZIndex = 60,
 }, gui)
 stripUIScale = new("UIScale", { Scale = OverallScalePercent / 100 }, stripHost)
-local STRIP_N = 9
-local STRIP_ANGLE = -13
 local rng = Random.new()
 local animating = false
 local pendingThemeAction = nil
 local runThemeTransition
+
+-- Strip-wipe variants (Window Open / Close Style).
+-- Every variant is a strip-wipe like Classic, only the look / timing differs.
+--   n          : number of strips
+--   angle      : strip rotation in degrees
+--   barW       : strip width as a fraction of the window width
+--   fixedR     : every strip collapses to this height (0..1) instead of a random one
+--   rByIndex   : collapse height follows the strip index (staircase / wave)
+--   step       : seconds between strips (sequential). Without it the timing is random
+--   dynamicPad : widen the strip range so steep angles still cover the whole window
+local StripVariants = {
+    Classic = { n = 9, angle = -13, barW = 0.22 },
+    Shutter = { n = 12, angle = 0, barW = 0.2, fixedR = 0.5, step = 0.018, dynamicPad = true },
+    Slash = { n = 7, angle = 24, barW = 0.3, dynamicPad = true },
+    Wave = { n = 11, angle = -28, barW = 0.22, rByIndex = true, step = 0.025, dynamicPad = true },
+}
 
 local function flushPendingThemeAction()
     local action = pendingThemeAction
@@ -908,17 +929,35 @@ local function flushPendingThemeAction()
     end
 end
 
-local function buildStrips(W, H, collapsed)
+local function buildStrips(W, H, collapsed, variant)
+    variant = variant or StripVariants.Classic
+    local n = variant.n
 
     for _, child in ipairs(stripHost:GetChildren()) do
         if child ~= stripUIScale then
             child:Destroy()
         end
     end
+
+    local x0, x1
+    if variant.dynamicPad then
+        local pad = 0.5 * H * math.abs(math.tan(math.rad(variant.angle))) + 0.1 * W
+        x0, x1 = -pad, W + pad
+    else
+        x0, x1 = -0.08 * W, 1.12 * W
+    end
+
     local list = {}
-    for i = 1, STRIP_N do
-        local r = rng:NextNumber(0.1, 0.9)
-        local xc = -0.08 * W + (i - 1) * (1.2 * W / (STRIP_N - 1))
+    for i = 1, n do
+        local r
+        if variant.fixedR then
+            r = variant.fixedR
+        elseif variant.rByIndex then
+            r = 0.1 + 0.8 * ((i - 1) / math.max(n - 1, 1))
+        else
+            r = rng:NextNumber(0.1, 0.9)
+        end
+        local xc = x0 + (i - 1) * ((x1 - x0) / math.max(n - 1, 1))
 
         local band = new("Frame", {
             BackgroundTransparency = 1,
@@ -932,8 +971,8 @@ local function buildStrips(W, H, collapsed)
         BorderSizePixel = 0,
         ZIndex = 60,
         Position = UDim2.fromOffset(xc, H / 2 - (collapsed and r * H or 0)),
-        Size = UDim2.fromOffset(W * 0.22, H * 1.8),
-        Rotation = STRIP_ANGLE,
+        Size = UDim2.fromOffset(W * variant.barW, H * 1.8),
+        Rotation = variant.angle,
         BackgroundColor3 = Theme.Paper,
         BackgroundTransparency = collapsed and 0 or 1,
     }, band)
@@ -942,16 +981,17 @@ local stroke = new("UIStroke", {
     Color = Theme.Line,
     Transparency = collapsed and 0.4 or 1,
 }, bar)
-list[i] = { band = band, bar = bar, stroke = stroke, r = r, xc = xc, delay = rng:NextNumber(0, 0.22) }
+local delay = variant.step and ((i - 1) * variant.step) or rng:NextNumber(0, 0.22)
+list[i] = { band = band, bar = bar, stroke = stroke, r = r, xc = xc, delay = delay }
 end
 return list
 end
 
-local function playStrips(opening)
+local function playStrips(opening, variant)
     local W, H = main.Size.X.Offset, main.Size.Y.Offset
     stripHost.Position = main.Position
     stripHost.Size = main.Size
-    local list = buildStrips(W, H, opening)
+    local list = buildStrips(W, H, opening, variant)
     stripHost.Visible = true
 
     local grow = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
@@ -1191,9 +1231,10 @@ local function SetWindowOpen(shouldOpen)
         Library._sfx(shouldOpen and "open" or "close")
     end
 
-    if OpenCloseAnimation == "Classic" and StripAnim then
+    local stripVariant = StripVariants[OpenCloseAnimation]
+    if stripVariant then
         animating = true
-        playStrips(shouldOpen)
+        playStrips(shouldOpen, stripVariant)
         return
     end
     playWindowStyle(shouldOpen, OpenCloseAnimation)
@@ -1708,6 +1749,8 @@ local function AnimatePageIn(page)
             startPosition = offsetUDim2(basePos, 0, height * 0.075)
         elseif style == "Slide Down" then
             startPosition = offsetUDim2(basePos, 0, -height * 0.075)
+        elseif style == "Cascade" then
+            startPosition = offsetUDim2(basePos, -width * 0.05, 0)
         elseif style == "Glitch" then
             startPosition = offsetUDim2(basePos, -14, 2)
         end
@@ -3223,7 +3266,6 @@ if Config.ShowSettingsTab ~= false then
             SettingsTab:CreateDropdown(T.OpenCloseAnimationLabel, "lucide-sparkles", OpenCloseAnimationOrder, OpenCloseAnimation, nil, function(selected)
                 if not containsOption(OpenCloseAnimationOrder, selected) then return end
                 OpenCloseAnimation = selected
-                StripAnim = selected == "Classic"
                 persistTheme()
                 save()
             end)
