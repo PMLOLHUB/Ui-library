@@ -164,7 +164,9 @@ local Translations = {
         ToggleButtonScaleLabel = "Toggle Button Size (%)",
         ToggleKeyLabel = "Toggle Key",
         PressKey = "Press a key... (Esc = cancel)",
-        MobileStyleLabel = "Mobile Button Style",
+        MobileStyleLabel = "Toggle Button Style",
+        PageTransitionLabel = "Page Transition Style",
+        WindowTransitionLabel = "Window Open / Close Style",
         SoundVolumeLabel = "Sound Volume (%)",
     },
 th = {
@@ -175,7 +177,9 @@ th = {
     ToggleButtonScaleLabel = "ขนาดปุ่มเปิด/ปิด (%)",
     ToggleKeyLabel = "ปุ่มเปิด/ปิด",
     PressKey = "กดปุ่มบนคีย์บอร์ด... (Esc = ยกเลิก)",
-    MobileStyleLabel = "รูปแบบปุ่มเปิด/ปิด (มือถือ)",
+    MobileStyleLabel = "รูปแบบปุ่มเปิด/ปิด",
+    PageTransitionLabel = "รูปแบบแอนิเมชันเปลี่ยนหน้า",
+    WindowTransitionLabel = "รูปแบบแอนิเมชันเปิด/ปิด UI",
     SoundVolumeLabel = "ระดับเสียง (%)",
 },
 }
@@ -197,8 +201,18 @@ local Presets = {
     Midnight = { Paper = { 34, 40, 56 }, Row = { 50, 58, 80 }, Input = { 22, 26, 38 }, Accent = { 16, 20, 32 }, Ink = { 198, 208, 234 }, Cream = { 222, 230, 250 }, Line = { 76, 86, 116 }, Team = { 100, 130, 210 } },
     Crimson = { Paper = { 56, 34, 38 }, Row = { 78, 48, 54 }, Input = { 36, 22, 24 }, Accent = { 30, 14, 18 }, Ink = { 236, 206, 208 }, Cream = { 250, 226, 228 }, Line = { 108, 70, 76 }, Team = { 200, 70, 80 } },
     Mono = { Paper = { 44, 44, 46 }, Row = { 64, 64, 67 }, Input = { 28, 28, 30 }, Accent = { 16, 16, 18 }, Ink = { 220, 220, 224 }, Cream = { 240, 240, 244 }, Line = { 92, 92, 96 }, Team = { 160, 160, 170 } },
+    Aurora = { Paper = { 186, 208, 204 }, Row = { 148, 176, 174 }, Input = { 218, 238, 234 }, Accent = { 25, 69, 79 }, Ink = { 33, 65, 74 }, Cream = { 229, 251, 246 }, Line = { 124, 159, 162 }, Team = { 60, 205, 180 } },
+    Cyberpunk = { Paper = { 37, 28, 54 }, Row = { 56, 36, 77 }, Input = { 25, 18, 40 }, Accent = { 227, 57, 187 }, Ink = { 235, 221, 255 }, Cream = { 255, 244, 251 }, Line = { 105, 68, 127 }, Team = { 0, 230, 255 } },
+    Arctic = { Paper = { 216, 231, 244 }, Row = { 184, 207, 229 }, Input = { 239, 247, 255 }, Accent = { 47, 100, 148 }, Ink = { 43, 70, 100 }, Cream = { 248, 252, 255 }, Line = { 146, 178, 205 }, Team = { 76, 145, 210 } },
+    Volcano = { Paper = { 67, 39, 31 }, Row = { 95, 51, 38 }, Input = { 44, 26, 23 }, Accent = { 178, 55, 28 }, Ink = { 255, 218, 184 }, Cream = { 255, 239, 215 }, Line = { 145, 79, 58 }, Team = { 244, 120, 35 } },
+    Neon = { Paper = { 25, 33, 40 }, Row = { 39, 52, 62 }, Input = { 17, 24, 30 }, Accent = { 0, 180, 170 }, Ink = { 212, 255, 246 }, Cream = { 240, 255, 251 }, Line = { 72, 120, 124 }, Team = { 255, 60, 200 } },
+    Coffee = { Paper = { 205, 185, 162 }, Row = { 177, 151, 125 }, Input = { 232, 216, 195 }, Accent = { 84, 55, 40 }, Ink = { 76, 50, 37 }, Cream = { 248, 236, 217 }, Line = { 150, 119, 91 }, Team = { 165, 104, 68 } },
+    Royal = { Paper = { 43, 38, 77 }, Row = { 62, 54, 104 }, Input = { 30, 26, 59 }, Accent = { 129, 96, 220 }, Ink = { 229, 222, 255 }, Cream = { 248, 242, 255 }, Line = { 106, 96, 158 }, Team = { 230, 185, 74 } },
+    Glacier = { Paper = { 205, 232, 235 }, Row = { 171, 209, 216 }, Input = { 232, 248, 250 }, Accent = { 37, 110, 128 }, Ink = { 34, 76, 90 }, Cream = { 244, 255, 255 }, Line = { 128, 177, 187 }, Team = { 56, 164, 191 } },
+    Toxic = { Paper = { 44, 61, 38 }, Row = { 59, 82, 47 }, Input = { 29, 42, 25 }, Accent = { 123, 190, 35 }, Ink = { 228, 250, 200 }, Cream = { 245, 255, 224 }, Line = { 101, 138, 68 }, Team = { 200, 255, 0 } },
+    Gold = { Paper = { 73, 59, 35 }, Row = { 98, 78, 44 }, Input = { 47, 38, 24 }, Accent = { 195, 148, 51 }, Ink = { 255, 231, 169 }, Cream = { 255, 247, 218 }, Line = { 145, 118, 66 }, Team = { 255, 204, 70 } },
 }
-local PresetOrder = { "Paper", "Dusk", "Moss", "Rose", "Slate", "Night", "Ocean", "Sakura", "Ember", "Lavender", "Sand", "Mint", "Forest", "Midnight", "Crimson", "Mono" }
+local PresetOrder = { "Paper", "Dusk", "Moss", "Rose", "Slate", "Night", "Ocean", "Sakura", "Ember", "Lavender", "Sand", "Mint", "Forest", "Midnight", "Crimson", "Mono", "Aurora", "Cyberpunk", "Arctic", "Volcano", "Neon", "Coffee", "Royal", "Glacier", "Toxic", "Gold" }
 Library.Presets = Presets
 
 local FontPresets = {}
@@ -324,14 +338,21 @@ function Library:CreateWindow(WindowName, Config)
     end
 
     local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-    local MobileStyleOrder = { "Classic", "Circle", "Diamond", "Pill", "Bracket" }
-    local function validStyle(name)
-        for _, n in ipairs(MobileStyleOrder) do
-            if n == name then return true end
+    local MobileStyleOrder = { "Classic", "Circle", "Diamond", "Pill", "Bracket", "Hexagon", "NeonRing", "Minimal", "Orbit", "SoftSquare" }
+    local PageTransitionOrder = { "Glitch", "Fade", "Slide", "Zoom", "Cascade", "Instant" }
+    local WindowTransitionOrder = { "Strips", "Fade", "Zoom", "Slide", "Drop", "Pop", "Instant" }
+    local function containsChoice(options, name)
+        for _, value in ipairs(options) do
+            if value == name then return true end
         end
         return false
     end
+    local function validStyle(name)
+        return containsChoice(MobileStyleOrder, name)
+    end
     local MobileStyle = validStyle(Config.MobileButtonStyle) and Config.MobileButtonStyle or "Classic"
+    local PageTransitionStyle = containsChoice(PageTransitionOrder, Config.PageTransitionStyle) and Config.PageTransitionStyle or "Glitch"
+    local WindowTransitionStyle = containsChoice(WindowTransitionOrder, Config.WindowTransitionStyle) and Config.WindowTransitionStyle or "Strips"
 
     local toggleKey = Config.ToggleKey
     if toggleKey == nil then
@@ -342,6 +363,8 @@ function Library:CreateWindow(WindowName, Config)
     local savedSize, savedPos, savedFlags, savedTheme = LoadConfig()
     if type(savedTheme) == "table" then
         if validStyle(savedTheme.MobileStyle) then MobileStyle = savedTheme.MobileStyle end
+        if containsChoice(PageTransitionOrder, savedTheme.PageTransitionStyle) then PageTransitionStyle = savedTheme.PageTransitionStyle end
+        if containsChoice(WindowTransitionOrder, savedTheme.WindowTransitionStyle) then WindowTransitionStyle = savedTheme.WindowTransitionStyle end
         if toggleKey ~= false and type(savedTheme.ToggleKey) == "string" then
             local okK, keyEnum = pcall(function()
                 return Enum.KeyCode[savedTheme.ToggleKey]
@@ -503,6 +526,7 @@ local main = new("Frame", {
     Visible = false,
 }, gui)
 mainUIScale = new("UIScale", { Scale = OverallScalePercent / 100 }, main)
+local windowAnimScale = new("UIScale", { Scale = 1 }, main)
 bind(main, "BackgroundColor3", "Paper")
 bindGlass(main)
 local mainStroke = new("UIStroke", { Thickness = 1, Enabled = BorderEnabled }, main)
@@ -548,6 +572,8 @@ local function persistTheme()
     ThemeSettings.BackgroundImageTransparency = BgImageTransparency
     ThemeSettings.BackgroundImageEnabled = BgImageEnabled
     ThemeSettings.MobileStyle = MobileStyle
+    ThemeSettings.PageTransitionStyle = PageTransitionStyle
+    ThemeSettings.WindowTransitionStyle = WindowTransitionStyle
     ThemeSettings.ToggleKey = toggleKey and toggleKey.Name or nil
     ThemeSettings.OverallScalePercent = OverallScalePercent
     ThemeSettings.ToggleButtonScalePercent = ToggleButtonScalePercent
@@ -978,6 +1004,129 @@ local function playStrips(opening)
     end
 end
 
+local function collectWindowAlphaTargets()
+    local targets = {}
+    local objects = { main }
+    for _, object in ipairs(main:GetDescendants()) do
+        table.insert(objects, object)
+    end
+    local function addTarget(object, property)
+        local ok, value = pcall(function() return object[property] end)
+        if ok and type(value) == "number" and value < 0.999 then
+            table.insert(targets, { instance = object, property = property, value = value })
+        end
+    end
+    for _, object in ipairs(objects) do
+        if object:IsA("GuiObject") then
+            addTarget(object, "BackgroundTransparency")
+        end
+        if object:IsA("TextLabel") or object:IsA("TextButton") or object:IsA("TextBox") then
+            addTarget(object, "TextTransparency")
+            addTarget(object, "TextStrokeTransparency")
+        end
+        if object:IsA("ImageLabel") or object:IsA("ImageButton") then
+            addTarget(object, "ImageTransparency")
+        end
+        if object:IsA("ScrollingFrame") then
+            addTarget(object, "ScrollBarImageTransparency")
+        end
+        if object:IsA("UIStroke") then
+            addTarget(object, "Transparency")
+        end
+    end
+    return targets
+end
+
+local function setWindowAlphaTargets(targets, value)
+    for _, target in ipairs(targets) do
+        if target.instance.Parent then
+            pcall(function() target.instance[target.property] = value end)
+        end
+    end
+end
+
+local function playWindowTransition(opening)
+    local style = WindowTransitionStyle
+    local basePosition = main.Position
+    local targets = collectWindowAlphaTargets()
+    local duration = style == "Pop" and 0.34 or 0.28
+    local easingStyle = style == "Pop" and Enum.EasingStyle.Back or Enum.EasingStyle.Quint
+    local easingDirection = opening and Enum.EasingDirection.Out or Enum.EasingDirection.In
+    local info = TweenInfo.new(duration, easingStyle, easingDirection)
+    local dx, dy, scaleFrom = 0, 0, 1
+
+    if style == "Slide" then
+        dx = 42
+    elseif style == "Drop" then
+        dy = -38
+    elseif style == "Zoom" then
+        scaleFrom = 0.88
+    elseif style == "Pop" then
+        scaleFrom = 0.72
+    end
+
+    local function shifted(position, x, y)
+        return UDim2.new(position.X.Scale, position.X.Offset + x, position.Y.Scale, position.Y.Offset + y)
+    end
+
+    if opening then
+        main.Position = shifted(basePosition, style == "Slide" and -dx or 0, dy)
+        windowAnimScale.Scale = scaleFrom
+        setWindowAlphaTargets(targets, 1)
+        main.Visible = true
+        if dx ~= 0 or dy ~= 0 then
+            TweenService:Create(main, info, { Position = basePosition }):Play()
+        end
+        if scaleFrom ~= 1 then
+            TweenService:Create(windowAnimScale, info, { Scale = 1 }):Play()
+        end
+        for _, target in ipairs(targets) do
+            if target.instance.Parent then
+                pcall(function()
+                    TweenService:Create(target.instance, info, { [target.property] = target.value }):Play()
+                end)
+            end
+        end
+    else
+        local targetPosition = basePosition
+        if style == "Slide" then
+            targetPosition = shifted(basePosition, dx, 0)
+        elseif style == "Drop" then
+            targetPosition = shifted(basePosition, 0, dy)
+        end
+        if dx ~= 0 or dy ~= 0 then
+            TweenService:Create(main, info, { Position = targetPosition }):Play()
+        end
+        if scaleFrom ~= 1 then
+            TweenService:Create(windowAnimScale, info, { Scale = scaleFrom }):Play()
+        end
+        for _, target in ipairs(targets) do
+            if target.instance.Parent then
+                pcall(function()
+                    TweenService:Create(target.instance, info, { [target.property] = 1 }):Play()
+                end)
+            end
+        end
+    end
+
+    task.delay(duration + 0.06, function()
+        if opening then
+            main.Visible = true
+        else
+            main.Visible = false
+        end
+        main.Position = basePosition
+        windowAnimScale.Scale = 1
+        for _, target in ipairs(targets) do
+            if target.instance.Parent then
+                pcall(function() target.instance[target.property] = target.value end)
+            end
+        end
+        animating = false
+        flushPendingThemeAction()
+    end)
+end
+
 local function SetWindowOpen(shouldOpen)
     if animating or shouldOpen == main.Visible then
         return
@@ -989,12 +1138,16 @@ local function SetWindowOpen(shouldOpen)
     if Library._sfx then
         Library._sfx(shouldOpen and "open" or "close")
     end
-    if not StripAnim then
+    if WindowTransitionStyle == "Instant" or (WindowTransitionStyle == "Strips" and not StripAnim) then
         main.Visible = shouldOpen
         return
     end
     animating = true
-    playStrips(shouldOpen)
+    if WindowTransitionStyle == "Strips" then
+        playStrips(shouldOpen)
+    else
+        playWindowTransition(shouldOpen)
+    end
 end
 
 runThemeTransition = function(applyChange)
@@ -1238,6 +1391,102 @@ bind(v, "BackgroundColor3", "Accent")
 end
 glyph(panel, 16, "Accent")
 
+elseif style == "Hexagon" then
+
+    toggleBtn.Size = UDim2.fromOffset(52, 52)
+    local hex = new("Frame", {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+    }, tbVisual)
+    for i = 0, 5 do
+        local angle = math.rad(30 + i * 60)
+        local edge = new("Frame", {
+            AnchorPoint = CENTER,
+            Position = UDim2.new(0.5, math.cos(angle) * 15.5, 0.5, math.sin(angle) * 15.5),
+            Size = UDim2.fromOffset(20, 2),
+            Rotation = 120 + i * 60,
+            BorderSizePixel = 0,
+            ZIndex = 2,
+        }, hex)
+        bind(edge, "BackgroundColor3", "Accent")
+    end
+    glyph(hex, 16, "Cream", 0.48)
+
+elseif style == "NeonRing" then
+
+    toggleBtn.Size = UDim2.fromOffset(48, 48)
+    local ring = new("Frame", {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+    }, tbVisual)
+    new("UICorner", { CornerRadius = UDim.new(1, 0) }, ring)
+    local ringStroke = new("UIStroke", { Thickness = 3 }, ring)
+    bind(ringStroke, "Color", "Team")
+    local innerRing = new("Frame", {
+        AnchorPoint = CENTER,
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.new(1, -12, 1, -12),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+    }, ring)
+    new("UICorner", { CornerRadius = UDim.new(1, 0) }, innerRing)
+    local innerStroke = new("UIStroke", { Thickness = 1 }, innerRing)
+    bind(innerStroke, "Color", "Accent")
+    glyph(ring, 16, "Cream", 0.5)
+
+elseif style == "Minimal" then
+
+    toggleBtn.Size = UDim2.fromOffset(44, 44)
+    local minimal = new("Frame", {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+    }, tbVisual)
+    local outline = new("UIStroke", { Thickness = 1.5, Transparency = 0.15 }, minimal)
+    bind(outline, "Color", "Accent")
+    glyph(minimal, 16, "Accent", 0.58)
+
+elseif style == "Orbit" then
+
+    toggleBtn.Size = UDim2.fromOffset(50, 50)
+    local orbitBase = new("Frame", {
+        AnchorPoint = CENTER,
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(38, 38),
+        BorderSizePixel = 0,
+    }, tbVisual)
+    bind(orbitBase, "BackgroundColor3", "Paper")
+    new("UICorner", { CornerRadius = UDim.new(1, 0) }, orbitBase)
+    local orbitStroke = new("UIStroke", { Thickness = 1.5 }, orbitBase)
+    bind(orbitStroke, "Color", "Line")
+    local orbit = new("Frame", {
+        AnchorPoint = CENTER,
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(46, 20),
+        Rotation = -35,
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+    }, orbitBase)
+    new("UICorner", { CornerRadius = UDim.new(1, 0) }, orbit)
+    local orbitLine = new("UIStroke", { Thickness = 1.5 }, orbit)
+    bind(orbitLine, "Color", "Team")
+    glyph(orbitBase, 14, "Accent", 0.5)
+
+elseif style == "SoftSquare" then
+
+    toggleBtn.Size = UDim2.fromOffset(46, 46)
+    local soft = new("Frame", {
+        Size = UDim2.fromScale(1, 1),
+        BorderSizePixel = 0,
+    }, tbVisual)
+    bind(soft, "BackgroundColor3", "Accent")
+    new("UICorner", { CornerRadius = UDim.new(0, 12) }, soft)
+    local softStroke = new("UIStroke", { Thickness = 1.5 }, soft)
+    bind(softStroke, "Color", "Line")
+    glyph(soft, 16, "Cream", 0.54)
+
 else
 
     toggleBtn.Size = UDim2.fromOffset(44, 44)
@@ -1469,6 +1718,11 @@ local function cancelPageAnimation(page)
             end)
         end
     end
+    for _, object in ipairs(state.cleanup or {}) do
+        if object and object.Parent then
+            object:Destroy()
+        end
+    end
     pageAnimationStates[page] = nil
 end
 
@@ -1481,6 +1735,104 @@ local function AnimatePageIn(page)
         basePos = page.Position
         page:SetAttribute("BasePosition", basePos)
     end
+
+    if PageTransitionStyle ~= "Glitch" then
+        page.Position = basePos
+        if PageTransitionStyle == "Instant" then
+            return
+        end
+
+        local state = { tweens = {}, originals = {}, cleanup = {}, cancelled = false }
+        pageAnimationStates[page] = state
+        local items = {}
+        for _, child in ipairs(page:GetChildren()) do
+            if child:IsA("GuiObject") then
+                table.insert(items, child)
+            end
+        end
+        table.sort(items, function(a, b)
+            if a.LayoutOrder == b.LayoutOrder then
+                return a.AbsolutePosition.Y < b.AbsolutePosition.Y
+            end
+            return a.LayoutOrder < b.LayoutOrder
+        end)
+
+        local duration = 0.24
+        local function playTween(instance, info, properties)
+            if not instance or not instance.Parent then return end
+            local ok, tween = pcall(function()
+                return TweenService:Create(instance, info, properties)
+            end)
+            if ok and tween then
+                table.insert(state.tweens, tween)
+                tween:Play()
+            end
+        end
+
+        if PageTransitionStyle == "Slide" or PageTransitionStyle == "Cascade" then
+            page.Position = UDim2.new(basePos.X.Scale, basePos.X.Offset, basePos.Y.Scale, basePos.Y.Offset + 14)
+            playTween(page, TweenInfo.new(duration, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = basePos })
+        elseif PageTransitionStyle == "Zoom" then
+            local scaleNode = new("UIScale", { Scale = 0.92 }, page)
+            table.insert(state.cleanup, scaleNode)
+            playTween(scaleNode, TweenInfo.new(duration, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 })
+        end
+
+        local function startFadeGroup(objects, delayTime)
+            local targets = {}
+            for _, object in ipairs(objects) do
+                local canFade = (object:IsA("GuiObject") and object.Visible)
+                    or (object:IsA("UIStroke") and object.Enabled)
+                if canFade then
+                    for property, originalValue in pairs(getFadeProperties(object)) do
+                        if type(originalValue) == "number" and originalValue < 0.999 then
+                            local target = { instance = object, property = property, value = originalValue }
+                            table.insert(state.originals, target)
+                            table.insert(targets, target)
+                            pcall(function() object[property] = 1 end)
+                        end
+                    end
+                end
+            end
+            if #targets == 0 then return end
+            task.delay(delayTime or 0, function()
+                if pageAnimationStates[page] ~= state or state.cancelled or not page.Visible then
+                    return
+                end
+                local info = TweenInfo.new(duration, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+                for _, target in ipairs(targets) do
+                    playTween(target.instance, info, { [target.property] = target.value })
+                end
+            end)
+        end
+
+        if PageTransitionStyle == "Fade" then
+            local objects = { page }
+            for _, descendant in ipairs(page:GetDescendants()) do
+                table.insert(objects, descendant)
+            end
+            startFadeGroup(objects, 0)
+        elseif PageTransitionStyle == "Cascade" then
+            for index, item in ipairs(items) do
+                local objects = { item }
+                for _, descendant in ipairs(item:GetDescendants()) do
+                    table.insert(objects, descendant)
+                end
+                startFadeGroup(objects, (index - 1) * 0.035)
+            end
+        end
+
+        task.delay(duration + (#items * (PageTransitionStyle == "Cascade" and 0.035 or 0)) + 0.08, function()
+            if pageAnimationStates[page] == state then
+                for _, object in ipairs(state.cleanup) do
+                    if object and object.Parent then object:Destroy() end
+                end
+                pageAnimationStates[page] = nil
+            end
+        end)
+        return
+    end
+
     page.Position = UDim2.new(basePos.X.Scale, basePos.X.Offset, basePos.Y.Scale, basePos.Y.Offset + 10)
     local pageSlideTween = TweenService:Create(
     page,
@@ -2893,12 +3245,28 @@ if Config.ShowSettingsTab ~= false then
                 end)
             end)
 
-            if isMobile then
-                SettingsTab:CreateDropdown(T.MobileStyleLabel, "lucide-smartphone", MobileStyleOrder, MobileStyle, nil, function(selected)
-                    SetMobileStyle(selected)
-                    save()
-                end)
+            SettingsTab:CreateDropdown(T.MobileStyleLabel, "lucide-smartphone", MobileStyleOrder, MobileStyle, nil, function(selected)
+                SetMobileStyle(selected)
+                save()
+            end)
 
+            SettingsTab:CreateDropdown(T.PageTransitionLabel, "lucide-panels-top-left", PageTransitionOrder, PageTransitionStyle, nil, function(selected)
+                if containsChoice(PageTransitionOrder, selected) then
+                    PageTransitionStyle = selected
+                    persistTheme()
+                    save()
+                end
+            end)
+
+            SettingsTab:CreateDropdown(T.WindowTransitionLabel, "lucide-monitor-play", WindowTransitionOrder, WindowTransitionStyle, nil, function(selected)
+                if containsChoice(WindowTransitionOrder, selected) then
+                    WindowTransitionStyle = selected
+                    persistTheme()
+                    save()
+                end
+            end)
+
+            if isMobile then
                 SettingsTab:CreateSlider(T.ToggleButtonScaleLabel, "lucide-move", 50, 180, ToggleButtonScalePercent, "ToggleButtonScalePercent", function(v)
                     SetToggleButtonScale(v)
                 end)
