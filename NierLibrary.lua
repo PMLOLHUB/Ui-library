@@ -3798,10 +3798,17 @@ do
     }
     local SfxData = {}
 
-    -- remove sounds left over from a previous load of this library
+    -- Keep our versioned Sound instances alive between library reloads. Reusing these
+    -- instances preserves Roblox's loaded audio buffers instead of starting from cold each time.
+    -- Old/unmanaged sound instances are removed once; current cache entries survive reloads.
     for _, old in ipairs(SoundService:GetChildren()) do
         if old:IsA("Sound") and string.find(old.Name, "^NIER_UI_Sfx_") then
-            old:Destroy()
+            if old:GetAttribute("NIER_UI_SfxCacheVersion") ~= SFX_VERSION then
+                pcall(function()
+                    old:Stop()
+                    old:Destroy()
+                end)
+            end
         end
     end
 
@@ -3918,86 +3925,9 @@ do
         return path
     end
 
-    -- each Sound is created lazily on first use (and pre-warmed below)
-    local function getSound(name)
-        local entry = Sfx[name]
-        if not entry or entry.failed or entry.busy then
-            return nil
-        end
-        local existing = entry.sound
-        if existing and existing.Parent then
-            return existing
-        end
-        if not checkApi() then
-            entry.failed = true
-            return nil
-        end
-        if not SfxData[name] then
-            return nil -- embedded data not defined yet; don't mark the sound as failed
-        end
-        entry.busy = true
-        local ok, result = pcall(function()
-            local path = ensureFile(name, entry)
-            local sound = Instance.new("Sound")
-            sound.Name = "NIER_UI_Sfx_" .. name
-            sound.Volume = 0
-            sound.SoundId = assetFn(path)
-            sound.Parent = SoundService
-            return sound
-        end)
-        entry.busy = false
-        if ok and result then
-            entry.sound = result
-            return result
-        end
-        entry.failed = true
-        return nil
-    end
-
+    -- ContentProvider preloads local audio in the background after the embedded data is defined.
+    -- The voice-pool path below handles playback; no files or Sound objects are created on a click.
     local ContentProvider = game:GetService("ContentProvider")
-
-    local function playSound(sound, entry, pitch)
-        sound.Volume = entry.gain * math.clamp(tonumber(Library.SoundVolume) or 1, 0, 1)
-        sound.PlaybackSpeed = pitch or 1
-        sound.TimePosition = 0
-        sound:Play()
-    end
-
-    -- pitch is retained for compatibility with older callers; slider sound always uses normal speed.
-    function Library._sfx(name, pitch)
-        if not Library.SoundEnabled then
-            return
-        end
-        local entry = Sfx[name]
-        if not entry then
-            return
-        end
-        local now = os.clock()
-        if now - (entry.last or -1) < entry.gap then
-            return
-        end
-        local sound = getSound(name)
-        if not sound then
-            return
-        end
-        entry.last = now
-        if sound.IsLoaded then
-            playSound(sound, entry, pitch)
-            return
-        end
-        -- The sound is still loading (typical for the "open" sound when the window opens right after
-        -- the library is loaded). Calling Play() on an unloaded Sound can silently do nothing,
-        -- so wait until it is loaded (max 3 s), then play it.
-        task.spawn(function()
-            local t0 = os.clock()
-            while not sound.IsLoaded and sound.Parent and os.clock() - t0 < 3 do
-                task.wait()
-            end
-            if sound.Parent and Library.SoundEnabled then
-                playSound(sound, entry, pitch)
-            end
-        end)
-    end
 
     function Library:SetSoundEnabled(state)
         Library.SoundEnabled = state == true
@@ -5550,16 +5480,47 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
     -- Dedicated filename prevents an older slider cache from shadowing this video-matched sample.
     Sfx.slider.file = "slider_video_tick.ogg"
 
-    -- ---------------------------------------------------------------- fast playback (voice pool + preload)
-    -- Every sound gets a few ready-made Sound objects ("voices"). They are created ONCE while the
-    -- library loads, pre-loaded with ContentProvider, and then reused forever (round-robin).
-    -- Playing a sound = set volume/speed + :Play(). Nothing is created, written to disk or decoded
-    -- at play time, and quick repeats (slider drag, hover) overlap instead of cutting each other off.
-    -- This block replaces the old getSound / playSound path: Library._sfx below overrides the old one.
+    -- ---------------------------------------------------------------- fast playback (persistent voice pool + prioritized preload)
+    -- Reuse Sound instances across library reloads. During normal play, a sound is never
+    -- decoded, written to disk, or instantiated; playback only reuses a warmed voice.
     local VOICES = { open = 1, close = 1, select = 2, hover = 3, toggleOn = 2, toggleOff = 2, notify = 1, slider = 4 }
-    -- tick-type sounds are simply skipped while their file is still loading (a late tick sounds wrong)
+    -- Rapid tick sounds are intentionally dropped only until their asset is ready; they never
+    -- wait and play late, which would make a slider/hover sound feel detached from the input.
     local DROP_WHILE_LOADING = { hover = true, slider = true }
     local pools, building = {}, {}
+
+    local function getCachedVoices(name, desired)
+        local list = {}
+        for _, sound in ipairs(SoundService:GetChildren()) do
+            if sound:IsA("Sound")
+                and sound.Parent == SoundService
+                and sound:GetAttribute("NIER_UI_SfxCacheVersion") == SFX_VERSION
+                and sound:GetAttribute("NIER_UI_SfxName") == name then
+                list[#list + 1] = sound
+            end
+        end
+
+        table.sort(list, function(a, b)
+            return (tonumber(a:GetAttribute("NIER_UI_SfxVoice")) or math.huge)
+                < (tonumber(b:GetAttribute("NIER_UI_SfxVoice")) or math.huge)
+        end)
+
+        -- A version bump is used when the embedded audio or voice counts change. Still trim
+        -- extra cached voices defensively, and normalize their indexes for future reloads.
+        while #list > desired do
+            local extra = table.remove(list)
+            pcall(function()
+                extra:Stop()
+                extra:Destroy()
+            end)
+        end
+        for i, sound in ipairs(list) do
+            sound.Name = "NIER_UI_Sfx_" .. name
+            sound:SetAttribute("NIER_UI_SfxVoice", i)
+            sound.Volume = 0
+        end
+        return list
+    end
 
     local function buildPool(name)
         local entry = Sfx[name]
@@ -5572,49 +5533,71 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
         if building[name] then
             return nil
         end
+
+        local desired = VOICES[name] or 1
+        local list = getCachedVoices(name, desired)
+        if #list >= desired then
+            pools[name] = { voices = list, nextVoice = 1 }
+            return pools[name]
+        end
+
         if not checkApi() then
             entry.failed = true
             return nil
         end
         if not SfxData[name] then
-            return nil -- embedded data not defined (yet); don't mark the sound as failed
+            return nil -- embedded data is assigned later in this block
         end
+
         building[name] = true
-        local list = {}
+        local created = {}
         local ok = pcall(function()
             local assetId = assetFn(ensureFile(name, entry))
-            for i = 1, (VOICES[name] or 1) do
+            if type(assetId) ~= "string" or assetId == "" then
+                error("custom asset function returned no asset id")
+            end
+            for i = #list + 1, desired do
                 local sound = Instance.new("Sound")
                 sound.Name = "NIER_UI_Sfx_" .. name
                 sound.Volume = 0
                 sound.SoundId = assetId
+                sound:SetAttribute("NIER_UI_SfxCacheVersion", SFX_VERSION)
+                sound:SetAttribute("NIER_UI_SfxName", name)
+                sound:SetAttribute("NIER_UI_SfxVoice", i)
                 sound.Parent = SoundService
                 list[i] = sound
+                created[#created + 1] = sound
             end
         end)
         building[name] = nil
-        if not ok or #list == 0 then
-            for _, sound in ipairs(list) do
-                sound:Destroy()
+
+        if not ok or #list < desired then
+            for _, sound in ipairs(created) do
+                pcall(function()
+                    sound:Stop()
+                    sound:Destroy()
+                end)
             end
             entry.failed = true
             return nil
         end
+
         pools[name] = { voices = list, nextVoice = 1 }
         return pools[name]
     end
 
-    local function playNow(pool, entry, pitch)
-        local list = pool.voices
-        local voice = list[pool.nextVoice]
-        pool.nextVoice = pool.nextVoice % #list + 1
+    local function playNow(voice, entry, pitch)
+        if not voice or not voice.Parent then
+            return
+        end
         voice.Volume = entry.gain * math.clamp(tonumber(Library.SoundVolume) or 1, 0, 1)
         voice.PlaybackSpeed = pitch or 1
         voice.TimePosition = 0
         voice:Play()
     end
 
-    -- pitch (optional): playback speed, 1 = normal. Used by the slider so the tick follows the value.
+    -- Each call reserves one voice. Waiting for a voice to load can no longer accidentally play
+    -- a different (possibly still-cold) voice when several inputs happen close together.
     function Library._sfx(name, pitch)
         if not Library.SoundEnabled then
             return
@@ -5623,56 +5606,101 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
         if not entry or entry.failed then
             return
         end
+
         local now = os.clock()
         if now - (entry.last or -1) < entry.gap then
             return
         end
+
         local pool = pools[name] or buildPool(name)
-        if not pool then
+        if not pool or #pool.voices == 0 then
             return
         end
+
+        local index = pool.nextVoice
+        local voice = pool.voices[index]
+        pool.nextVoice = index % #pool.voices + 1
         entry.last = now
-        -- Slider ticks always use a fixed playback speed; slider position never changes pitch.
+
+        -- The slider tick always uses a fixed playback speed, independent of slider position.
         if name == "slider" then
             pitch = 1
         end
-        local voice = pool.voices[pool.nextVoice]
+
         if voice.IsLoaded then
-            playNow(pool, entry, pitch)
+            playNow(voice, entry, pitch)
         elseif not DROP_WHILE_LOADING[name] then
-            -- still loading (e.g. the window opens right after the library is loaded): wait max 3 s, then play
             task.spawn(function()
-                local t0 = os.clock()
-                while not voice.IsLoaded and voice.Parent and os.clock() - t0 < 3 do
-                    task.wait()
+                local started = os.clock()
+                while voice.Parent and not voice.IsLoaded and os.clock() - started < 3 do
+                    task.wait(0.03)
                 end
-                if voice.Parent and Library.SoundEnabled then
-                    playNow(pool, entry, pitch)
+                if voice.Parent and voice.IsLoaded and Library.SoundEnabled then
+                    playNow(voice, entry, pitch)
                 end
             end)
         end
     end
 
-    -- ---------------------------------------------------------------- pre-load (must stay LAST)
-    -- Build + pre-load every sound in the background so the first play is instant.
-    -- Slider is first so its voices start loading immediately. This must stay after all
-    -- SfxData.* assignments: task.spawn runs immediately and would otherwise see no data.
-    task.spawn(function()
-        -- Yield before building files/sounds so the caller can finish initializing the UI first.
-        task.wait()
-        for _, name in ipairs({ "slider", "open", "close", "hover", "select", "toggleOn", "toggleOff", "notify" }) do
-            local pool = buildPool(name)
-            if pool then
-                task.spawn(function()
-                    pcall(function()
-                        ContentProvider:PreloadAsync(pool.voices)
-                    end)
-                end)
+    -- ---------------------------------------------------------------- prioritized background preload
+    -- Load slider + window-open first, then common interaction sounds, then secondary sounds.
+    -- Work stays in background and yields between file builds to avoid a startup hitch on slower
+    -- devices. Loaded Sound objects are reused across executions, so this work is usually skipped
+    -- altogether after the first successful warm-up.
+    local function collectUnloaded(pool, target)
+        if not pool then
+            return
+        end
+        for _, voice in ipairs(pool.voices) do
+            local ok, loaded = pcall(function()
+                return voice.IsLoaded
+            end)
+            if ok and not loaded then
+                target[#target + 1] = voice
             end
-            task.wait() -- one frame between sounds so the base64 decoding never freezes the game
+        end
+    end
+
+    local function preloadBatch(voices)
+        if #voices == 0 then
+            return
+        end
+        pcall(function()
+            ContentProvider:PreloadAsync(voices)
+        end)
+    end
+
+    task.spawn(function()
+        -- Let the caller finish setting up the UI before doing any local-file work.
+        task.wait()
+
+        local critical = {}
+        for _, name in ipairs({ "slider", "open" }) do
+            collectUnloaded(buildPool(name), critical)
+        end
+        if #critical > 0 then
+            task.spawn(preloadBatch, critical)
+        end
+
+        task.wait()
+        local interactive = {}
+        for _, name in ipairs({ "select", "hover", "close" }) do
+            collectUnloaded(buildPool(name), interactive)
+            task.wait()
+        end
+        if #interactive > 0 then
+            task.spawn(preloadBatch, interactive)
+        end
+
+        local secondary = {}
+        for _, name in ipairs({ "toggleOn", "toggleOff", "notify" }) do
+            collectUnloaded(buildPool(name), secondary)
+            task.wait()
+        end
+        if #secondary > 0 then
+            task.spawn(preloadBatch, secondary)
         end
     end)
-
 end
 
 return Library
