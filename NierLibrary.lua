@@ -3866,7 +3866,12 @@ do
     -- Old/unmanaged sound instances are removed once; current cache entries survive reloads.
     for _, old in ipairs(SoundService:GetChildren()) do
         if old:IsA("Sound") and string.find(old.Name, "^NIER_UI_Sfx_") then
-            if old:GetAttribute("NIER_UI_SfxCacheVersion") ~= SFX_VERSION then
+            local cachedName = old:GetAttribute("NIER_UI_SfxName")
+            -- Open/close sounds are transient now, so discard any persistent voices
+            -- left behind by an earlier execution of this library.
+            if old:GetAttribute("NIER_UI_SfxCacheVersion") ~= SFX_VERSION
+                or cachedName == "open"
+                or cachedName == "close" then
                 pcall(function()
                     old:Stop()
                     old:Destroy()
@@ -3988,8 +3993,8 @@ do
         return path
     end
 
-    -- ContentProvider preloads local audio in the background after the embedded data is defined.
-    -- The voice-pool path below handles playback; no files or Sound objects are created on a click.
+    -- ContentProvider handles async loads for both the persistent sound pool and
+    -- the fresh Sound instances created for each window open/close.
     local ContentProvider = game:GetService("ContentProvider")
 
     function Library:SetSoundEnabled(state)
@@ -5543,14 +5548,15 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
     -- Dedicated filename prevents an older slider cache from shadowing this video-matched sample.
     Sfx.slider.file = "slider_video_tick.ogg"
 
-    -- ---------------------------------------------------------------- fast playback (persistent voice pool + prioritized preload)
-    -- Reuse Sound instances across library reloads. During normal play, a sound is never
-    -- decoded, written to disk, or instantiated; playback only reuses a warmed voice.
-    local VOICES = { open = 1, close = 1, select = 2, hover = 3, toggleOn = 2, toggleOff = 2, notify = 1, slider = 4 }
+    -- ---------------------------------------------------------------- fast playback (persistent pool + per-toggle sound loading)
+    -- Interaction sounds reuse warmed voices. Window open/close sounds deliberately
+    -- create a fresh Sound instance each time the window is opened or closed.
+    local VOICES = { select = 2, hover = 3, toggleOn = 2, toggleOff = 2, notify = 1, slider = 4 }
     -- Rapid tick sounds are intentionally dropped only until their asset is ready; they never
     -- wait and play late, which would make a slider/hover sound feel detached from the input.
     local DROP_WHILE_LOADING = { hover = true, slider = true }
     local pools, building = {}, {}
+    local transientAssetIds = {}
 
     local function getCachedVoices(name, desired)
         local list = {}
@@ -5659,6 +5665,78 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
         voice:Play()
     end
 
+    -- Open/close: make a new Sound instance for every toggle and wait for that instance
+    -- to load before playback. The local asset path/asset id is cached, but the Sound
+    -- instance and its load cycle are not reused between window openings/closings.
+    local function playTransient(name, entry, pitch)
+        local assetId = transientAssetIds[name]
+        if not assetId then
+            if not checkApi() or not SfxData[name] then
+                entry.failed = true
+                return
+            end
+            local ok, result = pcall(function()
+                return assetFn(ensureFile(name, entry))
+            end)
+            if not ok or type(result) ~= "string" or result == "" then
+                entry.failed = true
+                return
+            end
+            assetId = result
+            transientAssetIds[name] = assetId
+        end
+
+        local sound = Instance.new("Sound")
+        sound.Name = "NIER_UI_Sfx_Transient_" .. name
+        sound.SoundId = assetId
+        sound.Volume = 0
+        sound.PlaybackSpeed = pitch or 1
+        sound.Looped = false
+        sound.Parent = SoundService
+
+        local cleaned = false
+        local function cleanup()
+            if cleaned then
+                return
+            end
+            cleaned = true
+            pcall(function()
+                sound:Stop()
+                sound:Destroy()
+            end)
+        end
+        sound.Ended:Connect(cleanup)
+
+        task.spawn(function()
+            -- Request preload independently so this call never blocks the UI toggle.
+            task.spawn(function()
+                pcall(function()
+                    ContentProvider:PreloadAsync({ sound })
+                end)
+            end)
+
+            local started = os.clock()
+            while sound.Parent and not sound.IsLoaded and os.clock() - started < 3 do
+                task.wait(0.03)
+            end
+
+            if not sound.Parent then
+                return
+            end
+            if not sound.IsLoaded or not Library.SoundEnabled then
+                cleanup()
+                return
+            end
+
+            sound.Volume = entry.gain * math.clamp(tonumber(Library.SoundVolume) or 1, 0, 1)
+            sound.TimePosition = 0
+            sound:Play()
+
+            local duration = tonumber(sound.TimeLength) or 0
+            task.delay(math.max(duration / math.max(sound.PlaybackSpeed, 0.05) + 2, 5), cleanup)
+        end)
+    end
+
     -- Each call reserves one voice. Waiting for a voice to load can no longer accidentally play
     -- a different (possibly still-cold) voice when several inputs happen close together.
     function Library._sfx(name, pitch)
@@ -5672,6 +5750,12 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
 
         local now = os.clock()
         if now - (entry.last or -1) < entry.gap then
+            return
+        end
+
+        if name == "open" or name == "close" then
+            entry.last = now
+            playTransient(name, entry, pitch)
             return
         end
 
@@ -5815,7 +5899,7 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
         task.wait()
 
         local critical = {}
-        for _, name in ipairs({ "slider", "open" }) do
+        for _, name in ipairs({ "slider" }) do
             collectUnloaded(buildPool(name), critical)
         end
         if #critical > 0 then
@@ -5824,7 +5908,7 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
 
         task.wait()
         local interactive = {}
-        for _, name in ipairs({ "select", "hover", "close" }) do
+        for _, name in ipairs({ "select", "hover" }) do
             collectUnloaded(buildPool(name), interactive)
             task.wait()
         end
