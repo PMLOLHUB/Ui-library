@@ -188,31 +188,11 @@ local Presets = {
     Paper = { Paper = { 204, 198, 174 }, Row = { 172, 166, 149 }, Input = { 226, 220, 198 }, Accent = { 54, 50, 44 }, Ink = { 72, 66, 52 }, Cream = { 252, 248, 220 }, Line = { 158, 152, 129 }, Team = { 120, 110, 80 } },
     Dusk = { Paper = { 196, 184, 170 }, Row = { 172, 158, 144 }, Input = { 228, 216, 204 }, Accent = { 70, 52, 58 }, Ink = { 70, 54, 56 }, Cream = { 244, 232, 222 }, Line = { 150, 134, 124 }, Team = { 150, 90, 100 } },
     Moss = { Paper = { 198, 202, 176 }, Row = { 172, 178, 148 }, Input = { 224, 230, 200 }, Accent = { 46, 60, 44 }, Ink = { 52, 64, 48 }, Cream = { 236, 242, 218 }, Line = { 146, 154, 124 }, Team = { 90, 130, 80 } },
-    Rose = { Paper = { 222, 200, 196 }, Row = { 200, 172, 170 }, Input = { 244, 226, 222 }, Accent = { 92, 48, 56 }, Ink = { 86, 52, 58 }, Cream = { 250, 236, 232 }, Line = { 176, 148, 148 }, Team = { 170, 80, 100 } },
+    Gold = { Paper = { 222, 205, 158 }, Row = { 204, 181, 123 }, Input = { 244, 232, 194 }, Accent = { 132, 91, 20 }, Ink = { 86, 62, 24 }, Cream = { 255, 247, 215 }, Line = { 184, 151, 79 }, Team = { 218, 165, 32 } },
     Slate = { Paper = { 190, 196, 200 }, Row = { 164, 172, 178 }, Input = { 218, 224, 228 }, Accent = { 44, 52, 60 }, Ink = { 48, 56, 64 }, Cream = { 232, 238, 242 }, Line = { 140, 148, 154 }, Team = { 70, 110, 150 } },
-    Night = { Paper = { 52, 50, 44 }, Row = { 70, 68, 60 }, Input = { 34, 33, 29 }, Accent = { 24, 23, 20 }, Ink = { 222, 216, 192 }, Cream = { 236, 230, 206 }, Line = { 96, 92, 80 }, Team = { 150, 140, 100 } },
-    Ocean = { Paper = { 184, 200, 208 }, Row = { 154, 174, 184 }, Input = { 214, 228, 234 }, Accent = { 34, 58, 74 }, Ink = { 38, 60, 74 }, Cream = { 226, 240, 246 }, Line = { 130, 154, 166 }, Team = { 60, 120, 160 } },
-    Sakura = { Paper = { 236, 214, 218 }, Row = { 214, 184, 192 }, Input = { 250, 236, 240 }, Accent = { 120, 60, 84 }, Ink = { 104, 56, 72 }, Cream = { 255, 240, 244 }, Line = { 196, 162, 172 }, Team = { 210, 110, 140 } },
-    Ember = { Paper = { 206, 182, 160 }, Row = { 184, 154, 128 }, Input = { 230, 210, 190 }, Accent = { 96, 42, 28 }, Ink = { 88, 46, 32 }, Cream = { 250, 232, 214 }, Line = { 160, 130, 108 }, Team = { 196, 92, 52 } },
-    Lavender = { Paper = { 206, 200, 222 }, Row = { 182, 174, 204 }, Input = { 232, 228, 244 }, Accent = { 62, 50, 94 }, Ink = { 62, 52, 92 }, Cream = { 240, 236, 252 }, Line = { 160, 152, 184 }, Team = { 130, 100, 190 } },
-    Sand = { Paper = { 222, 208, 176 }, Row = { 200, 184, 148 }, Input = { 240, 230, 204 }, Accent = { 104, 82, 40 }, Ink = { 92, 74, 40 }, Cream = { 255, 246, 218 }, Line = { 178, 162, 124 }, Team = { 190, 150, 70 } },
-    Mint = { Paper = { 200, 222, 212 }, Row = { 170, 200, 186 }, Input = { 226, 244, 236 }, Accent = { 34, 76, 62 }, Ink = { 38, 70, 58 }, Cream = { 232, 250, 242 }, Line = { 142, 176, 160 }, Team = { 70, 170, 130 } },
-    Forest = { Paper = { 40, 52, 44 }, Row = { 58, 74, 62 }, Input = { 26, 34, 28 }, Accent = { 18, 26, 20 }, Ink = { 200, 222, 200 }, Cream = { 226, 244, 226 }, Line = { 84, 104, 88 }, Team = { 110, 160, 110 } },
-    Midnight = { Paper = { 34, 40, 56 }, Row = { 50, 58, 80 }, Input = { 22, 26, 38 }, Accent = { 16, 20, 32 }, Ink = { 198, 208, 234 }, Cream = { 222, 230, 250 }, Line = { 76, 86, 116 }, Team = { 100, 130, 210 } },
-    Crimson = { Paper = { 56, 34, 38 }, Row = { 78, 48, 54 }, Input = { 36, 22, 24 }, Accent = { 30, 14, 18 }, Ink = { 236, 206, 208 }, Cream = { 250, 226, 228 }, Line = { 108, 70, 76 }, Team = { 200, 70, 80 } },
-    Mono = { Paper = { 44, 44, 46 }, Row = { 64, 64, 67 }, Input = { 28, 28, 30 }, Accent = { 16, 16, 18 }, Ink = { 220, 220, 224 }, Cream = { 240, 240, 244 }, Line = { 92, 92, 96 }, Team = { 160, 160, 170 } },
-    Cyberpunk = { Paper = { 24, 18, 34 }, Row = { 46, 28, 58 }, Input = { 17, 14, 27 }, Accent = { 255, 45, 149 }, Ink = { 246, 222, 246 }, Cream = { 255, 242, 252 }, Line = { 114, 48, 112 }, Team = { 0, 245, 255 } },
-    NeonViolet = { Paper = { 25, 20, 48 }, Row = { 47, 34, 83 }, Input = { 17, 14, 36 }, Accent = { 154, 83, 255 }, Ink = { 232, 222, 255 }, Cream = { 248, 242, 255 }, Line = { 91, 68, 155 }, Team = { 58, 232, 255 } },
-    Arctic = { Paper = { 210, 231, 244 }, Row = { 177, 211, 232 }, Input = { 235, 247, 255 }, Accent = { 0, 116, 194 }, Ink = { 23, 55, 78 }, Cream = { 248, 253, 255 }, Line = { 105, 164, 198 }, Team = { 0, 166, 220 } },
-    Toxic = { Paper = { 20, 29, 22 }, Row = { 37, 55, 39 }, Input = { 12, 20, 14 }, Accent = { 157, 255, 46 }, Ink = { 218, 255, 202 }, Cream = { 243, 255, 231 }, Line = { 72, 122, 58 }, Team = { 0, 255, 148 } },
-    RoyalGold = { Paper = { 23, 29, 48 }, Row = { 39, 49, 76 }, Input = { 15, 20, 35 }, Accent = { 229, 183, 68 }, Ink = { 239, 231, 208 }, Cream = { 255, 248, 222 }, Line = { 115, 99, 69 }, Team = { 255, 211, 92 } },
-    Synthwave = { Paper = { 38, 18, 53 }, Row = { 62, 31, 83 }, Input = { 24, 12, 38 }, Accent = { 255, 70, 190 }, Ink = { 250, 222, 250 }, Cream = { 255, 242, 255 }, Line = { 129, 57, 139 }, Team = { 63, 247, 224 } },
-    Cobalt = { Paper = { 15, 27, 53 }, Row = { 27, 48, 86 }, Input = { 9, 17, 37 }, Accent = { 50, 128, 255 }, Ink = { 218, 234, 255 }, Cream = { 241, 248, 255 }, Line = { 62, 101, 172 }, Team = { 74, 221, 255 } },
-    Inferno = { Paper = { 37, 19, 17 }, Row = { 64, 31, 24 }, Input = { 22, 12, 11 }, Accent = { 255, 100, 36 }, Ink = { 255, 223, 200 }, Cream = { 255, 244, 229 }, Line = { 139, 67, 42 }, Team = { 255, 47, 61 } },
-    Aurora = { Paper = { 15, 38, 41 }, Row = { 25, 60, 61 }, Input = { 9, 25, 29 }, Accent = { 63, 242, 190 }, Ink = { 211, 255, 239 }, Cream = { 240, 255, 249 }, Line = { 63, 130, 123 }, Team = { 102, 181, 255 } },
-    Voltage = { Paper = { 20, 22, 27 }, Row = { 39, 43, 52 }, Input = { 12, 14, 19 }, Accent = { 255, 230, 45 }, Ink = { 241, 244, 250 }, Cream = { 255, 252, 225 }, Line = { 95, 100, 111 }, Team = { 255, 54, 109 } },
+    Halloween = { Paper = { 28, 20, 32 }, Row = { 48, 30, 48 }, Input = { 18, 13, 23 }, Accent = { 255, 112, 28 }, Ink = { 245, 221, 255 }, Cream = { 255, 239, 214 }, Line = { 112, 62, 102 }, Team = { 173, 255, 66 } },
 }
-local PresetOrder = { "Paper", "Dusk", "Moss", "Rose", "Slate", "Night", "Ocean", "Sakura", "Ember", "Lavender", "Sand", "Mint", "Forest", "Midnight", "Crimson", "Mono", "Cyberpunk", "NeonViolet", "Arctic", "Toxic", "RoyalGold", "Synthwave", "Cobalt", "Inferno", "Aurora", "Voltage" }
+local PresetOrder = { "Paper", "Dusk", "Moss", "Gold", "Slate", "Halloween" }
 Library.Presets = Presets
 
 local FontPresets = {}
@@ -918,7 +898,8 @@ local StripVariants = {
     Slash = { n = 7, angle = 24, barW = 0.3, dynamicPad = true },
     Pinstripe = { n = 16, angle = 0, barW = 0.095, step = 0.012, dynamicPad = true },
     ["Reverse Slash"] = { n = 8, angle = -27, barW = 0.27, dynamicPad = true },
-    Crosscut = { n = 10, angle = 27, alternateAngle = -27, barW = 0.23, step = 0.015, dynamicPad = true },
+    -- Wider, denser alternating diagonals prevent gaps on tall and narrow windows.
+    Crosscut = { n = 22, angle = 35, alternateAngle = -35, barW = 1.08, step = 0.010, dynamicPad = true },
 }
 
 local function flushPendingThemeAction()
@@ -945,7 +926,13 @@ local function buildStrips(W, H, collapsed, variant)
 
     local x0, x1
     if variant.dynamicPad then
-        local pad = 0.5 * H * math.abs(math.tan(math.rad(variant.angle))) + 0.1 * W
+        local maxAngle = math.max(math.abs(variant.angle or 0), math.abs(variant.alternateAngle or 0))
+        local angleRad = math.rad(maxAngle)
+        -- Use the rotated rectangle's horizontal bounds (bar height is 1.8 * H).
+        -- The extra margin keeps angled strips extending beyond every window edge.
+        local pad = 0.9 * H * math.abs(math.sin(angleRad))
+            + 0.5 * W * (variant.barW or 0) * math.abs(math.cos(angleRad))
+            + 0.16 * W
         x0, x1 = -pad, W + pad
     else
         x0, x1 = -0.08 * W, 1.12 * W
