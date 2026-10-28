@@ -3762,7 +3762,7 @@ end
 --   select -> tab_toggle_select.ogg  (tab switch / button / dropdown pick)
 --   toggleOn  -> toggle_on.ogg       (CreateToggle switched ON,  rising two-note ping)
 --   toggleOff -> toggle_off.ogg      (CreateToggle switched OFF, falling two-note ping)
---   slider -> slider_hover_tick.ogg  (CreateSlider drag: cached tick voices, pitch follows the value)
+--   slider -> slider_video_tick.ogg  (CreateSlider drag: video-matched tick, preloaded voices, pitch follows the value)
 --   notify -> notify.ogg             (window:Notify(...) toast; the automatic start-up hint stays silent)
 --
 -- The .ogg files are embedded below (base64). On first run they are written to
@@ -3783,7 +3783,7 @@ do
     local SFX_FOLDER = "NIER_UI_Sounds"
     -- Bump this when the embedded sounds change: on the next run every .ogg in the folder is
     -- rewritten once, so old files left by a previous version can't shadow the new sounds.
-    local SFX_VERSION = "3"
+    local SFX_VERSION = "4"
 
     -- gain: per-sound loudness multiplier, gap: minimum seconds between two plays
     local Sfx = {
@@ -3794,7 +3794,7 @@ do
         toggleOn  = { file = "toggle_on.ogg",  gain = 0.9, gap = 0.04 },
         toggleOff = { file = "toggle_off.ogg", gain = 0.9, gap = 0.04 },
         notify    = { file = "notify.ogg",     gain = 0.9, gap = 0.20 },
-        slider    = { file = "slider_tick.ogg", gain = 0.8, gap = 0.045 },
+        slider    = { file = "slider_video_tick.ogg", gain = 1.0, gap = 0.045 },
     }
     local SfxData = {}
 
@@ -5455,7 +5455,7 @@ AAAAAAAAAAAAQNu4fg4AALinUysAAPz1I5WhAADoR2z+PAEAgDMoAAD6vRMAPpbc/GhfMYXwO47c0mEs
 BKQAAAAAAAAAAAAAAAAAAADW+e/vJQAATE9++vPlAABAGytmYACuAQBgfvXbVzMADg==
 ]==]
 
-    -- slider_tick.ogg -> replaced by hover_tick.ogg (embedded below)
+    -- slider_video_tick.ogg: exact short tick sample verified against the provided demo video
     SfxData.slider = [==[
 T2dnUwACAAAAAAAAAABvg0ZWAAAAAFPI+AUBHgF2b3JiaXMAAAAAAkSsAAAAAAAAAGsDAAAAAAC4AU9nZ1MAAAAAAAAAAAAAb4NGVgEAAACW
 x6NUEED//////////////////3EDdm9yYmlzDQAAAExhdmY2MC4xNi4xMDABAAAAHwAAAGVuY29kZXI9TGF2YzYwLjMxLjEwMiBsaWJ2b3Ji
@@ -5547,8 +5547,8 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
 1BUMYoCJbgYTzno4pdFHUAAAMWFTEFu0oqKCOuq6cGlUjRUABOgC6KpYK1aiYh11Xbh04bKO09hSQUUBQAyQbOuopq6iFAx09UO3C2jdCOjG
 0Q8tjj5UYPT7YDRb3iEAwAVat4bWBaPfurHfD7rd0Q9Nv3WNQF8XQOvq66JPN6J1IwA=
 ]==]
-    -- new file name, so an old slider_tick.ogg left in NIER_UI_Sounds can never shadow the new sound
-    Sfx.slider.file = "slider_hover_tick.ogg"
+    -- Dedicated filename prevents an older slider cache from shadowing this video-matched sample.
+    Sfx.slider.file = "slider_video_tick.ogg"
 
     -- ---------------------------------------------------------------- fast playback (voice pool + preload)
     -- Every sound gets a few ready-made Sound objects ("voices"). They are created ONCE while the
@@ -5651,10 +5651,10 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
 
     -- ---------------------------------------------------------------- pre-load (must stay LAST)
     -- Build + pre-load every sound in the background so the first play is instant.
-    -- This has to run after all SfxData.* assignments above: task.spawn runs immediately,
-    -- so placing it earlier would create the first sound ("open") with no data.
+    -- Slider is first so its voices start loading immediately. This must stay after all
+    -- SfxData.* assignments: task.spawn runs immediately and would otherwise see no data.
     task.spawn(function()
-        for _, name in ipairs({ "open", "close", "slider", "hover", "select", "toggleOn", "toggleOff", "notify" }) do
+        for _, name in ipairs({ "slider", "open", "close", "hover", "select", "toggleOn", "toggleOff", "notify" }) do
             local pool = buildPool(name)
             if pool then
                 task.spawn(function()
