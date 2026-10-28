@@ -310,18 +310,20 @@ function Library:CreateWindow(WindowName, Config)
     end
     local StripAnim = Config.StripAnimation ~= false
 
-    -- Page Transition Style: Classic + 3 new styles
+    -- Page Transition Style: Pop + 3 other styles
+    --   Pop        : the page scales up from its center with a soft Back overshoot while rows fade in
     --   Cascade    : rows fade in one after another while the page slides in from the left
-    --   Glitch     : page jitters in and the text scrambles (like Classic, but with a glitch shake)
+    --   Glitch     : page jitters in and the text scrambles with a glitch shake
     --   Slide Left : the whole page slides in from the right while rows fade in
-    local PageAnimationOrder = { "Classic", "Cascade", "Glitch", "Slide Left" }
+    local PageAnimationOrder = { "Pop", "Cascade", "Glitch", "Slide Left" }
 
-    -- Window Open / Close Style:
-    --   Pop           : the window scales up from the center with a soft fade (default)
+    -- Window Open / Close Style: all options use the same strip-wipe animation family.
     --   Shutter       : straight vertical bars with a centered collapse
+    --   Slash         : wide diagonal bars angled upward
     --   Pinstripe     : thin vertical bars with a quicker stagger
+    --   Reverse Slash : wide diagonal bars angled in the opposite direction
     --   Crosscut      : alternating diagonal bars for a crossed-strip effect
-    local OpenCloseAnimationOrder = { "Pop", "Shutter", "Pinstripe", "Crosscut" }
+    local OpenCloseAnimationOrder = { "Classic", "Shutter", "Pinstripe", "Crosscut" }
 
     local function containsOption(options, value)
         for _, option in ipairs(options) do
@@ -329,8 +331,8 @@ function Library:CreateWindow(WindowName, Config)
         end
         return false
     end
-    local PageAnimation = "Classic"
-    local OpenCloseAnimation = "Pop"
+    local PageAnimation = "Pop"
+    local OpenCloseAnimation = "Classic"
     StripAnim = true
     local CurrentPreset = (type(Config.Theme) == "string" and Presets[Config.Theme]) and Config.Theme or "Paper"
     local BorderEnabled = Config.BorderEnabled ~= false
@@ -891,10 +893,8 @@ local runThemeTransition
 --   fixedR          : collapse each strip to this height (0..1) instead of a random one
 --   step            : seconds between strips (sequential). Without it the timing is random
 --   dynamicPad      : widen the strip range so angled strips still cover the whole window
--- Internal only (used by the theme-change transition, not selectable as a window style).
-local ThemeStripVariant = { n = 9, angle = -13, barW = 0.22 }
-
 local StripVariants = {
+    Classic = { n = 9, angle = -13, barW = 0.22 },
     Shutter = { n = 12, angle = 0, barW = 0.2, fixedR = 0.5, step = 0.018, dynamicPad = true },
     Slash = { n = 7, angle = 24, barW = 0.3, dynamicPad = true },
     Pinstripe = { n = 16, angle = 0, barW = 0.095, step = 0.012, dynamicPad = true },
@@ -916,7 +916,7 @@ local function flushPendingThemeAction()
 end
 
 local function buildStrips(W, H, collapsed, variant)
-    variant = variant or ThemeStripVariant
+    variant = variant or StripVariants.Classic
     local n = variant.n
 
     for _, child in ipairs(stripHost:GetChildren()) do
@@ -938,6 +938,15 @@ local function buildStrips(W, H, collapsed, variant)
     else
         x0, x1 = -0.08 * W, 1.12 * W
     end
+
+    -- Make neighbouring strips always overlap (no hairline gaps), like Classic does.
+    local spacing = (x1 - x0) / math.max(n - 1, 1)
+    local barWidth = W * variant.barW
+    if not variant.alternateAngle then
+        barWidth = math.max(barWidth, spacing * math.cos(math.rad(variant.angle or 0)) * 1.45)
+    end
+    -- Keep the sequential delay spread inside Classic's 0..0.22s window.
+    local stepDelay = variant.step and math.min(variant.step, 0.22 / math.max(n - 1, 1)) or nil
 
     local list = {}
     for i = 1, n do
@@ -964,7 +973,7 @@ local function buildStrips(W, H, collapsed, variant)
         BorderSizePixel = 0,
         ZIndex = 60,
         Position = UDim2.fromOffset(xc, H / 2 - (collapsed and r * H or 0)),
-        Size = UDim2.fromOffset(W * variant.barW, H * 1.8),
+        Size = UDim2.fromOffset(barWidth, H * 1.8),
         Rotation = stripAngle,
         BackgroundColor3 = Theme.Paper,
         BackgroundTransparency = collapsed and 0 or 1,
@@ -974,7 +983,7 @@ local stroke = new("UIStroke", {
     Color = Theme.Line,
     Transparency = collapsed and 0.4 or 1,
 }, bar)
-local delay = variant.step and ((i - 1) * variant.step) or rng:NextNumber(0, 0.22)
+local delay = stepDelay and ((i - 1) * stepDelay) or rng:NextNumber(0, 0.22)
 list[i] = { band = band, bar = bar, stroke = stroke, r = r, xc = xc, delay = delay }
 end
 return list
@@ -994,6 +1003,12 @@ local function playStrips(opening, variant)
     for _, s in ipairs(list) do
         maxDelay = math.max(maxDelay, s.delay)
     end
+    -- Total fade / cover spread is fixed (same as Classic's 9 strips), so styles with
+    -- more strips are not slower or choppier.
+    local fadeSpread = 0.315
+    local coverSpread = 0.27
+    local fadeStep = fadeSpread / math.max(#list, 1)
+    local coverStep = coverSpread / math.max(#list, 1)
 
     local function finish()
         stripHost.Visible = false
@@ -1018,23 +1033,23 @@ local function playStrips(opening, variant)
         task.delay(maxDelay + 0.33, function()
             main.Visible = true
             for i, s in ipairs(list) do
-                task.delay((i - 1) * 0.035, function()
+                task.delay((i - 1) * fadeStep, function()
                     TweenService:Create(s.bar, fade, { BackgroundTransparency = 1 }):Play()
                     TweenService:Create(s.stroke, fade, { Transparency = 1 }):Play()
                 end)
             end
-            task.delay(#list * 0.035 + 0.36, finish)
+            task.delay(fadeSpread + 0.36, finish)
         end)
     else
 
         for i, s in ipairs(list) do
-            task.delay((#list - i) * 0.03, function()
+            task.delay((#list - i) * coverStep, function()
                 TweenService:Create(s.bar, quick, { BackgroundTransparency = 0 }):Play()
                 TweenService:Create(s.stroke, quick, { Transparency = 0.4 }):Play()
             end)
         end
 
-        task.delay(#list * 0.03 + 0.24, function()
+        task.delay(coverSpread + 0.24, function()
             main.Visible = false
             for _, s in ipairs(list) do
                 task.delay(s.delay, function()
@@ -1049,6 +1064,10 @@ end
 
 local function offsetUDim2(position, dx, dy)
     return UDim2.new(position.X.Scale, position.X.Offset + dx, position.Y.Scale, position.Y.Offset + dy)
+end
+
+local function scaleUDim2(size, factor)
+    return UDim2.new(size.X.Scale * factor, size.X.Offset * factor, size.Y.Scale * factor, size.Y.Offset * factor)
 end
 
 local function collectTransparencyTargets(root)
@@ -1081,6 +1100,11 @@ local function collectTransparencyTargets(root)
             end
         end
     end
+    table.sort(targets, function(a, b)
+        local ay = a.instance:IsA("GuiObject") and a.instance.AbsolutePosition.Y or 0
+        local by = b.instance:IsA("GuiObject") and b.instance.AbsolutePosition.Y or 0
+        return ay < by
+    end)
     return targets
 end
 
@@ -1092,71 +1116,113 @@ local function restoreTransparencyTargets(targets)
     end
 end
 
-local POP_START_SCALE = 0.86
-
--- Pop open / close.
--- Animates a UIScale (and a matching Position shift so it scales around the center)
--- instead of tweening Size, so no layout is recalculated on every frame.
 local function playWindowStyle(shouldOpen, style)
-    if style == "None" or not mainUIScale then
+    if style == "None" then
         main.Visible = shouldOpen
         return
     end
 
     animating = true
-    local baseScale = OverallScalePercent / 100
     local basePosition = main.Position
-    local startScale = baseScale * POP_START_SCALE
-    local visW = main.AbsoluteSize.X > 1 and main.AbsoluteSize.X or main.Size.X.Offset * baseScale
-    local visH = main.AbsoluteSize.Y > 1 and main.AbsoluteSize.Y or main.Size.Y.Offset * baseScale
-    local smallPosition = offsetUDim2(basePosition, visW * (1 - POP_START_SCALE) / 2, visH * (1 - POP_START_SCALE) / 2)
+    local baseSize = main.Size
+    local width = math.max(main.AbsoluteSize.X, baseSize.X.Offset, 1)
+    local height = math.max(main.AbsoluteSize.Y, baseSize.Y.Offset, 1)
+    local duration = (style == "Glitch" and 0.34) or (style == "Pop" and 0.38) or 0.30
+    local motionPosition = basePosition
+    local motionSize = baseSize
 
-    local targets = collectTransparencyTargets(main)
-
-    local function settle()
-        if main.Parent then
-            mainUIScale.Scale = OverallScalePercent / 100
-            main.Position = basePosition
-        end
-        animating = false
-        flushPendingThemeAction()
+    if style == "Slide Left" then
+        motionPosition = offsetUDim2(basePosition, -width * 0.88, 0)
+    elseif style == "Slide Right" then
+        motionPosition = offsetUDim2(basePosition, width * 0.88, 0)
+    elseif style == "Slide Up" then
+        motionPosition = offsetUDim2(basePosition, 0, -height * 0.88)
+    elseif style == "Slide Down" then
+        motionPosition = offsetUDim2(basePosition, 0, height * 0.88)
+    elseif style == "Glitch" then
+        motionPosition = offsetUDim2(basePosition, -18, 3)
+    elseif style == "Zoom" or style == "Pop" then
+        local factor = style == "Pop" and 0.78 or 0.88
+        motionSize = scaleUDim2(baseSize, factor)
+        motionPosition = offsetUDim2(basePosition, width * (1 - factor) / 2, height * (1 - factor) / 2)
     end
 
+    local transparencyTargets = collectTransparencyTargets(main)
     if shouldOpen then
-        mainUIScale.Scale = startScale
-        main.Position = smallPosition
-        for _, t in ipairs(targets) do
-            pcall(function() t.instance[t.property] = 1 end)
-        end
         main.Visible = true
-
-        local moveInfo = TweenInfo.new(0.34, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0)
-        local fadeInfo = TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        TweenService:Create(mainUIScale, moveInfo, { Scale = baseScale }):Play()
-        TweenService:Create(main, moveInfo, { Position = basePosition }):Play()
-        for _, t in ipairs(targets) do
-            if t.instance and t.instance.Parent then
-                TweenService:Create(t.instance, fadeInfo, { [t.property] = t.value }):Play()
+        main.Position = (style == "Fade") and basePosition or motionPosition
+        main.Size = (style == "Zoom" or style == "Pop") and motionSize or baseSize
+        for _, target in ipairs(transparencyTargets) do
+            if target.instance and target.instance.Parent then
+                pcall(function() target.instance[target.property] = 1 end)
             end
         end
-        task.delay(0.36, function()
-            restoreTransparencyTargets(targets)
-            settle()
+
+        local easingStyle = style == "Pop" and Enum.EasingStyle.Back or (style == "Zoom" and Enum.EasingStyle.Quint or Enum.EasingStyle.Quart)
+        local info = TweenInfo.new(duration, easingStyle, Enum.EasingDirection.Out)
+        local motion = TweenService:Create(main, info, { Position = basePosition, Size = baseSize })
+        motion:Play()
+        for index, target in ipairs(transparencyTargets) do
+            if target.instance and target.instance.Parent then
+                local fadeInfo = TweenInfo.new(style == "Glitch" and 0.18 or duration * 0.86, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                local tween = TweenService:Create(target.instance, fadeInfo, { [target.property] = target.value })
+                if style == "Glitch" then
+                    task.delay((index - 1) % 4 * 0.018, function()
+                        if animating and target.instance and target.instance.Parent then tween:Play() end
+                    end)
+                else
+                    tween:Play()
+                end
+            end
+        end
+        if style == "Glitch" then
+            task.delay(0.05, function()
+                if animating and main.Parent then
+                    TweenService:Create(main, TweenInfo.new(0.07, Enum.EasingStyle.Linear), { Position = offsetUDim2(basePosition, 10, -2) }):Play()
+                end
+            end)
+            task.delay(0.13, function()
+                if animating and main.Parent then
+                    TweenService:Create(main, TweenInfo.new(0.09, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = basePosition }):Play()
+                end
+            end)
+        end
+        task.delay(duration + 0.08, function()
+            if main.Parent then
+                main.Position = basePosition
+                main.Size = baseSize
+            end
+            animating = false
+            flushPendingThemeAction()
         end)
     else
-        local moveInfo = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-        local fadeInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-        TweenService:Create(mainUIScale, moveInfo, { Scale = startScale }):Play()
-        TweenService:Create(main, moveInfo, { Position = smallPosition }):Play()
-        for _, t in ipairs(targets) do
-            if t.instance and t.instance.Parent then
-                TweenService:Create(t.instance, fadeInfo, { [t.property] = 1 }):Play()
+        local outPosition = (style == "Fade") and basePosition or motionPosition
+        local outSize = (style == "Zoom" or style == "Pop") and motionSize or baseSize
+        local easingStyle = style == "Pop" and Enum.EasingStyle.Back or Enum.EasingStyle.Quad
+        local info = TweenInfo.new(duration * 0.82, easingStyle, Enum.EasingDirection.In)
+        local motion = TweenService:Create(main, info, { Position = outPosition, Size = outSize })
+        motion:Play()
+        for _, target in ipairs(transparencyTargets) do
+            if target.instance and target.instance.Parent then
+                TweenService:Create(target.instance, TweenInfo.new(duration * 0.75, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { [target.property] = 1 }):Play()
             end
         end
-        task.delay(0.24, function()
-            main.Visible = false
-            restoreTransparencyTargets(targets)
-            settle()
+        if style == "Glitch" then
+            task.delay(0.08, function()
+                if animating and main.Parent then
+                    TweenService:Create(main, TweenInfo.new(0.06, Enum.EasingStyle.Linear), { Position = offsetUDim2(basePosition, 12, -2) }):Play()
+                end
+            end)
+        end
+        task.delay(duration + 0.02, function()
+            if main.Parent then
+                main.Visible = false
+                main.Position = basePosition
+                main.Size = baseSize
+                restoreTransparencyTargets(transparencyTargets)
+            end
+            animating = false
+            flushPendingThemeAction()
         end)
     end
 end
@@ -1663,6 +1729,8 @@ local function cancelPageAnimation(page)
     pageAnimationStates[page] = nil
 end
 
+local PAGE_POP_SCALE = 0.86
+
 local function AnimatePageIn(page)
     if not page then return end
     cancelPageAnimation(page)
@@ -1673,7 +1741,7 @@ local function AnimatePageIn(page)
         page:SetAttribute("BasePosition", basePos)
     end
 
-    if PageAnimation ~= "Cipher" and PageAnimation ~= "Classic" then
+    do
         local style = PageAnimation
         page.Position = basePos
         if style == "None" then
@@ -1695,6 +1763,9 @@ local function AnimatePageIn(page)
             startPosition = offsetUDim2(basePos, -width * 0.05, 0)
         elseif style == "Glitch" then
             startPosition = offsetUDim2(basePos, -14, 2)
+        elseif style == "Pop" then
+            local ui = (mainUIScale and mainUIScale.Scale) or 1
+            startPosition = offsetUDim2(basePos, (width / ui) * (1 - PAGE_POP_SCALE) / 2, (height / ui) * (1 - PAGE_POP_SCALE) / 2)
         end
 
         local state = { tweens = {}, originals = {}, cancelled = false, basePosition = basePos, textEntries = {} }
@@ -1703,7 +1774,7 @@ local function AnimatePageIn(page)
         if style == "Zoom" or style == "Pop" then
             local scaleObject = Instance.new("UIScale")
             scaleObject.Name = "NierPageTransitionScale"
-            scaleObject.Scale = style == "Pop" and 0.78 or 0.90
+            scaleObject.Scale = style == "Pop" and PAGE_POP_SCALE or 0.90
             scaleObject.Parent = page
             state.scaleObject = scaleObject
             scaleTween = TweenService:Create(scaleObject, TweenInfo.new(0.30, style == "Pop" and Enum.EasingStyle.Back or Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Scale = 1 })
@@ -1806,112 +1877,6 @@ local function AnimatePageIn(page)
         end)
         return
     end
-
-    page.Position = UDim2.new(basePos.X.Scale, basePos.X.Offset, basePos.Y.Scale, basePos.Y.Offset + 10)
-    local pageSlideTween = TweenService:Create(
-    page,
-    TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-    { Position = basePos }
-    )
-
-    local items = {}
-    for _, child in ipairs(page:GetChildren()) do
-        if child:IsA("GuiObject") then
-            table.insert(items, child)
-        end
-    end
-    table.sort(items, function(a, b)
-        if a.LayoutOrder == b.LayoutOrder then
-            return a.AbsolutePosition.Y < b.AbsolutePosition.Y
-        end
-        return a.LayoutOrder < b.LayoutOrder
-    end)
-
-    local state = { tweens = { pageSlideTween }, originals = {}, cancelled = false, basePosition = basePos }
-    pageAnimationStates[page] = state
-    pageSlideTween:Play()
-    local itemTargets = {}
-    local itemTextTargets = {}
-
-    for _, item in ipairs(items) do
-        local targets = {}
-        local textTargets = {}
-        local objects = { item }
-        for _, descendant in ipairs(item:GetDescendants()) do
-            table.insert(objects, descendant)
-        end
-        for _, object in ipairs(objects) do
-            local canFade = (object:IsA("GuiObject") and object.Visible)
-            or (object:IsA("UIStroke") and object.Enabled)
-            if canFade then
-                local properties = getFadeProperties(object)
-                for property, originalValue in pairs(properties) do
-                    if type(originalValue) == "number" and originalValue < 0.999 then
-                        local target = {
-                            instance = object,
-                            property = property,
-                            value = originalValue,
-                        }
-                    table.insert(state.originals, target)
-                    table.insert(targets, target)
-                    pcall(function()
-                        object[property] = 1
-                    end)
-                end
-            end
-        end
-
-        if (object:IsA("TextLabel") or object:IsA("TextButton"))
-        and object.Visible
-        and object.Text ~= ""
-        and not object.RichText then
-            table.insert(textTargets, {
-                instance = object,
-                target = object.Text,
-                lastRendered = nil,
-            })
-    end
-end
-table.insert(itemTargets, targets)
-table.insert(itemTextTargets, textTargets)
-end
-
-state.textEntries = {}
-for _, entries in ipairs(itemTextTargets) do
-    for _, entry in ipairs(entries) do
-        table.insert(state.textEntries, entry)
-    end
-end
-
-local stagger = 0.035
-local fadeInfo = TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-for index, item in ipairs(items) do
-    local targets = itemTargets[index]
-    local textTargets = itemTextTargets[index]
-    task.delay((index - 1) * stagger, function()
-        if pageAnimationStates[page] ~= state or state.cancelled or not page.Visible then
-            return
-        end
-        for _, target in ipairs(targets) do
-            if target.instance.Parent then
-                local tween = TweenService:Create(target.instance, fadeInfo, {
-                    [target.property] = target.value,
-                })
-            table.insert(state.tweens, tween)
-            tween:Play()
-        end
-    end
-    for _, entry in ipairs(textTargets) do
-        task.spawn(scramblePageText, entry, state, page)
-    end
-end)
-end
-
-task.delay(math.max(#items - 1, 0) * stagger + 0.75, function()
-    if pageAnimationStates[page] == state then
-        pageAnimationStates[page] = nil
-    end
-end)
 end
 
 local WindowElements = {}
