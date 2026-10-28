@@ -164,10 +164,10 @@ local Translations = {
         ToggleButtonScaleLabel = "Toggle Button Size (%)",
         ToggleKeyLabel = "Toggle Key",
         PressKey = "Press a key... (Esc = cancel)",
-        MobileStyleLabel = "Mobile Button Style",
+        MobileStyleLabel = "ui Button",
         SoundVolumeLabel = "Sound Volume (%)",
-        PageAnimationLabel = "Page Transition Style",
-        OpenCloseAnimationLabel = "Window Open / Close Style",
+        PageAnimationLabel = "Page Transition",
+        OpenCloseAnimationLabel = "Window",
     },
 th = {
     PresetHeader = "ธีมสำเร็จรูป",
