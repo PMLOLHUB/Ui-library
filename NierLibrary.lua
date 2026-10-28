@@ -964,77 +964,27 @@ end
 
 local Translations = {
     en = {
-        Settings = "Settings",
         PresetHeader = "Preset Themes",
         PresetLabel = "Choose a Preset Theme",
-        ColorHeader = "Colors",
-        PaperLabel = "Background (Paper)",
-        RowLabel = "Elements (Rows)",
-        InputLabel = "Textbox / Input",
-        AccentLabel = "Accent (Title Bar / Selected Tab)",
-        InkLabel = "Text",
-        CreamLabel = "Text on Accent",
-        LineLabel = "Lines / Border",
-        TeamLabel = "Team Color",
         TransparencyLabel = "Transparency (%)",
         OverallScaleLabel = "Overall UI Scale (%)",
         ToggleButtonScaleLabel = "Toggle Button Size (%)",
         ToggleKeyLabel = "Toggle Key",
         PressKey = "Press a key... (Esc = cancel)",
         MobileStyleLabel = "Mobile Button Style",
-        FontHeader = "Font Settings",
-        FontFamilyLabel = "Font Family",
-        FontSizeLabel = "Font Size (%)",
-        EffectsHeader = "Other Effects",
-        AnimToggle = "Open / Close Strip Animation",
-        BorderToggle = "Show Border",
-        BgImageHeader = "Background Image",
-        BgImageEnable = "Enable Background Image",
-        BgImageLabel = "Image Asset ID",
-        BgImagePlaceholder = "rbxassetid://0000000000",
-        BgImageTransparencyLabel = "Background Image Transparency (%)",
-        LanguageHeader = "Language",
-        LanguageLabel = "Select Language",
-        ManageHeader = "Manage Settings",
-        SaveButton = "Save Settings",
-        ResetButton = "Reset to Default",
+        SoundVolumeLabel = "Sound Volume (%)",
     },
-th = {
-    Settings = "ตั้งค่า",
-    PresetHeader = "ธีมสำเร็จรูป",
-    PresetLabel = "เลือกธีมสำเร็จรูป",
-    ColorHeader = "สี",
-    PaperLabel = "พื้นหลัง (กระดาษ)",
-    RowLabel = "สีแถว (Element)",
-    InputLabel = "สีช่องกรอก (Textbox)",
-    AccentLabel = "สี Accent (แถบหัว / แท็บที่เลือก)",
-    InkLabel = "สีตัวอักษร",
-    CreamLabel = "สีตัวอักษรบน Accent",
-    LineLabel = "สีเส้น / ขอบ",
-    TeamLabel = "สีทีม (Team)",
-    TransparencyLabel = "ความโปร่งแสง (%)",
-    OverallScaleLabel = "ขนาด UI โดยรวม (%)",
-    ToggleButtonScaleLabel = "ขนาดปุ่มเปิด/ปิด (%)",
-    ToggleKeyLabel = "ปุ่มเปิด/ปิด",
-    PressKey = "กดปุ่มบนคีย์บอร์ด... (Esc = ยกเลิก)",
-    MobileStyleLabel = "รูปแบบปุ่มเปิด/ปิด (มือถือ)",
-    FontHeader = "ตั้งค่าฟอนต์",
-    FontFamilyLabel = "รูปแบบฟอนต์",
-    FontSizeLabel = "ขนาดตัวอักษร (%)",
-    EffectsHeader = "เอฟเฟกต์อื่นๆ",
-    AnimToggle = "แอนิเมชันแถบเฉียงตอนเปิด/ปิด",
-    BorderToggle = "แสดงเส้นขอบ (Border)",
-    BgImageHeader = "พื้นหลังรูปภาพ",
-    BgImageEnable = "เปิดใช้งานพื้นหลังรูปภาพ",
-    BgImageLabel = "Asset ID รูปภาพ",
-    BgImagePlaceholder = "rbxassetid://0000000000",
-    BgImageTransparencyLabel = "ความโปร่งแสงของพื้นหลังรูปภาพ (%)",
-    LanguageHeader = "ภาษา",
-    LanguageLabel = "เลือกภาษา",
-    ManageHeader = "จัดการการตั้งค่า",
-    SaveButton = "บันทึกการตั้งค่า",
-    ResetButton = "รีเซ็ตเป็นค่าเริ่มต้น",
-},
+    th = {
+        PresetHeader = "ธีมสำเร็จรูป",
+        PresetLabel = "เลือกธีมสำเร็จรูป",
+        TransparencyLabel = "ความโปร่งแสง (%)",
+        OverallScaleLabel = "ขนาด UI โดยรวม (%)",
+        ToggleButtonScaleLabel = "ขนาดปุ่มเปิด/ปิด (%)",
+        ToggleKeyLabel = "ปุ่มเปิด/ปิด",
+        PressKey = "กดปุ่มบนคีย์บอร์ด... (Esc = ยกเลิก)",
+        MobileStyleLabel = "รูปแบบปุ่มเปิด/ปิด (มือถือ)",
+        SoundVolumeLabel = "ระดับเสียง (%)",
+    },
 }
 
 local Presets = {
@@ -1058,16 +1008,14 @@ local Presets = {
 local PresetOrder = { "Paper", "Dusk", "Moss", "Rose", "Slate", "Night", "Ocean", "Sakura", "Ember", "Lavender", "Sand", "Mint", "Forest", "Midnight", "Crimson", "Mono" }
 Library.Presets = Presets
 
-local FontPresets, FontPresetOrder = {}, {}
+local FontPresets = {}
 for _, fontEnum in ipairs(Enum.Font:GetEnumItems()) do
     local name = fontEnum.Name
     local okBold, boldEnum = pcall(function()
         return Enum.Font[name .. "Bold"]
     end)
     FontPresets[name] = { Regular = fontEnum, Bold = (okBold and boldEnum) or fontEnum }
-    table.insert(FontPresetOrder, name)
 end
-table.sort(FontPresetOrder)
 
 local function new(class, props, parent)
     local inst = Instance.new(class)
@@ -1084,14 +1032,14 @@ local function new(class, props, parent)
     return inst
 end
 
-local function tw(inst, dur, props, style, dir)
+local function tw(inst, dur, props)
     if not dur or dur <= 0 then
         for k, v in pairs(props) do
             inst[k] = v
         end
         return
     end
-    TweenService:Create(inst, TweenInfo.new(dur, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props):Play()
+    TweenService:Create(inst, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
 end
 
 local function c3(t)
@@ -1228,13 +1176,13 @@ function Library:CreateWindow(WindowName, Config)
         if savedTheme.BackgroundImage ~= nil then BgImage = savedTheme.BackgroundImage end
         if savedTheme.BackgroundImageTransparency ~= nil then BgImageTransparency = savedTheme.BackgroundImageTransparency end
         if savedTheme.BackgroundImageEnabled ~= nil then BgImageEnabled = savedTheme.BackgroundImageEnabled end
+        if savedTheme.SoundVolume ~= nil then
+            Library.SoundVolume = math.clamp(tonumber(savedTheme.SoundVolume) or 1, 0, 1)
+        end
     end
     local SavedFlags = savedFlags or {}
-    if SavedFlags["BackgroundImageAssetId"] == nil then
-        SavedFlags["BackgroundImageAssetId"] = BgImage
-    end
 
-    local themed, lookers, fonts, glass = {}, {}, {}, {}
+    local themed, lookers, glass = {}, {}, {}
 
     local function resolve(spec)
         if type(spec) == "function" then
@@ -1273,17 +1221,6 @@ function Library:CreateWindow(WindowName, Config)
     end
     local function bindFont(inst, size, bold)
         applyFont(inst, size, bold)
-        table.insert(fonts, { inst, size, bold })
-    end
-    local function refreshFonts()
-        for i = #fonts, 1, -1 do
-            local f = fonts[i]
-            if f[1].Parent == nil then
-                table.remove(fonts, i)
-            else
-                applyFont(f[1], f[2], f[3])
-            end
-        end
     end
 
     local function bindGlass(inst)
@@ -1421,6 +1358,7 @@ local function persistTheme()
     ThemeSettings.ToggleKey = toggleKey and toggleKey.Name or nil
     ThemeSettings.OverallScalePercent = OverallScalePercent
     ThemeSettings.ToggleButtonScalePercent = ToggleButtonScalePercent
+    ThemeSettings.SoundVolume = Library.SoundVolume
 end
 persistTheme()
 local function save()
@@ -2108,7 +2046,6 @@ local function buildToggleVisual(style)
 
     else
         -- 1 | Classic: solid square
-        style = "Classic"
         toggleBtn.Size = UDim2.fromOffset(44, 44)
         local box = new("Frame", { Size = UDim2.fromScale(1, 1), BorderSizePixel = 0 }, tbVisual)
         bind(box, "BackgroundColor3", "Accent")
@@ -2791,7 +2728,7 @@ local tb = new("TextBox", {
 bindFont(tb, 12, false)
 bind(tb, "TextColor3", "Ink")
 bind(tb, "PlaceholderColor3", dimInk)
-return tb, bg
+return tb
 end
 
 function CategoryElements:CreateLabel(Text, IconName, TextColor)
@@ -2886,7 +2823,6 @@ function CategoryElements:CreateTextbox(TextboxText, IconName, Placeholder, Flag
     local marker, hasIcon = addMarker(row, IconName)
     local lbl = addLabel(row, TextboxText, hasIcon and 32 or 30, 1, 158)
     bind(lbl, "TextColor3", "Ink")
-    marker[hasIcon and "ImageColor3" or "BackgroundColor3"] = Theme.Accent
     if hasIcon then bind(marker, "ImageColor3", "Accent") else bind(marker, "BackgroundColor3", "Accent") end
 
     local tb = inputBox(row, Placeholder, restored or "")
@@ -3714,19 +3650,9 @@ if Config.ShowSettingsTab ~= false then
         OpenSettingsFn = ShowSettingsPanel
         CloseSettingsFn = HideSettingsPanel
 
-        local FontSizePercent = math.floor(FontScale * 100 + 0.5)
         local TransPercent = math.floor(GTrans * 100 + 0.5)
+        local volumeSaveToken = 0
         local BuildSettingsUI
-
-        local function colorChanged(token)
-            return function(color)
-                runThemeTransition(function()
-                    Theme[token] = color
-                    refreshTheme()
-                    persistTheme()
-                end)
-            end
-        end
 
         local function applyPreset(name)
             if not Presets[name] then return end
@@ -3759,6 +3685,19 @@ if Config.ShowSettingsTab ~= false then
                 TransPercent = v
                 setGlass(v / 100)
                 persistTheme()
+            end)
+
+            SettingsTab:CreateSlider(T.SoundVolumeLabel, "lucide-volume-2", 0, 100, math.floor(Library.SoundVolume * 100 + 0.5), function(v)
+                Library:SetSoundVolume(v / 100)
+                persistTheme()
+                -- Wait until dragging pauses before writing the config file.
+                volumeSaveToken += 1
+                local token = volumeSaveToken
+                task.delay(0.5, function()
+                    if token == volumeSaveToken then
+                        save()
+                    end
+                end)
             end)
 
             if isMobile then
