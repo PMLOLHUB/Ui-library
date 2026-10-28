@@ -1075,6 +1075,69 @@ end
 
 function Library:CreateWindow(WindowName, Config)
     Config = Config or {}
+
+    -- Audio startup cover: the actual UI is built behind this screen and revealed
+    -- only after the prioritized sound warm-up has finished (or timed out safely).
+    local audioLoadingGui
+    local function createAudioLoadingScreen()
+        local ok, result = pcall(function()
+            local Players = game:GetService("Players")
+            local player = Players.LocalPlayer
+            local playerGui = player and (player:FindFirstChildOfClass("PlayerGui") or player:WaitForChild("PlayerGui", 8))
+            if not playerGui then return nil end
+            local screen = Instance.new("ScreenGui")
+            screen.Name = "NIER_UI_AudioLoading"
+            screen.IgnoreGuiInset = true
+            screen.ResetOnSpawn = false
+            screen.DisplayOrder = 100000
+            screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+            local bg = Instance.new("Frame")
+            bg.Name = "Background"
+            bg.Size = UDim2.fromScale(1, 1)
+            bg.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
+            bg.BorderSizePixel = 0
+            bg.Parent = screen
+            local title = Instance.new("TextLabel")
+            title.Name = "Title"
+            title.BackgroundTransparency = 1
+            title.AnchorPoint = Vector2.new(0.5, 0.5)
+            title.Position = UDim2.fromScale(0.5, 0.44)
+            title.Size = UDim2.new(0.86, 0, 0, 42)
+            title.Font = Enum.Font.GothamBold
+            title.Text = "NIER UI"
+            title.TextColor3 = Color3.fromRGB(240, 240, 245)
+            title.TextScaled = true
+            title.Parent = bg
+            local status = Instance.new("TextLabel")
+            status.Name = "Status"
+            status.BackgroundTransparency = 1
+            status.AnchorPoint = Vector2.new(0.5, 0.5)
+            status.Position = UDim2.fromScale(0.5, 0.53)
+            status.Size = UDim2.new(0.9, 0, 0, 28)
+            status.Font = Enum.Font.Gotham
+            status.Text = "Loading audio..."
+            status.TextColor3 = Color3.fromRGB(170, 170, 185)
+            status.TextScaled = true
+            status.Parent = bg
+            local hint = Instance.new("TextLabel")
+            hint.Name = "Hint"
+            hint.BackgroundTransparency = 1
+            hint.AnchorPoint = Vector2.new(0.5, 0.5)
+            hint.Position = UDim2.fromScale(0.5, 0.59)
+            hint.Size = UDim2.new(0.9, 0, 0, 22)
+            hint.Font = Enum.Font.Gotham
+            hint.Text = "Please wait"
+            hint.TextColor3 = Color3.fromRGB(115, 115, 130)
+            hint.TextScaled = true
+            hint.Parent = bg
+            screen.Parent = playerGui
+            return screen
+        end)
+        if ok then return result end
+        return nil
+    end
+    audioLoadingGui = createAudioLoadingScreen()
+
     local ToggleConfig = Config.ToggleConfig or {}
     local isFirstTab = true
 
@@ -5756,7 +5819,7 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
             collectUnloaded(buildPool(name), critical)
         end
         if #critical > 0 then
-            task.spawn(preloadBatch, critical)
+            preloadBatch(critical)
         end
 
         task.wait()
@@ -5775,8 +5838,17 @@ xmksYo012u/3++iqkIKamqOui7pFVeM0VgCxRhtwRkMUUQQzNFIwPY3k0IRNG+uwGKfBWcdZAiN0u/pE
             task.wait()
         end
         if #secondary > 0 then
-            task.spawn(preloadBatch, secondary)
+            preloadBatch(secondary)
         end
+
+        -- Keep the loading page up until all sound groups have been attempted.
+        -- Individual assets have bounded waits, so unavailable audio cannot lock the UI forever.
+        task.wait()
+        pcall(function()
+            if audioLoadingGui and audioLoadingGui.Parent then
+                audioLoadingGui:Destroy()
+            end
+        end)
     end)
 end
 
