@@ -3762,7 +3762,7 @@ end
 --   select -> tab_toggle_select.ogg  (tab switch / button / dropdown pick)
 --   toggleOn  -> toggle_on.ogg       (CreateToggle switched ON,  rising two-note ping)
 --   toggleOff -> toggle_off.ogg      (CreateToggle switched OFF, falling two-note ping)
---   slider -> slider_tick.ogg        (CreateSlider drag: a tick on every value change, pitch follows the value)
+--   slider -> slider_hover_tick.ogg  (CreateSlider drag: cached tick voices, pitch follows the value)
 --   notify -> notify.ogg             (window:Notify(...) toast; the automatic start-up hint stays silent)
 --
 -- The .ogg files are embedded below (base64). On first run they are written to
@@ -5455,92 +5455,215 @@ AAAAAAAAAAAAQNu4fg4AALinUysAAPz1I5WhAADoR2z+PAEAgDMoAAD6vRMAPpbc/GhfMYXwO47c0mEs
 BKQAAAAAAAAAAAAAAAAAAADW+e/vJQAATE9++vPlAABAGytmYACuAQBgfvXbVzMADg==
 ]==]
 
-    -- slider_tick.ogg
+    -- slider_tick.ogg -> replaced by hover_tick.ogg (embedded below)
     SfxData.slider = [==[
-T2dnUwACAAAAAAAAAAB0D4NBAAAAAPVPUDIBHgF2b3JiaXMAAAAAAkSsAAAAAAAAAPQBAAAAAAC4AU9nZ1MAAAAAAAAAAAAAdA+D
-QQEAAACukB57EkD/////////////////////PAN2b3JiaXMNAAAATGF2ZjYwLjE2LjEwMAEAAAAfAAAAZW5jb2Rlcj1MYXZjNjAu
-MzEuMTAyIGxpYnZvcmJpcwEFdm9yYmlzKUJDVgEACAAAgCJMGMSA0JBVAAAQAACgrDeWe8i99957gahHFHuIvffee+OsR9B6iLn3
-3nvuvacae8u9995zIDRkFQAABACAKQiacuBC6r33HhnmEVEaKse99x4ZhYkwlBmFPZXaWushk9xC6j3nHggNWQUAAAIAQAghhBRS
-SCGFFFJIIYUUUkgppZhiiimmmGLKKaccc8wxxyCDDjropJNQQgkppFBKKqmklFJKLdZac+69B91z70H4IIQQQgghhBBCCCGEEEII
-QkNWAQAgAAAEQgghZBBCCCGEFFJIIaaYYsopp4DQkFUAACAAgAAAAABJkRTLsRzN0RzN8RzPESVREiXRMi3TUjVTMz1VVEXVVFVX
-VV1dd23Vdm3Vlm3XVm3Vdm3VVm1Ztm3btm3btm3btm3btm3btm0gNGQVACABAKAjOZIjKZIiKZLjOJIEhIasAgBkAAAEAKAoiuM4
-juRIjiVpkmZ5lmeJmqiZmuipngqEhqwCAAABAAQAAAAAAOB4iud4jmd5kud4jmd5mqdpmqZpmqZpmqZpmqZpmqZpmqZpmqZpmqZp
-mqZpmqZpmqZpmqZpmqZpmqZpQGjIKgBAAgBAx3Ecx3Ecx3EcR3IkBwgNWQUAyAAACABAUiTHcixHczTHczxHdETHdEzJlFTJtVwL
-CA1ZBQAAAgAIAAAAAABAEyxFUzzHkzzPEzXP0zTNE01RNE3TNE3TNE3TNE3TNE3TNE3TNE3TNE3TNE3TNE3TNE3TNE3TNE1TFIHQ
-kFUAAAQAACGdZpZqgAgzkGEgNGQVAIAAAAAYoQhDDAgNWQUAAAQAAIih5CCa0JrzzTkOmuWgqRSb08GJVJsnuamYm3POOeecbM4Z
-45xzzinKmcWgmdCac85JDJqloJnQmnPOeRKbB62p0ppzzhnnnA7GGWGcc85p0poHqdlYm3POWdCa5qi5FJtzzomUmye1uVSbc845
-55xzzjnnnHPOqV6czsE54Zxzzonam2u5CV2cc875ZJzuzQnhnHPOOeecc84555xzzglCQ1YBAEAAAARh2BjGnYIgfY4GYhQhpiGT
-HnSPDpOgMcgppB6NjkZKqYNQUhknpXSC0JBVAAAgAACEEFJIIYUUUkghhRRSSCGGGGKIIaeccgoqqKSSiirKKLPMMssss8wyy6zD
-zjrrsMMQQwwxtNJKLDXVVmONteaec645SGultdZaK6WUUkoppSA0ZBUAAAIAQCBkkEEGGYUUUkghhphyyimnoIIKCA1ZBQAAAgAI
-AAAA8CTPER3RER3RER3RER3RER3P8RxREiVREiXRMi1TMz1VVFVXdm1Zl3Xbt4Vd2HXf133f141fF4ZlWZZlWZZlWZZlWZZlWZZl
-CUJDVgEAIAAAAEIIIYQUUkghhZRijDHHnINOQgmB0JBVAAAgAIAAAAAAR3EUx5EcyZEkS7IkTdIszfI0T/M00RNFUTRNUxVd0RV1
-0xZlUzZd0zVl01Vl1XZl2bZlW7d9WbZ93/d93/d93/d93/d939d1IDRkFQAgAQCgIzmSIimSIjmO40iSBISGrAIAZAAABACgKI7i
-OI4jSZIkWZImeZZniZqpmZ7pqaIKhIasAgAAAQAEAAAAAACgaIqnmIqniIrniI4oiZZpiZqquaJsyq7ruq7ruq7ruq7ruq7ruq7r
-uq7ruq7ruq7ruq7ruq7ruq7rukBoyCoAQAIAQEdyJEdyJEVSJEVyJAcIDVkFAMgAAAgAwDEcQ1Ikx7IsTfM0T/M00RM90TM9VXRF
-FwgNWQUAAAIACAAAAAAAwJAMS7EczdEkUVIt1VI11VItVVQ9VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV1TRN0zSB
-0JCVAAAZAADDtOTScs+NoEgqR7XWklHlJMUcGoqgglZzDRU0iEmLIWIKISYxlg46ppzUGlMpGXNUc2whVIhJDTqmUikGLQhCQ1YI
-AKEZAA7HASTLAiRLAwAAAAAAAABJ0wDN8wDL8wAAAAAAAABA0jTA8jRA8zwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACRNAzTPAzTPAwAAAAAAAADN8wBPFAFPFAEAAAAAAADA8jzAEz3A
-E0UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABxNAzTP
-AzTPAwAAAAAAAADL8wBPFAHPEwEAAAAAAABA8zzAE0XAE0UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAABDgAAARZCoSErAoA4AQCHJEGSIEnQ
-NIBkWdA0aBpMEyBZFjQNmgbTBAAAAAAAAAAAAEDyNGgaNA2iCJA0D5oGTYMoAgAAAAAAAAAAACBpGjQNmgZRBEiaBk2DpkEUAQAA
-AAAAAAAAANBME6IIUYRpAjzThChCFGGaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAIABBwCAABPKQKEhKwKAOAEAh6JYFgAAOJJj
-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
-DjCW/O+sX7oADgAAAAAAAAAAAAAAAAAAAA==
+T2dnUwACAAAAAAAAAABvg0ZWAAAAAFPI+AUBHgF2b3JiaXMAAAAAAkSsAAAAAAAAAGsDAAAAAAC4AU9nZ1MAAAAAAAAAAAAAb4NGVgEAAACW
+x6NUEED//////////////////3EDdm9yYmlzDQAAAExhdmY2MC4xNi4xMDABAAAAHwAAAGVuY29kZXI9TGF2YzYwLjMxLjEwMiBsaWJ2b3Ji
+aXMBBXZvcmJpcytCQ1YBAAgAAAAxTCDFgNCQVQAAEAAAYCQpDpNmSSmllKEoeZiUSEkppZTFMImYlInFGGOMMcYYY4wxxhhjjCA0ZBUAAAQA
+gCgJjqPmSWrOOWcYJ45yoDlpTjinIAeKUeA5CcL1JmNuprSma27OKSUIDVkFAAACAEBIIYUUUkghhRRiiCGGGGKIIYcccsghp5xyCiqooIIK
+Msggg0wy6aSTTjrpqKOOOuootNBCCy200kpMMdVWY669Bl18c84555xzzjnnnHPOCUJDVgEAIAAABEIGGWQQQgghhRRSiCmmmHIKMsiA0JBV
+AAAgAIAAAAAAR5EUSbEUy7EczdEkT/IsURM10TNFU1RNVVVVVXVdV3Zl13Z113Z9WZiFW7h9WbiFW9iFXfeFYRiGYRiGYRiGYfh93/d93/d9
+IDRkFQAgAQCgIzmW4ymiIhqi4jmiA4SGrAIAZAAABAAgCZIiKZKjSaZmaq5pm7Zoq7Zty7Isy7IMhIasAgAAAQAEAAAAAACgaZqmaZqmaZqm
+aZqmaZqmaZqmaZpmWZZlWZZlWZZlWZZlWZZlWZZlWZZlWZZlWZZlWZZlWZZlWZZlWUBoyCoAQAIAQMdxHMdxJEVSJMdyLAcIDVkFAMgAAAgA
+QFIsxXI0R3M0x3M8x3M8R3REyZRMzfRMDwgNWQUAAAIACAAAAAAAQDEcxXEcydEkT1It03I1V3M913NN13VdV1VVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVWB0JBVAAAEAAAhnWaWaoAIM5BhIDRkFQCAAAAAGKEIQwwIDVkFAAAEAACIoeQgmtCa8805DprloKkUm9PBiVSb
+J7mpmJtzzjnnnGzOGeOcc84pypnFoJnQmnPOSQyapaCZ0JpzznkSmwetqdKac84Z55wOxhlhnHPOadKaB6nZWJtzzlnQmuaouRSbc86JlJsn
+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
 ]==]
+    -- new file name, so an old slider_tick.ogg left in NIER_UI_Sounds can never shadow the new sound
+    Sfx.slider.file = "slider_hover_tick.ogg"
+
+    -- ---------------------------------------------------------------- fast playback (voice pool + preload)
+    -- Every sound gets a few ready-made Sound objects ("voices"). They are created ONCE while the
+    -- library loads, pre-loaded with ContentProvider, and then reused forever (round-robin).
+    -- Playing a sound = set volume/speed + :Play(). Nothing is created, written to disk or decoded
+    -- at play time, and quick repeats (slider drag, hover) overlap instead of cutting each other off.
+    -- This block replaces the old getSound / playSound path: Library._sfx below overrides the old one.
+    local VOICES = { open = 1, close = 1, select = 2, hover = 3, toggleOn = 2, toggleOff = 2, notify = 1, slider = 4 }
+    -- tick-type sounds are simply skipped while their file is still loading (a late tick sounds wrong)
+    local DROP_WHILE_LOADING = { hover = true, slider = true }
+    local pools, building = {}, {}
+
+    local function buildPool(name)
+        local entry = Sfx[name]
+        if not entry or entry.failed then
+            return nil
+        end
+        if pools[name] then
+            return pools[name]
+        end
+        if building[name] then
+            return nil
+        end
+        if not checkApi() then
+            entry.failed = true
+            return nil
+        end
+        if not SfxData[name] then
+            return nil -- embedded data not defined (yet); don't mark the sound as failed
+        end
+        building[name] = true
+        local list = {}
+        local ok = pcall(function()
+            local assetId = assetFn(ensureFile(name, entry))
+            for i = 1, (VOICES[name] or 1) do
+                local sound = Instance.new("Sound")
+                sound.Name = "NIER_UI_Sfx_" .. name
+                sound.Volume = 0
+                sound.SoundId = assetId
+                sound.Parent = SoundService
+                list[i] = sound
+            end
+        end)
+        building[name] = nil
+        if not ok or #list == 0 then
+            for _, sound in ipairs(list) do
+                sound:Destroy()
+            end
+            entry.failed = true
+            return nil
+        end
+        pools[name] = { voices = list, nextVoice = 1 }
+        return pools[name]
+    end
+
+    local function playNow(pool, entry, pitch)
+        local list = pool.voices
+        local voice = list[pool.nextVoice]
+        pool.nextVoice = pool.nextVoice % #list + 1
+        voice.Volume = entry.gain * math.clamp(tonumber(Library.SoundVolume) or 1, 0, 1)
+        voice.PlaybackSpeed = pitch or 1
+        voice.TimePosition = 0
+        voice:Play()
+    end
+
+    -- pitch (optional): playback speed, 1 = normal. Used by the slider so the tick follows the value.
+    function Library._sfx(name, pitch)
+        if not Library.SoundEnabled then
+            return
+        end
+        local entry = Sfx[name]
+        if not entry or entry.failed then
+            return
+        end
+        local now = os.clock()
+        if now - (entry.last or -1) < entry.gap then
+            return
+        end
+        local pool = pools[name] or buildPool(name)
+        if not pool then
+            return
+        end
+        entry.last = now
+        local voice = pool.voices[pool.nextVoice]
+        if voice.IsLoaded then
+            playNow(pool, entry, pitch)
+        elseif not DROP_WHILE_LOADING[name] then
+            -- still loading (e.g. the window opens right after the library is loaded): wait max 3 s, then play
+            task.spawn(function()
+                local t0 = os.clock()
+                while not voice.IsLoaded and voice.Parent and os.clock() - t0 < 3 do
+                    task.wait()
+                end
+                if voice.Parent and Library.SoundEnabled then
+                    playNow(pool, entry, pitch)
+                end
+            end)
+        end
+    end
 
     -- ---------------------------------------------------------------- pre-load (must stay LAST)
-    -- Create + pre-load every sound in the background so the first play is instant.
+    -- Build + pre-load every sound in the background so the first play is instant.
     -- This has to run after all SfxData.* assignments above: task.spawn runs immediately,
-    -- so placing it earlier makes the first sound ("open") fail to be created.
+    -- so placing it earlier would create the first sound ("open") with no data.
     task.spawn(function()
-        for _, name in ipairs({ "open", "close", "select", "hover", "toggleOn", "toggleOff", "notify", "slider" }) do
-            local sound = getSound(name)
-            if sound then
+        for _, name in ipairs({ "open", "close", "slider", "hover", "select", "toggleOn", "toggleOff", "notify" }) do
+            local pool = buildPool(name)
+            if pool then
                 task.spawn(function()
                     pcall(function()
-                        ContentProvider:PreloadAsync({ sound })
+                        ContentProvider:PreloadAsync(pool.voices)
                     end)
                 end)
             end
-            task.wait(0.05)
+            task.wait() -- one frame between sounds so the base64 decoding never freezes the game
         end
     end)
 
