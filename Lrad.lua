@@ -1927,8 +1927,7 @@ local function newPanel(title, iconName, textColor)
   curCol = ci
   local col = cols[ci]
 
-  -- FIX: the panel itself has NO layout, so the corner squares sit exactly on the
-  -- corners. All rows/headers go inside `inner`, which owns the UIListLayout.
+  -- The panel itself has no layout; rows/headers go inside `inner`.
   local panel = new("Frame", {
     Name = "Panel",
     BackgroundTransparency = 1,
@@ -1947,7 +1946,7 @@ local function newPanel(title, iconName, textColor)
   }, panel)
   new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, inner)
 
-  for _, c in ipairs({ { 0, 0 }, { 1, 1 } }) do
+  for _, c in ipairs({ { 1, 1 } }) do
     local sq = new("Frame", {
       AnchorPoint = Vector2.new(0.5, 0.5),
       Position = UDim2.fromScale(c[1], c[2]),
