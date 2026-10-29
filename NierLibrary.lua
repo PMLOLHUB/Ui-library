@@ -193,10 +193,15 @@ local Presets = {
     Midnight = { Paper = { 16, 22, 40 }, Row = { 28, 38, 64 }, Input = { 10, 15, 29 }, Accent = { 82, 140, 232 }, Ink = { 226, 236, 255 }, Cream = { 240, 246, 255 }, Line = { 58, 76, 116 }, Team = { 96, 165, 250 } },
     Moonlight = { Paper = { 30, 34, 44 }, Row = { 46, 52, 66 }, Input = { 20, 23, 31 }, Accent = { 138, 152, 188 }, Ink = { 232, 236, 244 }, Cream = { 248, 250, 255 }, Line = { 82, 90, 110 }, Team = { 176, 190, 222 } },
     Aurora = { Paper = { 14, 30, 34 }, Row = { 22, 50, 54 }, Input = { 9, 20, 24 }, Accent = { 38, 184, 140 }, Ink = { 222, 248, 240 }, Cream = { 240, 255, 250 }, Line = { 44, 92, 96 }, Team = { 180, 120, 255 } },
+    Obsidian = { Paper = { 18, 18, 20 }, Row = { 32, 32, 36 }, Input = { 10, 10, 12 }, Accent = { 150, 150, 162 }, Ink = { 235, 235, 240 }, Cream = { 250, 250, 252 }, Line = { 62, 62, 70 }, Team = { 230, 230, 236 } },
+    Crimson = { Paper = { 28, 14, 18 }, Row = { 50, 24, 30 }, Input = { 18, 8, 11 }, Accent = { 190, 36, 60 }, Ink = { 250, 228, 230 }, Cream = { 255, 242, 242 }, Line = { 104, 44, 54 }, Team = { 255, 90, 110 } },
+    Abyss = { Paper = { 8, 26, 36 }, Row = { 14, 44, 58 }, Input = { 4, 16, 24 }, Accent = { 20, 132, 168 }, Ink = { 210, 240, 248 }, Cream = { 235, 250, 255 }, Line = { 32, 82, 102 }, Team = { 64, 210, 230 } },
+    Amethyst = { Paper = { 26, 18, 40 }, Row = { 44, 32, 68 }, Input = { 16, 11, 26 }, Accent = { 140, 90, 220 }, Ink = { 240, 230, 255 }, Cream = { 248, 242, 255 }, Line = { 88, 66, 128 }, Team = { 190, 140, 255 } },
+    Mocha = { Paper = { 30, 22, 18 }, Row = { 52, 38, 30 }, Input = { 19, 13, 10 }, Accent = { 168, 118, 72 }, Ink = { 250, 236, 220 }, Cream = { 255, 246, 232 }, Line = { 96, 72, 54 }, Team = { 222, 170, 110 } },
     Christmas = { Paper = { 24, 52, 38 }, Row = { 36, 72, 54 }, Input = { 15, 36, 27 }, Accent = { 214, 40, 48 }, Ink = { 244, 248, 238 }, Cream = { 255, 250, 238 }, Line = { 74, 118, 92 }, Team = { 255, 214, 92 } },
     Halloween = { Paper = { 28, 20, 32 }, Row = { 48, 30, 48 }, Input = { 18, 13, 23 }, Accent = { 255, 112, 28 }, Ink = { 245, 221, 255 }, Cream = { 255, 239, 214 }, Line = { 112, 62, 102 }, Team = { 173, 255, 66 } },
 }
-local PresetOrder = { "Paper", "Dusk", "Moss", "Gold", "Slate", "Halloween", "Christmas", "Midnight", "Moonlight", "Aurora" }
+local PresetOrder = { "Paper", "Dusk", "Moss", "Gold", "Slate", "Midnight", "Moonlight", "Aurora", "Obsidian", "Crimson", "Abyss", "Amethyst", "Mocha", "Halloween", "Christmas" }
 Library.Presets = Presets
 
 local FontPresets = {}
