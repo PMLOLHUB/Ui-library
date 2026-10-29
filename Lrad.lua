@@ -171,6 +171,7 @@ local Translations = {
     PCHotkeyLabel = "PC Hotkeys",
     HotkeyLockLabel = "Lock Hotkey Positions",
     HotkeyResetLabel = "Reset Hotkey Positions",
+    HotkeyButtonSizeLabel = "Hotkey Button Size (px)",
   },
 th = {
   PresetHeader = "ธีม",
@@ -191,6 +192,7 @@ th = {
   PCHotkeyLabel = "ปุ่มลัดคอมพิวเตอร์",
   HotkeyLockLabel = "ล็อกตำแหน่งปุ่มลัด",
   HotkeyResetLabel = "รีเซ็ตตำแหน่งปุ่มลัด",
+  HotkeyButtonSizeLabel = "ขนาดปุ่มลัด (px)",
 },
 }
 
@@ -388,11 +390,13 @@ function Library:CreateWindow(WindowName, Config)
   local PCHotkeyEnabled = Config.PCHotkeyEnabled ~= false
   local HotkeyPositionLocked = Config.HotkeyPositionLocked == true
   local HotkeyDefaultEnabled = Config.HotkeyDefaultEnabled == true
+  local HotkeyButtonSize = math.clamp(tonumber(Config.HotkeyButtonSize) or 56, 36, 100)
   local HotkeySettingsSaved = {}
   local HotkeyEntries, HotkeyById = {}, {}
   local HotkeyCaptureEntry, HotkeyCaptureOverlay, HotkeyDrag
   local RegisterHotkeyItem, UnregisterHotkeyItem, RefreshHotkeyItem
   local SetHotkeySystemEnabled, ResetAllHotkeyPositions, ShowHotkeyItemMenu
+  local UpdateFloatingHotkeyVisual, SetHotkeyButtonSize
 
   local savedSize, savedPos, savedFlags, savedTheme = LoadConfig()
   if type(savedTheme) == "table" then
@@ -437,6 +441,7 @@ function Library:CreateWindow(WindowName, Config)
       if hotkeySettings.PCEnabled ~= nil then PCHotkeyEnabled = hotkeySettings.PCEnabled == true end
       if hotkeySettings.PositionLocked ~= nil then HotkeyPositionLocked = hotkeySettings.PositionLocked == true end
       if hotkeySettings.DefaultEnabled ~= nil then HotkeyDefaultEnabled = hotkeySettings.DefaultEnabled == true end
+      if hotkeySettings.ButtonSize ~= nil then HotkeyButtonSize = math.clamp(tonumber(hotkeySettings.ButtonSize) or 56, 36, 100) end
       if type(hotkeySettings.Items) == "table" then HotkeySettingsSaved = hotkeySettings.Items end
     end
   end
@@ -631,6 +636,7 @@ local function persistTheme()
     PCEnabled = PCHotkeyEnabled,
     PositionLocked = HotkeyPositionLocked,
     DefaultEnabled = HotkeyDefaultEnabled,
+    ButtonSize = HotkeyButtonSize,
     Items = HotkeySettingsSaved,
   }
 end
@@ -1870,6 +1876,12 @@ local function destroyFloatingHotkey(entry)
     pcall(function() entry.floatButton:Destroy() end)
     entry.floatButton = nil
   end
+  if entry then
+    entry.iconObject = nil
+    entry.stateLabel = nil
+    entry.stroke = nil
+    entry.textPadding = nil
+  end
 end
 
 local function currentViewport()
@@ -1880,8 +1892,9 @@ end
 local function setHotkeyPosition(entry, x, y, doSave)
   if not entry then return end
   local viewport = currentViewport()
-  local marginX = math.min(38 / math.max(viewport.X, 1), 0.12)
-  local marginY = math.min(38 / math.max(viewport.Y, 1), 0.12)
+  local halfSize = HotkeyButtonSize * 0.5 + 6
+  local marginX = math.min(halfSize / math.max(viewport.X, 1), 0.12)
+  local marginY = math.min(halfSize / math.max(viewport.Y, 1), 0.12)
   entry.position = {
     X = math.clamp(tonumber(x) or 0.5, marginX, 1 - marginX),
     Y = math.clamp(tonumber(y) or 0.5, marginY, 1 - marginY),
@@ -1897,37 +1910,85 @@ end
 
 local function createFloatingHotkey(entry)
   if entry.floatButton or not hotkeyEntryActive(entry) or not isMobile then return end
+  local size = HotkeyButtonSize
   local button = new("TextButton", {
     Name = "Hotkey_" .. string.gsub(entry.Id, "[^%w_]", "_"),
     AnchorPoint = Vector2.new(0.5, 0.5),
     Position = UDim2.fromScale(entry.position.X, entry.position.Y),
-    Size = UDim2.fromOffset(56, 56),
+    Size = UDim2.fromOffset(size, size),
     AutoButtonColor = false,
     BorderSizePixel = 0,
-    Text = entry.iconAsset and "" or string.sub(U(entry.name), 1, 10),
+    Text = entry.iconAsset and "" or string.sub(U(entry.name), 1, math.clamp(math.floor(size / 5.5), 5, 18)),
     TextWrapped = true,
-    TextSize = 10,
+    TextYAlignment = entry.kind == "Toggle" and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center,
+    TextSize = math.clamp(math.floor(size / 5.4), 8, 16),
     Font = Enum.Font.GothamBold,
     ZIndex = 90,
   }, gui)
   entry.floatButton = button
-  bind(button, "BackgroundColor3", "Accent")
-  bind(button, "TextColor3", "Cream")
+  bind(button, "BackgroundColor3", function(theme)
+    if entry.kind == "Toggle" and entry.GetState then
+      return entry.GetState() and theme.Accent or theme.Row
+    end
+    return theme.Accent
+  end)
+  bind(button, "TextColor3", function(theme)
+    if entry.kind == "Toggle" and entry.GetState then
+      return entry.GetState() and theme.Cream or theme.Ink
+    end
+    return theme.Cream
+  end)
   new("UICorner", { CornerRadius = UDim.new(1, 0) }, button)
   local stroke = new("UIStroke", { Thickness = 1.5 }, button)
-  bind(stroke, "Color", "Ink")
+  entry.stroke = stroke
+  bind(stroke, "Color", function(theme)
+    if entry.kind == "Toggle" and entry.GetState then
+      return entry.GetState() and theme.Cream or theme.Line
+    end
+    return theme.Ink
+  end)
+  if entry.kind == "Toggle" and not entry.iconAsset then
+    local pad = new("UIPadding", { PaddingTop = UDim.new(0, math.floor(size * 0.12)) }, button)
+    entry.textPadding = pad
+  end
   if entry.iconAsset then
     local icon = new("ImageLabel", {
       Name = "HotkeyIcon",
       BackgroundTransparency = 1,
       AnchorPoint = Vector2.new(0.5, 0.5),
-      Position = UDim2.fromScale(0.5, 0.5),
-      Size = UDim2.fromOffset(28, 28),
+      Position = UDim2.fromScale(0.5, entry.kind == "Toggle" and 0.38 or 0.5),
+      Size = UDim2.fromOffset(math.max(16, math.floor(size * (entry.kind == "Toggle" and 0.44 or 0.5))), math.max(16, math.floor(size * (entry.kind == "Toggle" and 0.44 or 0.5)))),
       Image = entry.iconAsset,
       ZIndex = 91,
     }, button)
-    bind(icon, "ImageColor3", "Cream")
+    entry.iconObject = icon
+    bind(icon, "ImageColor3", function(theme)
+      if entry.kind == "Toggle" and entry.GetState and not entry.GetState() then
+        return theme.Ink
+      end
+      return theme.Cream
+    end)
   end
+  if entry.kind == "Toggle" then
+    local status = new("TextLabel", {
+      Name = "HotkeyToggleState",
+      AnchorPoint = Vector2.new(0.5, 0.5),
+      Position = UDim2.new(0.5, 0, 1, -8),
+      Size = UDim2.fromOffset(math.max(24, math.floor(size * 0.58)), math.max(12, math.floor(size * 0.23))),
+      BorderSizePixel = 0,
+      Text = "OFF",
+      TextSize = math.clamp(math.floor(size * 0.15), 8, 12),
+      Font = Enum.Font.GothamBold,
+      ZIndex = 92,
+    }, button)
+    entry.stateLabel = status
+    new("UICorner", { CornerRadius = UDim.new(1, 0) }, status)
+    bind(status, "BackgroundColor3", function(theme)
+      return entry.GetState and entry.GetState() and theme.Accent or theme.Line
+    end)
+    bind(status, "TextColor3", function(theme) return theme.Cream end)
+  end
+  UpdateFloatingHotkeyVisual(entry)
 
   button.InputBegan:Connect(function(input)
     if not isPointer(input) or HotkeyPositionLocked or entry.locked then return end
@@ -1949,6 +2010,45 @@ local function createFloatingHotkey(entry)
       task.spawn(entry.Activate)
     end
   end)
+end
+
+UpdateFloatingHotkeyVisual = function(entry)
+  if not entry then return end
+  local button = entry.floatButton
+  if not button or not button.Parent then return end
+  local size = HotkeyButtonSize
+  local toggle = entry.kind == "Toggle"
+  local active = toggle and entry.GetState and entry.GetState() == true or false
+  button.Size = UDim2.fromOffset(size, size)
+  button.TextSize = math.clamp(math.floor(size / 5.4), 8, 16)
+  button.TextYAlignment = toggle and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center
+  button.Text = entry.iconAsset and "" or string.sub(U(entry.name), 1, math.clamp(math.floor(size / 5.5), 5, 18))
+  if entry.textPadding then
+    entry.textPadding.PaddingTop = UDim.new(0, math.floor(size * 0.12))
+  end
+  if entry.iconObject then
+    local iconSize = math.max(16, math.floor(size * (toggle and 0.44 or 0.5)))
+    entry.iconObject.Size = UDim2.fromOffset(iconSize, iconSize)
+    entry.iconObject.Position = UDim2.fromScale(0.5, toggle and 0.38 or 0.5)
+  end
+  if entry.stateLabel then
+    entry.stateLabel.Size = UDim2.fromOffset(math.max(24, math.floor(size * 0.58)), math.max(12, math.floor(size * 0.23)))
+    entry.stateLabel.Position = UDim2.new(0.5, 0, 1, -math.max(7, math.floor(size * 0.14)))
+    entry.stateLabel.TextSize = math.clamp(math.floor(size * 0.15), 8, 12)
+    entry.stateLabel.Text = active and "ON" or "OFF"
+    entry.stateLabel.BackgroundColor3 = active and Theme.Accent or Theme.Line
+    entry.stateLabel.TextColor3 = Theme.Cream
+  end
+  if toggle then
+    button.BackgroundColor3 = active and Theme.Accent or Theme.Row
+    button.TextColor3 = active and Theme.Cream or Theme.Ink
+    if entry.stroke then entry.stroke.Color = active and Theme.Cream or Theme.Line end
+    if entry.iconObject then entry.iconObject.ImageColor3 = active and Theme.Cream or Theme.Ink end
+  else
+    button.BackgroundColor3 = Theme.Accent
+    button.TextColor3 = Theme.Cream
+    if entry.stroke then entry.stroke.Color = Theme.Ink end
+  end
 end
 
 RefreshHotkeyItem = function(entry)
@@ -2020,6 +2120,17 @@ local function beginHotkeyCapture(entry)
     ZIndex = 111,
   }, overlay)
   bind(label, "TextColor3", "Ink")
+  save()
+end
+
+SetHotkeyButtonSize = function(size)
+  HotkeyButtonSize = math.clamp(math.floor((tonumber(size) or 56) + 0.5), 36, 100)
+  for _, entry in ipairs(HotkeyEntries) do
+    if entry.floatButton and entry.floatButton.Parent then
+      UpdateFloatingHotkeyVisual(entry)
+    end
+    setHotkeyPosition(entry, entry.position.X, entry.position.Y, false)
+  end
   save()
 end
 
@@ -2114,6 +2225,9 @@ RegisterHotkeyItem = function(source, name, iconName, kind, hotkeyOption, reques
     HotkeySettingsSaved[itemId] = saved
   end
   local position = type(saved.Position) == "table" and saved.Position or {}
+  local viewport = currentViewport()
+  local marginX = math.min((HotkeyButtonSize * 0.5 + 6) / math.max(viewport.X, 1), 0.12)
+  local marginY = math.min((HotkeyButtonSize * 0.5 + 6) / math.max(viewport.Y, 1), 0.12)
   local entry = {
     Id = itemId,
     name = tostring(name or kind),
@@ -2126,8 +2240,8 @@ RegisterHotkeyItem = function(source, name, iconName, kind, hotkeyOption, reques
     enabled = hotkeyOption == true or (hotkeyOption ~= false and (saved.Enabled ~= nil and saved.Enabled == true or (saved.Enabled == nil and HotkeyDefaultEnabled))),
     locked = saved.Locked == true,
     position = {
-      X = math.clamp(tonumber(position.X) or 0.5, 0.04, 0.96),
-      Y = math.clamp(tonumber(position.Y) or 0.5, 0.04, 0.96),
+      X = math.clamp(tonumber(position.X) or 0.5, marginX, 1 - marginX),
+      Y = math.clamp(tonumber(position.Y) or 0.5, marginY, 1 - marginY),
     },
     hasSavedPosition = type(saved.Position) == "table" and saved.Position.X ~= nil and saved.Position.Y ~= nil,
   }
@@ -2658,8 +2772,9 @@ function CategoryElements:CreateButton(ButtonText, IconName, TextColor, Callback
       lbl.Text = U(t)
       hotkeyEntry.name = tostring(t)
       if hotkeyEntry.floatButton and not hotkeyEntry.iconAsset then
-        hotkeyEntry.floatButton.Text = string.sub(U(t), 1, 10)
+        hotkeyEntry.floatButton.Text = string.sub(U(t), 1, math.clamp(math.floor(HotkeyButtonSize / 5.5), 5, 18))
       end
+      UpdateFloatingHotkeyVisual(hotkeyEntry)
     end,
   }
 end
@@ -2888,6 +3003,7 @@ function CategoryElements:CreateToggle(ToggleText, IconName, DefaultState, Flag,
     if fire and Callback then task.spawn(Callback, current) end
   end
 
+  local hotkeyEntry
   local function activateToggle()
     current = not current
     if Flag and Flags[Flag] then
@@ -2895,6 +3011,7 @@ function CategoryElements:CreateToggle(ToggleText, IconName, DefaultState, Flag,
       save()
     end
     apply(true)
+    UpdateFloatingHotkeyVisual(hotkeyEntry)
     if Library._sfx then
       Library._sfx(current and "toggleOn" or "toggleOff")
     end
@@ -2903,13 +3020,16 @@ function CategoryElements:CreateToggle(ToggleText, IconName, DefaultState, Flag,
   apply(true)
   row.MouseButton1Click:Connect(activateToggle)
   row:SetAttribute("NoSelectSfx", true)
-  local hotkeyEntry = AttachHotkeySettings(row, ToggleText, IconName, "Toggle", HotkeyOption, HotkeyId, activateToggle, CategoryName)
+  hotkeyEntry = AttachHotkeySettings(row, ToggleText, IconName, "Toggle", HotkeyOption, HotkeyId, activateToggle, CategoryName)
+  hotkeyEntry.GetState = function() return current end
+  UpdateFloatingHotkeyVisual(hotkeyEntry)
 
   return {
     Set = function(v)
       current = v == true
       if Flag and Flags[Flag] then Flags[Flag].Value = current end
       apply(true)
+      UpdateFloatingHotkeyVisual(hotkeyEntry)
     end,
     Get = function() return current end,
   }
@@ -3928,6 +4048,11 @@ if Config.ShowSettingsTab ~= false then
       end
 
       SettingsTab:CreateLabel(T.HotkeyHeader, "lucide-keyboard")
+      if isMobile then
+        SettingsTab:CreateSlider(T.HotkeyButtonSizeLabel, "lucide-scaling", 36, 100, HotkeyButtonSize, nil, function(value)
+          SetHotkeyButtonSize(value)
+        end)
+      end
       SettingsTab:CreateToggle({
         Name = T.HotkeySystemLabel, Icon = "lucide-zap", Default = HotkeyEnabled,
         Id = "Settings:HotkeySystem", Hotkey = false,
