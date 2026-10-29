@@ -165,7 +165,6 @@ local Translations = {
     SoundVolumeLabel = "Sound Volume (%)",
     PageAnimationLabel = "Page Transition",
     OpenCloseAnimationLabel = "Window",
-    ToggleHint = "Press [ %s ] to hide GUI",
   },
 th = {
   PresetHeader = "ธีม",
@@ -180,7 +179,6 @@ th = {
   SoundVolumeLabel = "ระดับเสียง (%)",
   PageAnimationLabel = "แอนิเมชันเปลี่ยนหน้า",
   OpenCloseAnimationLabel = "แอนิเมชันหน้าต่าง",
-  ToggleHint = "กด [ %s ] เพื่อซ่อน/แสดงหน้าต่าง",
 },
 }
 
@@ -602,19 +600,21 @@ local function save()
   SaveConfig(main)
 end
 
-local function makeDraggable(handle, target, onEnd, scaleProvider, keepOnScreen)
+local function makeDraggable(handle, target, onEnd, scaleProvider)
   target = target or handle
-  local dragging, dragStart, startP, startAbs, moved = false, nil, nil, nil, false
+  local dragging, dragStart, startP, moved = false, nil, nil, false
   connect(handle.InputBegan, function(input)
     if isPointer(input) then
       dragging, moved = true, false
-      dragStart, startP, startAbs = input.Position, target.Position, target.AbsolutePosition
+      dragStart, startP = input.Position, target.Position
       local c
       c = input.Changed:Connect(function()
         if input.UserInputState == Enum.UserInputState.End then
           dragging = false
           c:Disconnect()
-          if onEnd and moved then onEnd() end
+          if onEnd and moved then
+            onEnd()
+          end
         end
       end)
     end
@@ -622,20 +622,18 @@ local function makeDraggable(handle, target, onEnd, scaleProvider, keepOnScreen)
   connect(UserInputService.InputChanged, function(input)
     if dragging and isMove(input) then
       local d = input.Position - dragStart
-      if d.Magnitude > 4 then moved = true end
-      if keepOnScreen then
-        local cam = workspace.CurrentCamera
-        local vpSize = cam and cam.ViewportSize or Vector2.new(1280, 720)
-        local size = target.AbsoluteSize
-        local nx = math.clamp(startAbs.X + d.X, 60 - size.X, vpSize.X - 60)
-        local ny = math.clamp(startAbs.Y + d.Y, 0, vpSize.Y - 40)
-        d = Vector2.new(nx - startAbs.X, ny - startAbs.Y)
+      if d.Magnitude > 4 then
+        moved = true
       end
-      local s = math.max(tonumber(scaleProvider and scaleProvider() or 1) or 1, 0.01)
-      target.Position = UDim2.new(startP.X.Scale, startP.X.Offset + d.X / s, startP.Y.Scale, startP.Y.Offset + d.Y / s)
+      local scaleFactor = scaleProvider and scaleProvider() or 1
+      scaleFactor = math.max(tonumber(scaleFactor) or 1, 0.01)
+      local dx, dy = d.X / scaleFactor, d.Y / scaleFactor
+      target.Position = UDim2.new(startP.X.Scale, startP.X.Offset + dx, startP.Y.Scale, startP.Y.Offset + dy)
     end
   end)
-  return function() return moved end
+  return function()
+    return moved
+  end
 end
 
 local function makeDrag(obj, update, onEnd)
@@ -772,7 +770,7 @@ local tabsHolder = new("ScrollingFrame", {
   BackgroundTransparency = 1,
   BorderSizePixel = 0,
   Position = UDim2.fromOffset(TOP_H + titleW, 0),
-  Size = UDim2.new(1, -(TOP_H + titleW + TOP_H * 1), 1, 0),
+  Size = UDim2.new(1, -(TOP_H + titleW + TOP_H), 1, 0),
   ScrollBarThickness = 0,
   CanvasSize = UDim2.new(),
   AutomaticCanvasSize = Enum.AutomaticSize.X,
@@ -798,7 +796,7 @@ makeDraggable(top, main, function()
   save()
 end, function()
 return OverallScalePercent / 100
-end, true)
+end)
 
 local resizeBtn = new("TextButton", {
   Name = "ResizeBtn",
@@ -1313,7 +1311,7 @@ end
 toggleBtn.Visible = isMobile or not toggleKey
 local tbMoved = makeDraggable(toggleBtn, nil, nil, function()
   return ToggleButtonScalePercent / 100
-end, true)
+end)
 toggleBtn.MouseButton1Click:Connect(function()
   if not tbMoved() then
     SetWindowOpen(not main.Visible)
@@ -1407,6 +1405,95 @@ task.delay(duration or 3, function()
   slot:Destroy()
 end
 end)
+end
+
+
+-- Context menu (COPY LINK / INSPECT / REPORT style)
+local ctxMenu, ctxConn
+local function HideContextMenu()
+  if ctxConn then ctxConn:Disconnect(); ctxConn = nil end
+  if ctxMenu then ctxMenu:Destroy(); ctxMenu = nil end
+end
+
+local function ShowContextMenu(items, position)
+  HideContextMenu()
+  if type(items) ~= "table" or #items == 0 then return end
+  local ROW_H = 28
+  local maxW = 0
+  for _, it in ipairs(items) do
+    maxW = math.max(maxW, measure(U(it.Text or ""), 11))
+  end
+  local w = math.clamp(maxW + 32, 150, 320)
+  local h = #items * ROW_H
+  local vp = gui.AbsoluteSize
+  position = position or UserInputService:GetMouseLocation()
+  local x = math.clamp(position.X, 4, math.max(4, vp.X - w - 4))
+  local y = math.clamp(position.Y, 4, math.max(4, vp.Y - h - 4))
+
+  local menu = new("Frame", {
+    Name = "ContextMenu",
+    Position = UDim2.fromOffset(x, y),
+    Size = UDim2.fromOffset(w, h),
+    BorderSizePixel = 0,
+    Active = true,
+    ZIndex = 80,
+  }, gui)
+  bind(menu, "BackgroundColor3", "Paper")
+  local ms = new("UIStroke", { Thickness = 1 }, menu)
+  bind(ms, "Color", "Ink")
+  new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, menu)
+  ctxMenu = menu
+
+  for i, it in ipairs(items) do
+    local b = new("TextButton", {
+      AutoButtonColor = false,
+      BorderSizePixel = 0,
+      BackgroundTransparency = 0,
+      Size = UDim2.new(1, 0, 0, ROW_H),
+      LayoutOrder = i,
+      Text = "",
+      ZIndex = 81,
+    }, menu)
+    bind(b, "BackgroundColor3", "Paper")
+    local l = new("TextLabel", {
+      BackgroundTransparency = 1,
+      Position = UDim2.fromOffset(12, 0),
+      Size = UDim2.new(1, -24, 1, 0),
+      Text = U(it.Text or ""),
+      TextXAlignment = Enum.TextXAlignment.Left,
+      TextTruncate = Enum.TextTruncate.AtEnd,
+      ZIndex = 82,
+    }, b)
+    bindFont(l, 11, true)
+    bind(l, "TextColor3", "Ink")
+    b.MouseEnter:Connect(function()
+      b.BackgroundColor3 = Theme.Accent
+      l.TextColor3 = Theme.Cream
+    end)
+    b.MouseLeave:Connect(function()
+      b.BackgroundColor3 = Theme.Paper
+      l.TextColor3 = Theme.Ink
+    end)
+    b.MouseButton1Click:Connect(function()
+      HideContextMenu()
+      if type(it.Callback) == "function" then
+        task.spawn(it.Callback)
+      end
+    end)
+  end
+
+  task.defer(function()
+    if ctxMenu ~= menu then return end
+    ctxConn = UserInputService.InputBegan:Connect(function(input)
+      if not isPointer(input) then return end
+      local p = input.Position
+      local a, sz = menu.AbsolutePosition, menu.AbsoluteSize
+      if p.X < a.X or p.X > a.X + sz.X or p.Y < a.Y or p.Y > a.Y + sz.Y then
+        HideContextMenu()
+      end
+    end)
+    table.insert(connections, ctxConn)
+  end)
 end
 
 local SettingsState = { open = false }
@@ -2095,6 +2182,15 @@ return {
     lbl.Text = U(t)
   end,
 }
+end
+
+function CategoryElements:CreateMenuButton(ButtonText, IconName, Items)
+  if type(IconName) == "table" then
+    Items = IconName; IconName = nil
+  end
+  return CategoryElements:CreateButton(ButtonText, IconName, function()
+    ShowContextMenu(Items)
+  end)
 end
 
 function CategoryElements:CreateButtonRow(Buttons)
@@ -3142,6 +3238,8 @@ function WindowElements:Notify(text, duration)
   end
   Notify(text, duration)
 end
+function WindowElements:ShowContextMenu(items, position) ShowContextMenu(items, position) end
+function WindowElements:HideContextMenu() HideContextMenu() end
 function WindowElements:GetFlag(name)
   local f = Flags[name]
   return f and f.Value or nil
@@ -3324,8 +3422,7 @@ if Config.StartOpen ~= false then
   task.defer(function()
     SetWindowOpen(true)
     if toggleKey and not isMobile and Config.ToggleHint ~= false then
-      local hint = (Translations[Language] or Translations.en).ToggleHint
-      Notify(string.format(hint, toggleKey.Name), 4)
+      Notify("Press [ " .. toggleKey.Name .. " ] to hide GUI", 4)
     end
   end)
 end
