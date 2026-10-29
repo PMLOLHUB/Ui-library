@@ -190,9 +190,10 @@ local Presets = {
     Moss = { Paper = { 198, 202, 176 }, Row = { 172, 178, 148 }, Input = { 224, 230, 200 }, Accent = { 46, 60, 44 }, Ink = { 52, 64, 48 }, Cream = { 236, 242, 218 }, Line = { 146, 154, 124 }, Team = { 90, 130, 80 } },
     Gold = { Paper = { 222, 205, 158 }, Row = { 204, 181, 123 }, Input = { 244, 232, 194 }, Accent = { 132, 91, 20 }, Ink = { 86, 62, 24 }, Cream = { 255, 247, 215 }, Line = { 184, 151, 79 }, Team = { 218, 165, 32 } },
     Slate = { Paper = { 190, 196, 200 }, Row = { 164, 172, 178 }, Input = { 218, 224, 228 }, Accent = { 44, 52, 60 }, Ink = { 48, 56, 64 }, Cream = { 232, 238, 242 }, Line = { 140, 148, 154 }, Team = { 70, 110, 150 } },
+    Christmas = { Paper = { 24, 52, 38 }, Row = { 36, 72, 54 }, Input = { 15, 36, 27 }, Accent = { 214, 40, 48 }, Ink = { 244, 248, 238 }, Cream = { 255, 250, 238 }, Line = { 74, 118, 92 }, Team = { 255, 214, 92 } },
     Halloween = { Paper = { 28, 20, 32 }, Row = { 48, 30, 48 }, Input = { 18, 13, 23 }, Accent = { 255, 112, 28 }, Ink = { 245, 221, 255 }, Cream = { 255, 239, 214 }, Line = { 112, 62, 102 }, Team = { 173, 255, 66 } },
 }
-local PresetOrder = { "Paper", "Dusk", "Moss", "Gold", "Slate", "Halloween" }
+local PresetOrder = { "Paper", "Dusk", "Moss", "Gold", "Slate", "Halloween", "Christmas" }
 Library.Presets = Presets
 
 local FontPresets = {}
@@ -1010,8 +1011,12 @@ local function playStrips(opening, variant)
     local fadeStep = fadeSpread / math.max(#list, 1)
     local coverStep = coverSpread / math.max(#list, 1)
 
+    -- The window's outline sits outside the strips, so fade it together with them.
+    local strokeT = mainStroke.Transparency
+
     local function finish()
         stripHost.Visible = false
+        mainStroke.Transparency = strokeT
         for _, child in ipairs(stripHost:GetChildren()) do
             if child ~= stripUIScale then
                 child:Destroy()
@@ -1022,6 +1027,7 @@ local function playStrips(opening, variant)
     end
 
     if opening then
+        mainStroke.Transparency = 1
 
         for _, s in ipairs(list) do
             task.delay(s.delay, function()
@@ -1032,6 +1038,7 @@ local function playStrips(opening, variant)
 
         task.delay(maxDelay + 0.33, function()
             main.Visible = true
+            TweenService:Create(mainStroke, fade, { Transparency = strokeT }):Play()
             for i, s in ipairs(list) do
                 task.delay((i - 1) * fadeStep, function()
                     TweenService:Create(s.bar, fade, { BackgroundTransparency = 1 }):Play()
@@ -1041,6 +1048,22 @@ local function playStrips(opening, variant)
             task.delay(fadeSpread + 0.36, finish)
         end)
     else
+        -- Solid backing under the strips: whatever the strip geometry, the window is
+        -- completely hidden before it is switched off.
+        local backing = new("Frame", {
+            Name = "CloseCover",
+            Size = UDim2.fromOffset(W, H),
+            BackgroundColor3 = Theme.Paper,
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            ZIndex = 59,
+        }, stripHost)
+        TweenService:Create(mainStroke, TweenInfo.new(coverSpread + 0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 1 }):Play()
+        task.delay(coverSpread * 0.8, function()
+            if backing.Parent then
+                TweenService:Create(backing, quick, { BackgroundTransparency = 0 }):Play()
+            end
+        end)
 
         for i, s in ipairs(list) do
             task.delay((#list - i) * coverStep, function()
@@ -1049,8 +1072,12 @@ local function playStrips(opening, variant)
             end)
         end
 
-        task.delay(coverSpread + 0.24, function()
+        task.delay(coverSpread + 0.3, function()
             main.Visible = false
+            mainStroke.Transparency = strokeT
+            if backing.Parent then
+                TweenService:Create(backing, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
+            end
             for _, s in ipairs(list) do
                 task.delay(s.delay, function()
                     TweenService:Create(s.band, grow, { Position = UDim2.fromOffset(0, s.r * H), Size = UDim2.fromOffset(W, 0) }):Play()
