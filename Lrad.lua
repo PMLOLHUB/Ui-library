@@ -165,6 +165,12 @@ local Translations = {
     SoundVolumeLabel = "Sound Volume (%)",
     PageAnimationLabel = "Page Transition",
     OpenCloseAnimationLabel = "Window",
+    HotkeyHeader = "Hotkeys",
+    HotkeySystemLabel = "Hotkey System",
+    MobileHotkeyLabel = "Mobile Hotkeys",
+    PCHotkeyLabel = "PC Hotkeys",
+    HotkeyLockLabel = "Lock Hotkey Positions",
+    HotkeyResetLabel = "Reset Hotkey Positions",
   },
 th = {
   PresetHeader = "ธีม",
@@ -179,6 +185,12 @@ th = {
   SoundVolumeLabel = "ระดับเสียง (%)",
   PageAnimationLabel = "แอนิเมชันเปลี่ยนหน้า",
   OpenCloseAnimationLabel = "แอนิเมชันหน้าต่าง",
+  HotkeyHeader = "ปุ่มลัด",
+  HotkeySystemLabel = "ระบบปุ่มลัด",
+  MobileHotkeyLabel = "ปุ่มลัดมือถือ",
+  PCHotkeyLabel = "ปุ่มลัดคอมพิวเตอร์",
+  HotkeyLockLabel = "ล็อกตำแหน่งปุ่มลัด",
+  HotkeyResetLabel = "รีเซ็ตตำแหน่งปุ่มลัด",
 },
 }
 
@@ -371,6 +383,17 @@ function Library:CreateWindow(WindowName, Config)
   end
   local listeningKey = false
 
+  local HotkeyEnabled = Config.HotkeyEnabled ~= false
+  local MobileHotkeyEnabled = Config.MobileHotkeyEnabled ~= false
+  local PCHotkeyEnabled = Config.PCHotkeyEnabled ~= false
+  local HotkeyPositionLocked = Config.HotkeyPositionLocked == true
+  local HotkeyDefaultEnabled = Config.HotkeyDefaultEnabled == true
+  local HotkeySettingsSaved = {}
+  local HotkeyEntries, HotkeyById = {}, {}
+  local HotkeyCaptureEntry, HotkeyCaptureOverlay, HotkeyDrag
+  local RegisterHotkeyItem, UnregisterHotkeyItem, RefreshHotkeyItem
+  local SetHotkeySystemEnabled, ResetAllHotkeyPositions, ShowHotkeyItemMenu
+
   local savedSize, savedPos, savedFlags, savedTheme = LoadConfig()
   if type(savedTheme) == "table" then
     if validStyle(savedTheme.MobileStyle) then MobileStyle = savedTheme.MobileStyle end
@@ -406,6 +429,15 @@ function Library:CreateWindow(WindowName, Config)
     if savedTheme.BackgroundImageEnabled ~= nil then BgImageEnabled = savedTheme.BackgroundImageEnabled end
     if savedTheme.SoundVolume ~= nil then
       Library.SoundVolume = math.clamp(tonumber(savedTheme.SoundVolume) or 1, 0, 1)
+    end
+    if type(savedTheme.HotkeySettings) == "table" then
+      local hotkeySettings = savedTheme.HotkeySettings
+      if hotkeySettings.Enabled ~= nil then HotkeyEnabled = hotkeySettings.Enabled == true end
+      if hotkeySettings.MobileEnabled ~= nil then MobileHotkeyEnabled = hotkeySettings.MobileEnabled == true end
+      if hotkeySettings.PCEnabled ~= nil then PCHotkeyEnabled = hotkeySettings.PCEnabled == true end
+      if hotkeySettings.PositionLocked ~= nil then HotkeyPositionLocked = hotkeySettings.PositionLocked == true end
+      if hotkeySettings.DefaultEnabled ~= nil then HotkeyDefaultEnabled = hotkeySettings.DefaultEnabled == true end
+      if type(hotkeySettings.Items) == "table" then HotkeySettingsSaved = hotkeySettings.Items end
     end
   end
   local SavedFlags = savedFlags or {}
@@ -524,176 +556,6 @@ do
   end
 end
 
-local HotkeyModeEnabled = Config.HotkeyMode == true or Library.HotkeyMode == true
-local HotkeyOverlay = nil
-local HotkeyPosition = UDim2.new(0.5, 0, 0.5, 0)
-local HotkeyLocked = false
-local ActiveHotkeyAction = nil
-local ActiveHotkeyName = "Hotkey"
-local HotkeyBindings = {}
-
-Library.HotkeyMode = HotkeyModeEnabled
-Library.ForceHotkey = Library.ForceHotkey == true
-
-local function updateHotkeyVisibility()
-  for _, item in ipairs(HotkeyBindings) do
-    if item.Button and item.Button.Parent then
-      item.Button.Visible = HotkeyModeEnabled or item.Forced
-    end
-  end
-end
-
-local function showHotkeyOverlay(action, name)
-  ActiveHotkeyAction = action
-  ActiveHotkeyName = tostring(name or "Hotkey")
-  if not HotkeyOverlay then
-    local wrap = new("Frame", {
-      Name = "HotkeyOverlay",
-      BackgroundTransparency = 1,
-      Size = UDim2.fromOffset(190, 92),
-      AnchorPoint = Vector2.new(0.5, 0.5),
-      Position = HotkeyPosition,
-      ZIndex = 100,
-    }, gui)
-    local keyButton = new("TextButton", {
-      Name = "HotkeyButton",
-      Size = UDim2.fromOffset(150, 48),
-      Position = UDim2.fromOffset(20, 0),
-      BorderSizePixel = 0,
-      Text = "Hotkey",
-      TextSize = 14,
-      AutoButtonColor = false,
-      ZIndex = 101,
-    }, wrap)
-    bindFont(keyButton, 14, true)
-    local stroke = new("UIStroke", { Thickness = 1 }, keyButton)
-    local resetButton = new("TextButton", {
-      Name = "ResetPosition",
-      Size = UDim2.fromOffset(72, 24),
-      Position = UDim2.fromOffset(20, 54),
-      BorderSizePixel = 0,
-      Text = "Reset",
-      TextSize = 11,
-      AutoButtonColor = false,
-      ZIndex = 101,
-    }, wrap)
-    bindFont(resetButton, 11, true)
-    local lockButton = new("TextButton", {
-      Name = "LockPosition",
-      Size = UDim2.fromOffset(72, 24),
-      Position = UDim2.fromOffset(98, 54),
-      BorderSizePixel = 0,
-      Text = "Lock: OFF",
-      TextSize = 11,
-      AutoButtonColor = false,
-      ZIndex = 101,
-    }, wrap)
-    bindFont(lockButton, 11, true)
-    local function repaint()
-      keyButton.BackgroundColor3 = Theme.Accent
-      keyButton.TextColor3 = Theme.Cream
-      stroke.Color = Theme.Ink
-      resetButton.BackgroundColor3 = Theme.Paper
-      resetButton.TextColor3 = Theme.Ink
-      lockButton.BackgroundColor3 = Theme.Paper
-      lockButton.TextColor3 = Theme.Ink
-      lockButton.Text = HotkeyLocked and "Lock: ON" or "Lock: OFF"
-    end
-    keyButton.MouseButton1Click:Connect(function()
-      if ActiveHotkeyAction then task.spawn(ActiveHotkeyAction) end
-    end)
-    resetButton.MouseButton1Click:Connect(function()
-      HotkeyPosition = UDim2.new(0.5, 0, 0.5, 0)
-      wrap.Position = HotkeyPosition
-    end)
-    lockButton.MouseButton1Click:Connect(function()
-      HotkeyLocked = not HotkeyLocked
-      repaint()
-    end)
-    local dragging, dragStart, startPosition = false, nil, nil
-    keyButton.InputBegan:Connect(function(input)
-      if HotkeyLocked then return end
-      if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPosition = wrap.Position
-      end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-      if not dragging or HotkeyLocked then return end
-      if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        HotkeyPosition = UDim2.new(startPosition.X.Scale, startPosition.X.Offset + delta.X, startPosition.Y.Scale, startPosition.Y.Offset + delta.Y)
-        wrap.Position = HotkeyPosition
-      end
-    end)
-    UserInputService.InputEnded:Connect(function(input)
-      if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-    end)
-    HotkeyOverlay = { Frame = wrap, Button = keyButton, Repaint = repaint }
-    repaint()
-  end
-  HotkeyOverlay.Frame.Position = HotkeyPosition
-  HotkeyOverlay.Button.Text = ActiveHotkeyName
-  HotkeyOverlay.Frame.Visible = true
-end
-
-local function attachHotkey(row, action, name, force, rightOffset)
-  local trigger = new("TextButton", {
-    Name = "HotkeySettingsButton",
-    AnchorPoint = Vector2.new(1, 0.5),
-    Position = UDim2.new(1, -(rightOffset or 10), 0.5, 0),
-    Size = UDim2.fromOffset(24, 24),
-    BorderSizePixel = 0,
-    BackgroundTransparency = 1,
-    Text = "⌘",
-    TextSize = 16,
-    AutoButtonColor = false,
-    Visible = HotkeyModeEnabled or force == true or Library.ForceHotkey,
-    ZIndex = 5,
-  }, row)
-  bindFont(trigger, 14, true)
-  trigger.TextColor3 = Theme.Accent
-  local item = { Button = trigger, Forced = force == true or Library.ForceHotkey, Action = action }
-  table.insert(HotkeyBindings, item)
-  trigger.MouseButton1Click:Connect(function()
-    if not (HotkeyModeEnabled or item.Forced) then return end
-    if UserInputService.TouchEnabled then
-      showHotkeyOverlay(action, name)
-    else
-      trigger.Text = "..."
-      local conn
-      conn = UserInputService.InputBegan:Connect(function(input)
-        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-        if input.KeyCode == Enum.KeyCode.Unknown then return end
-        conn:Disconnect()
-        if input.KeyCode == Enum.KeyCode.Escape then
-          trigger.Text = "⌘"
-          return
-        end
-        item.KeyCode = input.KeyCode
-        trigger.Text = input.KeyCode.Name
-      end)
-    end
-  end)
-  return {
-    SetEnabled = function(enabled)
-      item.Forced = enabled == true
-      trigger.Visible = HotkeyModeEnabled or item.Forced
-    end,
-    GetKeyCode = function() return item.KeyCode end,
-  }
-end
-
-UserInputService.InputBegan:Connect(function(input, processed)
-  if processed or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-  for _, item in ipairs(HotkeyBindings) do
-    if item.KeyCode and item.KeyCode == input.KeyCode and (HotkeyModeEnabled or item.Forced) and item.Action then
-      task.spawn(item.Action)
-    end
-  end
-end)
-
 local camera = workspace.CurrentCamera
 local vp = camera and camera.ViewportSize or Vector2.new(1280, 720)
 local startSize = savedSize or UDim2.fromOffset(math.min(700, math.floor(vp.X * 0.94)), math.min(420, math.floor(vp.Y * 0.82)))
@@ -763,6 +625,14 @@ local function persistTheme()
   ThemeSettings.OverallScalePercent = OverallScalePercent
   ThemeSettings.ToggleButtonScalePercent = ToggleButtonScalePercent
   ThemeSettings.SoundVolume = Library.SoundVolume
+  ThemeSettings.HotkeySettings = {
+    Enabled = HotkeyEnabled,
+    MobileEnabled = MobileHotkeyEnabled,
+    PCEnabled = PCHotkeyEnabled,
+    PositionLocked = HotkeyPositionLocked,
+    DefaultEnabled = HotkeyDefaultEnabled,
+    Items = HotkeySettingsSaved,
+  }
 end
 persistTheme()
 local function save()
@@ -1965,6 +1835,410 @@ local function AnimatePageIn(page)
   end)
 end
 
+local function hotkeyDeviceEnabled()
+  if isMobile then
+    return MobileHotkeyEnabled
+  end
+  return PCHotkeyEnabled
+end
+
+local function hotkeyEntryActive(entry)
+  return entry ~= nil
+    and HotkeyEnabled
+    and hotkeyDeviceEnabled()
+    and entry.enabled
+    and not entry.blocked
+    and entry.source ~= nil
+    and entry.source.Parent ~= nil
+end
+
+local function saveHotkeyEntry(entry)
+  if not entry then return end
+  local data = HotkeySettingsSaved[entry.Id]
+  if type(data) ~= "table" then
+    data = {}
+    HotkeySettingsSaved[entry.Id] = data
+  end
+  data.Enabled = entry.enabled == true
+  data.Key = entry.keyCode and entry.keyCode.Name or nil
+  data.Position = { X = entry.position.X, Y = entry.position.Y }
+  data.Locked = entry.locked == true
+end
+
+local function destroyFloatingHotkey(entry)
+  if entry and entry.floatButton then
+    pcall(function() entry.floatButton:Destroy() end)
+    entry.floatButton = nil
+  end
+end
+
+local function currentViewport()
+  local camera = workspace.CurrentCamera
+  return camera and camera.ViewportSize or Vector2.new(1920, 1080)
+end
+
+local function setHotkeyPosition(entry, x, y, doSave)
+  if not entry then return end
+  local viewport = currentViewport()
+  local marginX = math.min(38 / math.max(viewport.X, 1), 0.12)
+  local marginY = math.min(38 / math.max(viewport.Y, 1), 0.12)
+  entry.position = {
+    X = math.clamp(tonumber(x) or 0.5, marginX, 1 - marginX),
+    Y = math.clamp(tonumber(y) or 0.5, marginY, 1 - marginY),
+  }
+  if entry.floatButton and entry.floatButton.Parent then
+    entry.floatButton.Position = UDim2.fromScale(entry.position.X, entry.position.Y)
+  end
+  if doSave then
+    saveHotkeyEntry(entry)
+    save()
+  end
+end
+
+local function createFloatingHotkey(entry)
+  if entry.floatButton or not hotkeyEntryActive(entry) or not isMobile then return end
+  local button = new("TextButton", {
+    Name = "Hotkey_" .. string.gsub(entry.Id, "[^%w_]", "_"),
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.fromScale(entry.position.X, entry.position.Y),
+    Size = UDim2.fromOffset(56, 56),
+    AutoButtonColor = false,
+    BorderSizePixel = 0,
+    Text = entry.iconAsset and "" or string.sub(U(entry.name), 1, 10),
+    TextWrapped = true,
+    TextSize = 10,
+    Font = Enum.Font.GothamBold,
+    ZIndex = 90,
+  }, gui)
+  entry.floatButton = button
+  bind(button, "BackgroundColor3", "Accent")
+  bind(button, "TextColor3", "Cream")
+  new("UICorner", { CornerRadius = UDim.new(1, 0) }, button)
+  local stroke = new("UIStroke", { Thickness = 1.5 }, button)
+  bind(stroke, "Color", "Ink")
+  if entry.iconAsset then
+    local icon = new("ImageLabel", {
+      Name = "HotkeyIcon",
+      BackgroundTransparency = 1,
+      AnchorPoint = Vector2.new(0.5, 0.5),
+      Position = UDim2.fromScale(0.5, 0.5),
+      Size = UDim2.fromOffset(28, 28),
+      Image = entry.iconAsset,
+      ZIndex = 91,
+    }, button)
+    bind(icon, "ImageColor3", "Cream")
+  end
+
+  button.InputBegan:Connect(function(input)
+    if not isPointer(input) or HotkeyPositionLocked or entry.locked then return end
+    local start = input.Position
+    HotkeyDrag = {
+      Entry = entry,
+      Start = start,
+      StartX = entry.position.X,
+      StartY = entry.position.Y,
+      Moved = false,
+    }
+  end)
+  button.MouseButton1Click:Connect(function()
+    if entry.ignoreNextClick then
+      entry.ignoreNextClick = false
+      return
+    end
+    if hotkeyEntryActive(entry) and type(entry.Activate) == "function" then
+      task.spawn(entry.Activate)
+    end
+  end)
+end
+
+RefreshHotkeyItem = function(entry)
+  if not entry then return end
+  if hotkeyEntryActive(entry) and isMobile then
+    createFloatingHotkey(entry)
+  else
+    if HotkeyDrag and HotkeyDrag.Entry == entry then HotkeyDrag = nil end
+    destroyFloatingHotkey(entry)
+  end
+end
+
+local function setHotkeyItemEnabled(entry, enabled)
+  if not entry or entry.forced or entry.blocked then return end
+  entry.enabled = enabled == true
+  saveHotkeyEntry(entry)
+  RefreshHotkeyItem(entry)
+  save()
+end
+
+local function clearHotkeyCapture()
+  HotkeyCaptureEntry = nil
+  if HotkeyCaptureOverlay then
+    HotkeyCaptureOverlay:Destroy()
+    HotkeyCaptureOverlay = nil
+  end
+end
+
+local function beginHotkeyCapture(entry)
+  if not entry or entry.blocked then
+    Notify("Hotkey is disabled for this item", 2)
+    return
+  end
+  if isMobile then
+    entry.enabled = true
+    if not entry.position then entry.position = { X = 0.5, Y = 0.5 } end
+    setHotkeyPosition(entry, 0.5, 0.5, false)
+    entry.hasSavedPosition = true
+    RefreshHotkeyItem(entry)
+    saveHotkeyEntry(entry)
+    save()
+    return
+  end
+
+  entry.enabled = true
+  saveHotkeyEntry(entry)
+  RefreshHotkeyItem(entry)
+  clearHotkeyCapture()
+  HotkeyCaptureEntry = entry
+  local overlay = new("Frame", {
+    Name = "HotkeyCaptureOverlay",
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.fromScale(0.5, 0.5),
+    Size = UDim2.fromOffset(260, 54),
+    BorderSizePixel = 0,
+    ZIndex = 110,
+  }, gui)
+  HotkeyCaptureOverlay = overlay
+  bind(overlay, "BackgroundColor3", "Paper")
+  new("UICorner", { CornerRadius = UDim.new(0, 7) }, overlay)
+  local outline = new("UIStroke", { Thickness = 1.5 }, overlay)
+  bind(outline, "Color", "Accent")
+  local label = new("TextLabel", {
+    BackgroundTransparency = 1,
+    Size = UDim2.fromScale(1, 1),
+    Text = "Press any key... (Esc to cancel)",
+    TextSize = 13,
+    Font = Enum.Font.GothamBold,
+    ZIndex = 111,
+  }, overlay)
+  bind(label, "TextColor3", "Ink")
+  save()
+end
+
+SetHotkeySystemEnabled = function(enabled)
+  HotkeyEnabled = enabled == true
+  if not HotkeyEnabled then
+    clearHotkeyCapture()
+    HotkeyDrag = nil
+  end
+  for _, entry in ipairs(HotkeyEntries) do
+    RefreshHotkeyItem(entry)
+  end
+  save()
+end
+
+ResetAllHotkeyPositions = function()
+  for _, entry in ipairs(HotkeyEntries) do
+    setHotkeyPosition(entry, 0.5, 0.5, false)
+    entry.hasSavedPosition = true
+  end
+  save()
+end
+
+ShowHotkeyItemMenu = function(entry, menuPosition)
+  if not entry or not entry.source or not entry.source.Parent then return end
+  local items = {}
+  if entry.forced then
+    table.insert(items, { Text = "Enable Hotkey: FORCED", Callback = function() end })
+  elseif entry.blocked then
+    table.insert(items, { Text = "Hotkey disabled by API", Callback = function() end })
+  else
+    table.insert(items, {
+      Text = "Enable Hotkey: " .. (entry.enabled and "ON" or "OFF"),
+      Callback = function() setHotkeyItemEnabled(entry, not entry.enabled) end,
+    })
+  end
+  table.insert(items, {
+    Text = isMobile and "Set Hotkey (Floating Button)" or "Set Hotkey",
+    Callback = function() beginHotkeyCapture(entry) end,
+  })
+  table.insert(items, {
+    Text = "Reset Hotkey",
+    Callback = function()
+      entry.keyCode = nil
+      if not entry.forced then entry.enabled = false end
+      entry.hasSavedPosition = false
+      if isMobile and entry.enabled and not entry.blocked then
+        setHotkeyPosition(entry, 0.5, 0.5, false)
+      end
+      saveHotkeyEntry(entry)
+      RefreshHotkeyItem(entry)
+      save()
+    end,
+  })
+  table.insert(items, {
+    Text = "Reset Position",
+    Callback = function()
+      setHotkeyPosition(entry, 0.5, 0.5, false)
+      entry.hasSavedPosition = true
+      saveHotkeyEntry(entry)
+      RefreshHotkeyItem(entry)
+      save()
+    end,
+  })
+  table.insert(items, {
+    Text = "Lock Position: " .. ((HotkeyPositionLocked or entry.locked) and "ON" or "OFF"),
+    Callback = function()
+      if HotkeyPositionLocked then
+        Notify("Unlock all Hotkey positions in Settings first", 2)
+        return
+      end
+      entry.locked = not entry.locked
+      saveHotkeyEntry(entry)
+      save()
+      ShowHotkeyItemMenu(entry, menuPosition)
+    end,
+  })
+  ShowContextMenu(items, menuPosition)
+end
+
+RegisterHotkeyItem = function(source, name, iconName, kind, hotkeyOption, requestedId, activate, categoryName)
+  local baseId = tostring(requestedId or (kind .. ":" .. tostring(categoryName or "Category") .. ":" .. tostring(name)))
+  local itemId = baseId
+  local duplicateIndex = 2
+  while HotkeyById[itemId] do
+    itemId = baseId .. "#" .. tostring(duplicateIndex)
+    duplicateIndex += 1
+  end
+  local saved = HotkeySettingsSaved[itemId]
+  if type(saved) ~= "table" then
+    saved = {}
+    HotkeySettingsSaved[itemId] = saved
+  end
+  local position = type(saved.Position) == "table" and saved.Position or {}
+  local entry = {
+    Id = itemId,
+    name = tostring(name or kind),
+    iconAsset = resolveIcon(iconName),
+    kind = kind,
+    source = source,
+    Activate = activate,
+    forced = hotkeyOption == true,
+    blocked = hotkeyOption == false,
+    enabled = hotkeyOption == true or (hotkeyOption ~= false and (saved.Enabled ~= nil and saved.Enabled == true or (saved.Enabled == nil and HotkeyDefaultEnabled))),
+    locked = saved.Locked == true,
+    position = {
+      X = math.clamp(tonumber(position.X) or 0.5, 0.04, 0.96),
+      Y = math.clamp(tonumber(position.Y) or 0.5, 0.04, 0.96),
+    },
+    hasSavedPosition = type(saved.Position) == "table" and saved.Position.X ~= nil and saved.Position.Y ~= nil,
+  }
+  if type(saved.Key) == "string" then
+    local okKey, keyCode = pcall(function() return Enum.KeyCode[saved.Key] end)
+    if okKey and keyCode then entry.keyCode = keyCode end
+  end
+  table.insert(HotkeyEntries, entry)
+  HotkeyById[itemId] = entry
+  if source and source.Destroying then
+    source.Destroying:Connect(function() UnregisterHotkeyItem(entry) end)
+  end
+  saveHotkeyEntry(entry)
+  RefreshHotkeyItem(entry)
+  return entry
+end
+
+UnregisterHotkeyItem = function(entry)
+  if not entry then return end
+  if HotkeyCaptureEntry == entry then clearHotkeyCapture() end
+  if HotkeyDrag and HotkeyDrag.Entry == entry then HotkeyDrag = nil end
+  destroyFloatingHotkey(entry)
+  if HotkeyById[entry.Id] == entry then HotkeyById[entry.Id] = nil end
+  for i = #HotkeyEntries, 1, -1 do
+    if HotkeyEntries[i] == entry then table.remove(HotkeyEntries, i); break end
+  end
+  HotkeySettingsSaved[entry.Id] = nil
+  pcall(save)
+end
+
+local function AttachHotkeySettings(source, name, iconName, kind, hotkeyOption, requestedId, activate, categoryName)
+  local entry = RegisterHotkeyItem(source, name, iconName, kind, hotkeyOption, requestedId, activate, categoryName)
+  local settingsButton = new("TextButton", {
+    Name = "HotkeySettings",
+    AnchorPoint = Vector2.new(1, 0.5),
+    Position = UDim2.new(1, -7, 0.5, 0),
+    Size = UDim2.fromOffset(20, 20),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    AutoButtonColor = false,
+    Text = "⋯",
+    TextSize = 17,
+    Font = Enum.Font.GothamBold,
+    ZIndex = 6,
+  }, source)
+  entry.settingsButton = settingsButton
+  bind(settingsButton, "TextColor3", "Accent")
+  settingsButton.MouseButton1Click:Connect(function()
+    ShowHotkeyItemMenu(entry, settingsButton.AbsolutePosition + Vector2.new(0, settingsButton.AbsoluteSize.Y))
+  end)
+  return entry
+end
+
+connect(UserInputService.InputBegan, function(input, processed)
+  if HotkeyCaptureEntry then
+    if input.UserInputType ~= Enum.UserInputType.Keyboard or input.KeyCode == Enum.KeyCode.Unknown then return end
+    local entry = HotkeyCaptureEntry
+    if input.KeyCode ~= Enum.KeyCode.Escape then
+      for _, other in ipairs(HotkeyEntries) do
+        if other ~= entry and other.keyCode == input.KeyCode then
+          other.keyCode = nil
+          saveHotkeyEntry(other)
+        end
+      end
+      entry.keyCode = input.KeyCode
+      entry.enabled = true
+      saveHotkeyEntry(entry)
+      Notify("Hotkey set: " .. input.KeyCode.Name, 2)
+    end
+    clearHotkeyCapture()
+    save()
+    return
+  end
+  if listeningKey or processed or input.UserInputType ~= Enum.UserInputType.Keyboard or input.KeyCode == Enum.KeyCode.Unknown then return end
+  if UserInputService:GetFocusedTextBox() then return end
+  if not HotkeyEnabled or not hotkeyDeviceEnabled() then return end
+  for _, entry in ipairs(HotkeyEntries) do
+    if entry.keyCode == input.KeyCode and hotkeyEntryActive(entry) and type(entry.Activate) == "function" then
+      task.spawn(entry.Activate)
+    end
+  end
+end)
+
+connect(UserInputService.InputChanged, function(input)
+  if not HotkeyDrag then return end
+  if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
+  local drag = HotkeyDrag
+  local entry = drag.Entry
+  if not entry or not entry.floatButton or not entry.floatButton.Parent then HotkeyDrag = nil; return end
+  if HotkeyPositionLocked or entry.locked then HotkeyDrag = nil; return end
+  local delta = input.Position - drag.Start
+  if math.abs(delta.X) + math.abs(delta.Y) > 5 then drag.Moved = true end
+  local viewport = currentViewport()
+  setHotkeyPosition(entry, drag.StartX + delta.X / math.max(viewport.X, 1), drag.StartY + delta.Y / math.max(viewport.Y, 1), false)
+end)
+
+connect(UserInputService.InputEnded, function(input)
+  if not HotkeyDrag then return end
+  if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+  local drag = HotkeyDrag
+  HotkeyDrag = nil
+  if drag.Moved and drag.Entry then
+    drag.Entry.ignoreNextClick = true
+    saveHotkeyEntry(drag.Entry)
+    save()
+    task.delay(0.2, function()
+      if drag.Entry then drag.Entry.ignoreNextClick = false end
+    end)
+  end
+end)
+
 local WindowElements = {}
 
 function WindowElements:OpenSettings() OpenSettingsFn() end
@@ -2337,52 +2611,57 @@ function CategoryElements:CreateLabel(Text, IconName, TextColor)
   return headLabel
 end
 
-function CategoryElements:CreateButton(ButtonText, IconName, TextColor, Callback, Options)
-  if type(TextColor) == "table" then
-    Options = TextColor
-    TextColor = nil
-  end
-  if type(IconName) == "function" then
-    Callback = IconName; IconName = nil; TextColor = nil
-  end
-  if typeof(IconName) == "Color3" then
-    Callback = TextColor; TextColor = IconName; IconName = nil
-  end
-  if type(TextColor) == "function" then
-    Callback = TextColor; TextColor = nil
+function CategoryElements:CreateButton(ButtonText, IconName, TextColor, Callback)
+  local HotkeyOption, HotkeyId
+  if type(ButtonText) == "table" then
+    local options = ButtonText
+    ButtonText = options.Name or options.Text or "Button"
+    IconName = options.Icon
+    TextColor = options.TextColor
+    Callback = options.Callback
+    HotkeyOption = options.Hotkey
+    HotkeyId = options.HotkeyId or options.Id or options.Flag
+  else
+    if type(IconName) == "function" then
+      Callback = IconName; IconName = nil; TextColor = nil
+    end
+    if typeof(IconName) == "Color3" then
+      Callback = TextColor; TextColor = IconName; IconName = nil
+    end
+    if type(TextColor) == "function" then
+      Callback = TextColor; TextColor = nil
+    end
   end
 
   local row = newRow("TextButton")
   local marker, hasIcon = addMarker(row, IconName)
-  local lbl = addLabel(row, ButtonText, hasIcon and 32 or 12)
-  local hotkey = attachHotkey(row, function() if Callback then task.spawn(Callback) end end, ButtonText, (type(Options) == "table" and Options.Hotkey == true) or Library.ForceHotkey, 10)
+  local lbl = addLabel(row, ButtonText, hasIcon and 32 or 12, 1, 36)
   local state, look, wipe = hoverable({
     row = row, marker = marker, hasIcon = hasIcon, labels = { lbl }, color = TextColor,
   })
 
-row.MouseButton1Click:Connect(function()
-  local clickX = UserInputService:GetMouseLocation().X
-  if clickX >= row.AbsolutePosition.X + row.AbsoluteSize.X - 42 then return end
-  wipe.BackgroundColor3 = Theme.Accent:Lerp(Theme.Paper, 0.25)
-  task.delay(0.1, function()
-    wipe.BackgroundColor3 = Theme.Accent
-    if UserInputService.TouchEnabled then
-      state.hover = false
-    end
-    look(true)
-  end)
-  if Callback then
-    task.spawn(Callback)
+  local function activateButton()
+    wipe.BackgroundColor3 = Theme.Accent:Lerp(Theme.Paper, 0.25)
+    task.delay(0.1, function()
+      if not wipe.Parent then return end
+      wipe.BackgroundColor3 = Theme.Accent
+      if UserInputService.TouchEnabled then state.hover = false end
+      look(true)
+    end)
+    if Callback then task.spawn(Callback) end
   end
-end)
 
-return {
-  SetText = function(t)
-    lbl.Text = U(t)
-  end,
-  SetHotkeyEnabled = function(v) hotkey.SetEnabled(v) end,
-  GetHotkey = function() return hotkey.GetKeyCode() end,
-}
+  row.MouseButton1Click:Connect(activateButton)
+  local hotkeyEntry = AttachHotkeySettings(row, ButtonText, IconName, "Button", HotkeyOption, HotkeyId, activateButton, CategoryName)
+  return {
+    SetText = function(t)
+      lbl.Text = U(t)
+      hotkeyEntry.name = tostring(t)
+      if hotkeyEntry.floatButton and not hotkeyEntry.iconAsset then
+        hotkeyEntry.floatButton.Text = string.sub(U(t), 1, 10)
+      end
+    end,
+  }
 end
 
 function CategoryElements:CreateMenuButton(ButtonText, IconName, Items)
@@ -2538,12 +2817,25 @@ tb:GetPropertyChangedSignal("Text"):Connect(function()
 end)
 end
 
-function CategoryElements:CreateToggle(ToggleText, IconName, DefaultState, Flag, Callback, Options)
-  if type(IconName) == "boolean" then
-    Callback = Flag; Flag = DefaultState; DefaultState = IconName; IconName = nil
-  end
-  if type(Flag) == "function" then
-    Callback = Flag; Flag = nil
+function CategoryElements:CreateToggle(ToggleText, IconName, DefaultState, Flag, Callback)
+  local HotkeyOption, HotkeyId
+  if type(ToggleText) == "table" then
+    local options = ToggleText
+    ToggleText = options.Name or options.Text or "Toggle"
+    IconName = options.Icon
+    DefaultState = options.Default
+    if DefaultState == nil then DefaultState = options.DefaultState end
+    Flag = options.Flag
+    Callback = options.Callback
+    HotkeyOption = options.Hotkey
+    HotkeyId = options.HotkeyId or options.Id or options.Flag
+  else
+    if type(IconName) == "boolean" then
+      Callback = Flag; Flag = DefaultState; DefaultState = IconName; IconName = nil
+    end
+    if type(Flag) == "function" then
+      Callback = Flag; Flag = nil
+    end
   end
   if Flag and SavedFlags[Flag] ~= nil then
     DefaultState = SavedFlags[Flag]
@@ -2555,72 +2847,72 @@ function CategoryElements:CreateToggle(ToggleText, IconName, DefaultState, Flag,
 
   local row = newRow("TextButton")
   local marker, hasIcon = addMarker(row, IconName)
-  local lbl = addLabel(row, ToggleText, hasIcon and 32 or 12, 1, 82)
+  local lbl = addLabel(row, ToggleText, hasIcon and 32 or 12, 1, 56)
   local box = new("Frame", {
     AnchorPoint = Vector2.new(1, 0.5),
-    Position = UDim2.new(1, -10, 0.5, 0),
+    Position = UDim2.new(1, -44, 0.5, 0),
     Size = UDim2.fromOffset(44, 18),
     BackgroundTransparency = 1,
     BorderSizePixel = 0,
   }, row)
-local boxStroke = new("UIStroke", { Thickness = 1 }, box)
-local knob = new("Frame", {
-  AnchorPoint = Vector2.new(0, 0.5),
-  Position = UDim2.new(0, 3, 0.5, 0),
-  Size = UDim2.fromOffset(12, 12),
-  BorderSizePixel = 0,
-}, box)
+  local boxStroke = new("UIStroke", { Thickness = 1 }, box)
+  local knob = new("Frame", {
+    AnchorPoint = Vector2.new(0, 0.5),
+    Position = UDim2.new(0, 3, 0.5, 0),
+    Size = UDim2.fromOffset(12, 12),
+    BorderSizePixel = 0,
+  }, box)
 
-local hovering = false
-local function paint(animate)
-  local dur = animate and 0.14 or 0
-  local onCol = hovering and Theme.Cream or Theme.Ink
-  local offCol = hovering and Theme.Cream:Lerp(Theme.Accent, 0.5) or Theme.Ink:Lerp(Theme.Paper, 0.62)
-  tw(knob, dur, {
-    Position = current and UDim2.new(1, -15, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
-    BackgroundColor3 = current and onCol or offCol,
+  local hovering = false
+  local function paint(animate)
+    local dur = animate and 0.14 or 0
+    local onCol = hovering and Theme.Cream or Theme.Ink
+    local offCol = hovering and Theme.Cream:Lerp(Theme.Accent, 0.5) or Theme.Ink:Lerp(Theme.Paper, 0.62)
+    tw(knob, dur, {
+      Position = current and UDim2.new(1, -15, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
+      BackgroundColor3 = current and onCol or offCol,
+    })
+    boxStroke.Color = hovering and Theme.Cream or Theme.Ink:Lerp(Theme.Paper, 0.2)
+  end
+  hoverable({
+    row = row, marker = marker, hasIcon = hasIcon, labels = { lbl },
+    active = function() return current end,
+    onLook = function(h, animate)
+      hovering = h
+      paint(animate)
+    end,
   })
-boxStroke.Color = hovering and Theme.Cream or Theme.Ink:Lerp(Theme.Paper, 0.2)
-end
-hoverable({
-  row = row, marker = marker, hasIcon = hasIcon, labels = { lbl },
-  active = function() return current end,
-  onLook = function(h, animate)
-    hovering = h
-    paint(animate)
-  end,
-})
 
-local function apply(fire)
-  paint(true)
-  if fire and Callback then
-    task.spawn(Callback, current)
+  local function apply(fire)
+    paint(true)
+    if fire and Callback then task.spawn(Callback, current) end
   end
-end
-apply(true)
 
-row.MouseButton1Click:Connect(function()
-  current = not current
-  if Flag then
-    Flags[Flag].Value = current
-    save()
-  end
-  apply(true)
-  if Library._sfx then
-    Library._sfx(current and "toggleOn" or "toggleOff")
-  end
-end)
-
-row:SetAttribute("NoSelectSfx", true)
-
-return {
-  Set = function(v)
-    current = v == true
-    if Flag then Flags[Flag].Value = current end
+  local function activateToggle()
+    current = not current
+    if Flag and Flags[Flag] then
+      Flags[Flag].Value = current
+      save()
+    end
     apply(true)
-  end,
-  Get = function() return current end,
-}
+    if Library._sfx then
+      Library._sfx(current and "toggleOn" or "toggleOff")
+    end
+  end
+
+  apply(true)
+  row.MouseButton1Click:Connect(activateToggle)
+  row:SetAttribute("NoSelectSfx", true)
+  local hotkeyEntry = AttachHotkeySettings(row, ToggleText, IconName, "Toggle", HotkeyOption, HotkeyId, activateToggle, CategoryName)
+
+  return {
+    Set = function(v)
+      current = v == true
+      if Flag and Flags[Flag] then Flags[Flag].Value = current end
+      apply(true)
+    end,
+    Get = function() return current end,
+  }
 end
 
 function CategoryElements:CreateSlider(SliderText, IconName, Min, Max, Default, Flag, Callback)
@@ -3461,10 +3753,31 @@ function WindowElements:Destroy()
   end
   gui:Destroy()
 end
+function WindowElements:SetHotkeyEnabled(value) SetHotkeySystemEnabled(value) end
+function WindowElements:SetMobileHotkeyEnabled(value)
+  MobileHotkeyEnabled = value == true
+  for _, entry in ipairs(HotkeyEntries) do RefreshHotkeyItem(entry) end
+  save()
+end
+function WindowElements:SetPCHotkeyEnabled(value)
+  PCHotkeyEnabled = value == true
+  if not PCHotkeyEnabled then clearHotkeyCapture() end
+  save()
+end
+function WindowElements:SetHotkeyPositionLocked(value)
+  HotkeyPositionLocked = value == true
+  save()
+end
+function WindowElements:ResetHotkeyPositions() ResetAllHotkeyPositions() end
 
 connect(UserInputService.InputBegan, function(input, processed)
-  if listeningKey or processed or not toggleKey then
+  if HotkeyCaptureEntry or listeningKey or processed or not toggleKey then
     return
+  end
+  for _, entry in ipairs(HotkeyEntries) do
+    if entry.keyCode == input.KeyCode and hotkeyEntryActive(entry) then
+      return
+    end
   end
   if input.KeyCode == toggleKey then
     SetWindowOpen(not main.Visible)
@@ -3566,13 +3879,6 @@ if Config.ShowSettingsTab ~= false then
       end)
 
       SettingsTab:CreateLabel(T.InterfaceHeader, "lucide-panels-top-left")
-      SettingsTab:CreateToggle("Hotkey Mode", "lucide-keyboard", HotkeyModeEnabled, "HotkeyMode", function(v)
-        HotkeyModeEnabled = v == true
-        Library.HotkeyMode = HotkeyModeEnabled
-        updateHotkeyVisibility()
-        if not HotkeyModeEnabled and HotkeyOverlay then HotkeyOverlay.Frame.Visible = false end
-        save()
-      end)
       SettingsTab:CreateDropdown(T.PageAnimationLabel, "lucide-panels-top-left", PageAnimationOrder, PageAnimation, nil, function(selected)
         if not containsOption(PageAnimationOrder, selected) then return end
         PageAnimation = selected
@@ -3620,6 +3926,44 @@ if Config.ShowSettingsTab ~= false then
           end)
         end)
       end
+
+      SettingsTab:CreateLabel(T.HotkeyHeader, "lucide-keyboard")
+      SettingsTab:CreateToggle({
+        Name = T.HotkeySystemLabel, Icon = "lucide-zap", Default = HotkeyEnabled,
+        Id = "Settings:HotkeySystem", Hotkey = false,
+        Callback = function(value) SetHotkeySystemEnabled(value) end,
+      })
+      SettingsTab:CreateToggle({
+        Name = T.MobileHotkeyLabel, Icon = "lucide-smartphone", Default = MobileHotkeyEnabled,
+        Id = "Settings:MobileHotkeys", Hotkey = false,
+        Callback = function(value)
+          MobileHotkeyEnabled = value == true
+          for _, entry in ipairs(HotkeyEntries) do RefreshHotkeyItem(entry) end
+          save()
+        end,
+      })
+      SettingsTab:CreateToggle({
+        Name = T.PCHotkeyLabel, Icon = "lucide-keyboard", Default = PCHotkeyEnabled,
+        Id = "Settings:PCHotkeys", Hotkey = false,
+        Callback = function(value)
+          PCHotkeyEnabled = value == true
+          if not PCHotkeyEnabled then clearHotkeyCapture() end
+          save()
+        end,
+      })
+      SettingsTab:CreateToggle({
+        Name = T.HotkeyLockLabel, Icon = "lucide-lock", Default = HotkeyPositionLocked,
+        Id = "Settings:HotkeyPositionLocked", Hotkey = false,
+        Callback = function(value)
+          HotkeyPositionLocked = value == true
+          save()
+        end,
+      })
+      SettingsTab:CreateButton({
+        Name = T.HotkeyResetLabel, Icon = "lucide-crosshair", Hotkey = false,
+        Id = "Settings:ResetHotkeyPositions",
+        Callback = function() ResetAllHotkeyPositions() end,
+      })
     end
 
     BuildSettingsUI()
