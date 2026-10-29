@@ -806,12 +806,24 @@ local resizeBtn = new("TextButton", {
   Size = UDim2.fromOffset(18, 18),
   ZIndex = 10,
 }, main)
-local resizeDot = new("Frame", {
-  Position = UDim2.fromOffset(8, 8),
-  Size = UDim2.fromOffset(5, 5),
-  BorderSizePixel = 0,
+local resizeClip = new("Frame", {
+  Name = "ResizeTriangle",
+  BackgroundTransparency = 1,
+  ClipsDescendants = true,
+  Active = false,
+  Position = UDim2.fromOffset(4, 4),
+  Size = UDim2.fromOffset(14, 14),
   ZIndex = 11,
 }, resizeBtn)
+-- diamond centred on the corner of the clip box => only the lower-right triangle stays visible
+local resizeDot = new("Frame", {
+  AnchorPoint = Vector2.new(0.5, 0.5),
+  Position = UDim2.fromOffset(14, 14),
+  Size = UDim2.fromOffset(19.8, 19.8),
+  Rotation = 45,
+  BorderSizePixel = 0,
+  ZIndex = 11,
+}, resizeClip)
 bind(resizeDot, "BackgroundColor3", "Accent")
 do
   local resizing, resizeStart, startAbs = false, nil, nil
@@ -1866,7 +1878,6 @@ local CategoryPage = new("ScrollingFrame", {
 }, ContentContainer)
 bind(CategoryPage, "ScrollBarImageColor3", "Accent")
 new("UIPadding", {
-  PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 18),
   PaddingTop = UDim.new(0, 16), PaddingBottom = UDim.new(0, 22),
 }, CategoryPage)
 
@@ -1878,7 +1889,8 @@ local function buildCols()
   colHolder = new("Frame", {
     Name = "Cols",
     BackgroundTransparency = 1,
-    Size = UDim2.new(1, 0, 0, 0),
+    Position = UDim2.fromOffset(16, 0),
+    Size = UDim2.new(1, -(16 + 18), 0, 0),
     AutomaticSize = Enum.AutomaticSize.Y,
   }, CategoryPage)
 new("UIListLayout", {
