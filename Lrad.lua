@@ -1969,25 +1969,6 @@ local function createFloatingHotkey(entry)
       return theme.Cream
     end)
   end
-  if entry.kind == "Toggle" then
-    local status = new("TextLabel", {
-      Name = "HotkeyToggleState",
-      AnchorPoint = Vector2.new(0.5, 0.5),
-      Position = UDim2.new(0.5, 0, 1, -8),
-      Size = UDim2.fromOffset(math.max(24, math.floor(size * 0.58)), math.max(12, math.floor(size * 0.23))),
-      BorderSizePixel = 0,
-      Text = "OFF",
-      TextSize = math.clamp(math.floor(size * 0.15), 8, 12),
-      Font = Enum.Font.GothamBold,
-      ZIndex = 92,
-    }, button)
-    entry.stateLabel = status
-    new("UICorner", { CornerRadius = UDim.new(1, 0) }, status)
-    bind(status, "BackgroundColor3", function(theme)
-      return entry.GetState and entry.GetState() and theme.Accent or theme.Line
-    end)
-    bind(status, "TextColor3", function(theme) return theme.Cream end)
-  end
   UpdateFloatingHotkeyVisual(entry)
 
   button.InputBegan:Connect(function(input)
@@ -2030,14 +2011,6 @@ UpdateFloatingHotkeyVisual = function(entry)
     local iconSize = math.max(16, math.floor(size * (toggle and 0.44 or 0.5)))
     entry.iconObject.Size = UDim2.fromOffset(iconSize, iconSize)
     entry.iconObject.Position = UDim2.fromScale(0.5, toggle and 0.38 or 0.5)
-  end
-  if entry.stateLabel then
-    entry.stateLabel.Size = UDim2.fromOffset(math.max(24, math.floor(size * 0.58)), math.max(12, math.floor(size * 0.23)))
-    entry.stateLabel.Position = UDim2.new(0.5, 0, 1, -math.max(7, math.floor(size * 0.14)))
-    entry.stateLabel.TextSize = math.clamp(math.floor(size * 0.15), 8, 12)
-    entry.stateLabel.Text = active and "ON" or "OFF"
-    entry.stateLabel.BackgroundColor3 = active and Theme.Accent or Theme.Line
-    entry.stateLabel.TextColor3 = Theme.Cream
   end
   if toggle then
     button.BackgroundColor3 = active and Theme.Accent or Theme.Row
