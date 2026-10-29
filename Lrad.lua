@@ -1926,6 +1926,9 @@ local function newPanel(title, iconName, textColor)
   end
   curCol = ci
   local col = cols[ci]
+
+  -- FIX: the panel itself has NO layout, so the corner squares sit exactly on the
+  -- corners. All rows/headers go inside `inner`, which owns the UIListLayout.
   local panel = new("Frame", {
     Name = "Panel",
     BackgroundTransparency = 1,
@@ -1933,64 +1936,72 @@ local function newPanel(title, iconName, textColor)
     AutomaticSize = Enum.AutomaticSize.Y,
     LayoutOrder = #col:GetChildren(),
   }, col)
-local ps = new("UIStroke", { Thickness = 1 }, panel)
-bind(ps, "Color", "Line")
-new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, panel)
-for _, c in ipairs({ { 0, 0 }, { 1, 1 } }) do
-  local sq = new("Frame", {
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(c[1], c[2]),
-    Size = UDim2.fromOffset(5, 5),
-    BorderSizePixel = 0,
-    ZIndex = 8,
-  }, panel)
-bind(sq, "BackgroundColor3", "Accent")
-end
-curPanel = panel
+  local ps = new("UIStroke", { Thickness = 1 }, panel)
+  bind(ps, "Color", "Line")
 
-local headLabel
-if title ~= nil then
-  panelCount += 1
-  local h = new("Frame", {
-    Name = "PanelHeader",
-    Size = UDim2.new(1, 0, 0, 26),
-    BorderSizePixel = 0,
-    LayoutOrder = 0,
-  }, panel)
-bind(h, "BackgroundColor3", "Row")
-bindGlass(h)
-local ln = new("Frame", { Position = UDim2.new(0, 0, 1, -1), Size = UDim2.new(1, 0, 0, 1), BorderSizePixel = 0, ZIndex = 3 }, h)
-bind(ln, "BackgroundColor3", "Line")
-local x = 12
-local asset = resolveIcon(iconName)
-if asset then
-  local img = new("ImageLabel", {
+  local inner = new("Frame", {
+    Name = "Inner",
     BackgroundTransparency = 1,
-    Position = UDim2.new(0, 10, 0.5, -7),
-    Size = UDim2.fromOffset(14, 14),
-    Image = asset,
-  }, h)
-bind(img, "ImageColor3", "Accent")
-x = 30
-end
-local text = NumberSections and string.format("%02d / %s", panelCount, U(title)) or U(title)
-headLabel = new("TextLabel", {
-  BackgroundTransparency = 1,
-  Position = UDim2.new(0, x, 0, 0),
-  Size = UDim2.new(1, -(x + 8), 1, 0),
-  Text = text,
-  TextXAlignment = Enum.TextXAlignment.Left,
-  TextTruncate = Enum.TextTruncate.AtEnd,
-}, h)
-bindFont(headLabel, 11, true)
-if textColor then
-  headLabel.TextColor3 = textColor
-else
-  bind(headLabel, "TextColor3", "Ink")
-end
-colH[ci] += 26
-end
-return panel, headLabel
+    Size = UDim2.new(1, 0, 0, 0),
+    AutomaticSize = Enum.AutomaticSize.Y,
+  }, panel)
+  new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, inner)
+
+  for _, c in ipairs({ { 0, 0 }, { 1, 1 } }) do
+    local sq = new("Frame", {
+      AnchorPoint = Vector2.new(0.5, 0.5),
+      Position = UDim2.fromScale(c[1], c[2]),
+      Size = UDim2.fromOffset(5, 5),
+      BorderSizePixel = 0,
+      ZIndex = 8,
+    }, panel)
+    bind(sq, "BackgroundColor3", "Accent")
+  end
+  curPanel = inner
+
+  local headLabel
+  if title ~= nil then
+    panelCount += 1
+    local h = new("Frame", {
+      Name = "PanelHeader",
+      Size = UDim2.new(1, 0, 0, 26),
+      BorderSizePixel = 0,
+      LayoutOrder = 0,
+    }, inner)
+    bind(h, "BackgroundColor3", "Row")
+    bindGlass(h)
+    local ln = new("Frame", { Position = UDim2.new(0, 0, 1, -1), Size = UDim2.new(1, 0, 0, 1), BorderSizePixel = 0, ZIndex = 3 }, h)
+    bind(ln, "BackgroundColor3", "Line")
+    local x = 12
+    local asset = resolveIcon(iconName)
+    if asset then
+      local img = new("ImageLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 10, 0.5, -7),
+        Size = UDim2.fromOffset(14, 14),
+        Image = asset,
+      }, h)
+      bind(img, "ImageColor3", "Accent")
+      x = 30
+    end
+    local text = NumberSections and string.format("%02d / %s", panelCount, U(title)) or U(title)
+    headLabel = new("TextLabel", {
+      BackgroundTransparency = 1,
+      Position = UDim2.new(0, x, 0, 0),
+      Size = UDim2.new(1, -(x + 8), 1, 0),
+      Text = text,
+      TextXAlignment = Enum.TextXAlignment.Left,
+      TextTruncate = Enum.TextTruncate.AtEnd,
+    }, h)
+    bindFont(headLabel, 11, true)
+    if textColor then
+      headLabel.TextColor3 = textColor
+    else
+      bind(headLabel, "TextColor3", "Ink")
+    end
+    colH[ci] += 26
+  end
+  return panel, headLabel
 end
 
 local function ensurePanel()
