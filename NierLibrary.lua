@@ -190,10 +190,13 @@ local Presets = {
     Moss = { Paper = { 198, 202, 176 }, Row = { 172, 178, 148 }, Input = { 224, 230, 200 }, Accent = { 46, 60, 44 }, Ink = { 52, 64, 48 }, Cream = { 236, 242, 218 }, Line = { 146, 154, 124 }, Team = { 90, 130, 80 } },
     Gold = { Paper = { 222, 205, 158 }, Row = { 204, 181, 123 }, Input = { 244, 232, 194 }, Accent = { 132, 91, 20 }, Ink = { 86, 62, 24 }, Cream = { 255, 247, 215 }, Line = { 184, 151, 79 }, Team = { 218, 165, 32 } },
     Slate = { Paper = { 190, 196, 200 }, Row = { 164, 172, 178 }, Input = { 218, 224, 228 }, Accent = { 44, 52, 60 }, Ink = { 48, 56, 64 }, Cream = { 232, 238, 242 }, Line = { 140, 148, 154 }, Team = { 70, 110, 150 } },
+    Midnight = { Paper = { 16, 22, 40 }, Row = { 28, 38, 64 }, Input = { 10, 15, 29 }, Accent = { 82, 140, 232 }, Ink = { 226, 236, 255 }, Cream = { 240, 246, 255 }, Line = { 58, 76, 116 }, Team = { 96, 165, 250 } },
+    Moonlight = { Paper = { 30, 34, 44 }, Row = { 46, 52, 66 }, Input = { 20, 23, 31 }, Accent = { 138, 152, 188 }, Ink = { 232, 236, 244 }, Cream = { 248, 250, 255 }, Line = { 82, 90, 110 }, Team = { 176, 190, 222 } },
+    Aurora = { Paper = { 14, 30, 34 }, Row = { 22, 50, 54 }, Input = { 9, 20, 24 }, Accent = { 38, 184, 140 }, Ink = { 222, 248, 240 }, Cream = { 240, 255, 250 }, Line = { 44, 92, 96 }, Team = { 180, 120, 255 } },
     Christmas = { Paper = { 24, 52, 38 }, Row = { 36, 72, 54 }, Input = { 15, 36, 27 }, Accent = { 214, 40, 48 }, Ink = { 244, 248, 238 }, Cream = { 255, 250, 238 }, Line = { 74, 118, 92 }, Team = { 255, 214, 92 } },
     Halloween = { Paper = { 28, 20, 32 }, Row = { 48, 30, 48 }, Input = { 18, 13, 23 }, Accent = { 255, 112, 28 }, Ink = { 245, 221, 255 }, Cream = { 255, 239, 214 }, Line = { 112, 62, 102 }, Team = { 173, 255, 66 } },
 }
-local PresetOrder = { "Paper", "Dusk", "Moss", "Gold", "Slate", "Halloween", "Christmas" }
+local PresetOrder = { "Paper", "Dusk", "Moss", "Gold", "Slate", "Halloween", "Christmas", "Midnight", "Moonlight", "Aurora" }
 Library.Presets = Presets
 
 local FontPresets = {}
