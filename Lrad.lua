@@ -165,6 +165,7 @@ local Translations = {
     SoundVolumeLabel = "Sound Volume (%)",
     PageAnimationLabel = "Page Transition",
     OpenCloseAnimationLabel = "Window",
+    ToggleHint = "Press [ %s ] to hide GUI",
   },
 th = {
   PresetHeader = "ธีม",
@@ -179,6 +180,7 @@ th = {
   SoundVolumeLabel = "ระดับเสียง (%)",
   PageAnimationLabel = "แอนิเมชันเปลี่ยนหน้า",
   OpenCloseAnimationLabel = "แอนิเมชันหน้าต่าง",
+  ToggleHint = "กด [ %s ] เพื่อซ่อน/แสดงหน้าต่าง",
 },
 }
 
@@ -600,21 +602,19 @@ local function save()
   SaveConfig(main)
 end
 
-local function makeDraggable(handle, target, onEnd, scaleProvider)
+local function makeDraggable(handle, target, onEnd, scaleProvider, keepOnScreen)
   target = target or handle
-  local dragging, dragStart, startP, moved = false, nil, nil, false
+  local dragging, dragStart, startP, startAbs, moved = false, nil, nil, nil, false
   connect(handle.InputBegan, function(input)
     if isPointer(input) then
       dragging, moved = true, false
-      dragStart, startP = input.Position, target.Position
+      dragStart, startP, startAbs = input.Position, target.Position, target.AbsolutePosition
       local c
       c = input.Changed:Connect(function()
         if input.UserInputState == Enum.UserInputState.End then
           dragging = false
           c:Disconnect()
-          if onEnd and moved then
-            onEnd()
-          end
+          if onEnd and moved then onEnd() end
         end
       end)
     end
@@ -622,18 +622,20 @@ local function makeDraggable(handle, target, onEnd, scaleProvider)
   connect(UserInputService.InputChanged, function(input)
     if dragging and isMove(input) then
       local d = input.Position - dragStart
-      if d.Magnitude > 4 then
-        moved = true
+      if d.Magnitude > 4 then moved = true end
+      if keepOnScreen then
+        local cam = workspace.CurrentCamera
+        local vpSize = cam and cam.ViewportSize or Vector2.new(1280, 720)
+        local size = target.AbsoluteSize
+        local nx = math.clamp(startAbs.X + d.X, 60 - size.X, vpSize.X - 60)
+        local ny = math.clamp(startAbs.Y + d.Y, 0, vpSize.Y - 40)
+        d = Vector2.new(nx - startAbs.X, ny - startAbs.Y)
       end
-      local scaleFactor = scaleProvider and scaleProvider() or 1
-      scaleFactor = math.max(tonumber(scaleFactor) or 1, 0.01)
-      local dx, dy = d.X / scaleFactor, d.Y / scaleFactor
-      target.Position = UDim2.new(startP.X.Scale, startP.X.Offset + dx, startP.Y.Scale, startP.Y.Offset + dy)
+      local s = math.max(tonumber(scaleProvider and scaleProvider() or 1) or 1, 0.01)
+      target.Position = UDim2.new(startP.X.Scale, startP.X.Offset + d.X / s, startP.Y.Scale, startP.Y.Offset + d.Y / s)
     end
   end)
-  return function()
-    return moved
-  end
+  return function() return moved end
 end
 
 local function makeDrag(obj, update, onEnd)
@@ -740,21 +742,7 @@ vline(b, UDim2.fromOffset(0, 0))
 return b, parts
 end
 
-local closeBtn, closeParts = cellButton(1)
-for _, rot in ipairs({ 45, -45 }) do
-  local ln = new("Frame", {
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(0.5, 0.5),
-    Size = UDim2.fromOffset(14, 2),
-    Rotation = rot,
-    BorderSizePixel = 0,
-    ZIndex = 5,
-  }, closeBtn)
-bind(ln, "BackgroundColor3", "Ink")
-table.insert(closeParts, { ln, "BackgroundColor3" })
-end
-
-local gearBtn, gearParts = cellButton(2)
+local gearBtn, gearParts = cellButton(1)
 gearBtn.Name = "SettingsGearBtn"
 if Icons["lucide-settings"] then
   local gi = new("ImageLabel", {
@@ -784,7 +772,7 @@ local tabsHolder = new("ScrollingFrame", {
   BackgroundTransparency = 1,
   BorderSizePixel = 0,
   Position = UDim2.fromOffset(TOP_H + titleW, 0),
-  Size = UDim2.new(1, -(TOP_H + titleW + TOP_H * 2), 1, 0),
+  Size = UDim2.new(1, -(TOP_H + titleW + TOP_H * 1), 1, 0),
   ScrollBarThickness = 0,
   CanvasSize = UDim2.new(),
   AutomaticCanvasSize = Enum.AutomaticSize.X,
@@ -810,7 +798,7 @@ makeDraggable(top, main, function()
   save()
 end, function()
 return OverallScalePercent / 100
-end)
+end, true)
 
 local resizeBtn = new("TextButton", {
   Name = "ResizeBtn",
@@ -1059,10 +1047,6 @@ SetWindowOpen = function(shouldOpen)
   animating = true
   playStrips(shouldOpen, StripVariants[OpenCloseAnimation] or StripVariants.Classic)
 end
-
-closeBtn.MouseButton1Click:Connect(function()
-  SetWindowOpen(false)
-end)
 
 runThemeTransition = function(applyChange)
   if type(applyChange) ~= "function" then
@@ -1326,10 +1310,10 @@ local function SetToggleButtonScale(percent)
   persistTheme()
 end
 
-toggleBtn.Visible = isMobile
+toggleBtn.Visible = isMobile or not toggleKey
 local tbMoved = makeDraggable(toggleBtn, nil, nil, function()
   return ToggleButtonScalePercent / 100
-end)
+end, true)
 toggleBtn.MouseButton1Click:Connect(function()
   if not tbMoved() then
     SetWindowOpen(not main.Visible)
@@ -3340,7 +3324,8 @@ if Config.StartOpen ~= false then
   task.defer(function()
     SetWindowOpen(true)
     if toggleKey and not isMobile and Config.ToggleHint ~= false then
-      Notify("Press [ " .. toggleKey.Name .. " ] to hide GUI", 4)
+      local hint = (Translations[Language] or Translations.en).ToggleHint
+      Notify(string.format(hint, toggleKey.Name), 4)
     end
   end)
 end
