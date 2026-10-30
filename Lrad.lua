@@ -611,7 +611,35 @@ local function UpdateBackgroundImageEnabled(state)
   BgImageEnabled = state
   bgImageLabel.Visible = BgImageEnabled and BgImage ~= ""
 end
-
+-- NieR-style diagonal hatch background
+local PatternHolder = new("Frame", {
+  Name = "NierPattern",
+  BackgroundTransparency = 1,
+  Size = UDim2.fromScale(1, 1),
+  ClipsDescendants = true,
+  Active = false,
+  ZIndex = 0,
+  Visible = Config.BackgroundPattern ~= false,
+}, main)
+local patternRot = new("Frame", {
+  AnchorPoint = Vector2.new(0.5, 0.5),
+  Position = UDim2.fromScale(0.5, 0.5),
+  Size = UDim2.fromOffset(1700, 1700),
+  BackgroundTransparency = 1,
+  Rotation = 45,
+  ZIndex = 0,
+}, PatternHolder)
+new("UIListLayout", { Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder }, patternRot)
+for i = 1, 213 do
+  local l = new("Frame", {
+    Size = UDim2.new(1, 0, 0, 1),
+    BorderSizePixel = 0,
+    BackgroundTransparency = 0.88,
+    LayoutOrder = i,
+    ZIndex = 0,
+  }, patternRot)
+  bind(l, "BackgroundColor3", "Line")
+end
 local function persistTheme()
   local colors = {}
   for token, col in pairs(Theme) do
