@@ -1,6 +1,4 @@
 local Library = {}
-
-
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local TextService = game:GetService("TextService")
@@ -4407,6 +4405,4 @@ do
   end
 end
 
-SableUI.Name = "SABLE UI"
-SableUI.Version = "1.0.0"
-return SableUI
+return Library
