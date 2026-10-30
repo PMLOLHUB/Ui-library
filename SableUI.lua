@@ -1,4 +1,4 @@
-local Library = {}
+local SableUI = {}
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local TextService = game:GetService("TextService")
@@ -7,7 +7,6 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 local ConfigFileName = "SABLE_Config.json"
-local LegacyConfigFileName = "UNIT_Config.json"
 local EnableSave = true
 
 local Flags = {}
@@ -88,10 +87,6 @@ local function LoadConfig()
   end
   local sourceFile = ConfigFileName
   local existsOk, exists = pcall(isFile, sourceFile)
-  if not existsOk or not exists then
-    sourceFile = LegacyConfigFileName
-    existsOk, exists = pcall(isFile, sourceFile)
-  end
   if not existsOk or not exists then
     return
   end
@@ -4405,4 +4400,4 @@ do
   end
 end
 
-return Library
+return SableUI
