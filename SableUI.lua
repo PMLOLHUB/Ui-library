@@ -199,6 +199,7 @@ th = {
 }
 
 local Presets = {
+  Editorial = { Paper = { 214, 209, 187 }, Row = { 214, 209, 187 }, Input = { 199, 193, 169 }, Accent = { 54, 52, 45 }, Ink = { 65, 62, 54 }, Cream = { 214, 209, 187 }, Line = { 119, 114, 99 }, Team = { 83, 79, 69 } },
   Sand = { Paper = { 212, 207, 184 }, Row = { 212, 207, 184 }, Input = { 200, 194, 169 }, Accent = { 43, 42, 38 }, Ink = { 61, 58, 50 }, Cream = { 212, 207, 184 }, Line = { 115, 110, 96 }, Team = { 87, 83, 74 } },
   Night = { Paper = { 43, 42, 38 }, Row = { 61, 58, 50 }, Input = { 43, 42, 38 }, Accent = { 212, 207, 184 }, Ink = { 212, 207, 184 }, Cream = { 43, 42, 38 }, Line = { 147, 142, 126 }, Team = { 200, 194, 169 } },
   Unit = { Paper = { 34, 34, 30 }, Row = { 40, 40, 36 }, Input = { 26, 26, 23 }, Accent = { 217, 211, 184 }, Ink = { 217, 211, 184 }, Cream = { 30, 30, 27 }, Line = { 112, 108, 88 }, Team = { 217, 211, 184 } },
@@ -374,7 +375,7 @@ function SableUI:CreateWindow(WindowName, Config)
   end
   local PageAnimation = "Pop"
   local OpenCloseAnimation = "Classic"
-  local CurrentPreset = (type(Config.Theme) == "string" and Presets[Config.Theme]) and Config.Theme or "Sand"
+  local CurrentPreset = (type(Config.Theme) == "string" and Presets[Config.Theme]) and Config.Theme or "Editorial"
   local BorderEnabled = Config.BorderEnabled ~= false
   local BgImage = Config.BackgroundImage or ""
   local BgImageTransparency = Config.BackgroundImageTransparency or 0.5
@@ -813,7 +814,7 @@ bind(dia, "BackgroundColor3", "Accent")
 end
 vline(top, UDim2.fromOffset(TOP_H - 1, 0))
 
-local titleText = U(WindowName or "SABLE UI")
+local titleText = U(WindowName or "UI LIBRARY")
 local titleW = math.clamp(measure(titleText, 12) + 36, 90, 260)
 local titleLabel = new("TextLabel", {
   BackgroundTransparency = 1,
@@ -885,7 +886,7 @@ local headerMeta = new("TextLabel", {
   AnchorPoint = Vector2.new(1, 0),
   Position = UDim2.new(1, -(TOP_H + 8), 0, 0),
   Size = UDim2.fromOffset(headerMetaWidth, TOP_H),
-  Text = isMobile and "" or "SABLE / V1.0",
+  Text = isMobile and "" or "COMPONENTS / V1.0",
   TextSize = 8,
   Font = Enum.Font.GothamMedium,
   TextColor3 = Theme.Line,
@@ -2094,7 +2095,7 @@ UpdateFloatingHotkeyVisual = function(entry)
   if entry.corner then
     local radius = style == "Circle" and UDim.new(1, 0)
     or style == "Rounded" and UDim.new(0, math.floor(size * 0.25))
-    or style == "Square" and UDim.new(0, 3)
+    or style == "Square" and UDim.new(0, 0)
     or UDim.new(0, math.floor(size * 0.16))
     entry.corner.CornerRadius = radius
   end
@@ -2206,7 +2207,7 @@ local function beginHotkeyCapture(entry)
   }, gui)
 HotkeyCaptureOverlay = overlay
 bind(overlay, "BackgroundColor3", "Paper")
-new("UICorner", { CornerRadius = UDim.new(0, 7) }, overlay)
+new("UICorner", { CornerRadius = UDim.new(0, 0) }, overlay)
 local outline = new("UIStroke", { Thickness = 1.5 }, overlay)
 bind(outline, "Color", "Accent")
 local label = new("TextLabel", {
