@@ -611,35 +611,7 @@ local function UpdateBackgroundImageEnabled(state)
   BgImageEnabled = state
   bgImageLabel.Visible = BgImageEnabled and BgImage ~= ""
 end
--- NieR-style diagonal hatch background
-local PatternHolder = new("Frame", {
-  Name = "NierPattern",
-  BackgroundTransparency = 1,
-  Size = UDim2.fromScale(1, 1),
-  ClipsDescendants = true,
-  Active = false,
-  ZIndex = 0,
-  Visible = Config.BackgroundPattern ~= false,
-}, main)
-local patternRot = new("Frame", {
-  AnchorPoint = Vector2.new(0.5, 0.5),
-  Position = UDim2.fromScale(0.5, 0.5),
-  Size = UDim2.fromOffset(1700, 1700),
-  BackgroundTransparency = 1,
-  Rotation = 45,
-  ZIndex = 0,
-}, PatternHolder)
-new("UIListLayout", { Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder }, patternRot)
-for i = 1, 213 do
-  local l = new("Frame", {
-    Size = UDim2.new(1, 0, 0, 1),
-    BorderSizePixel = 0,
-    BackgroundTransparency = 0.88,
-    LayoutOrder = i,
-    ZIndex = 0,
-  }, patternRot)
-  bind(l, "BackgroundColor3", "Line")
-end
+  
 local function persistTheme()
   local colors = {}
   for token, col in pairs(Theme) do
@@ -750,7 +722,56 @@ local top = new("Frame", { Name = "TopBar", Size = UDim2.new(1, 0, 0, TOP_H), Bo
 bind(top, "BackgroundColor3", "Paper")
 bindGlass(top)
 hline(main, UDim2.fromOffset(0, TOP_H), UDim2.new(1, 0, 0, 1))
+-- NieR-style background: faint diagonals, rings, dotted edge strips
+local patternOn = Config.BackgroundPattern ~= false
+local Pattern = new("Frame", {
+  Name = "NierPattern", BackgroundTransparency = 1,
+  Size = UDim2.fromScale(1, 1), ClipsDescendants = true,
+  Active = false, ZIndex = 0, Visible = patternOn,
+}, main)
 
+local function patLine(x, alpha)
+  local f = new("Frame", {
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.fromScale(x, 0.5),
+    Size = UDim2.fromOffset(900, 1),
+    Rotation = -58, BorderSizePixel = 0,
+    BackgroundTransparency = alpha, ZIndex = 0,
+  }, Pattern)
+  bind(f, "BackgroundColor3", "Line")
+end
+patLine(0.18, 0.8); patLine(0.24, 0.88); patLine(0.30, 0.93)
+
+local function patRing(r, alpha)
+  local ring = new("Frame", {
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.new(1, -60, 1, -50),
+    Size = UDim2.fromOffset(r * 2, r * 2),
+    BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 0,
+  }, Pattern)
+  new("UICorner", { CornerRadius = UDim.new(1, 0) }, ring)
+  local s = new("UIStroke", { Thickness = 1, Transparency = alpha }, ring)
+  bind(s, "Color", "Line")
+end
+patRing(70, 0.8); patRing(110, 0.86); patRing(160, 0.92)
+
+local function patDots(pos, anchorY)
+  local strip = new("Frame", {
+    AnchorPoint = Vector2.new(0, anchorY), Position = pos,
+    Size = UDim2.new(1, 0, 0, 8), BackgroundTransparency = 1,
+    ClipsDescendants = true, ZIndex = 2, Visible = patternOn,
+  }, main)
+  for i = 0, 84 do
+    local d = new("Frame", {
+      Position = UDim2.fromOffset(i * 12 + 6, (i % 2 == 0) and 1 or 5),
+      Size = UDim2.fromOffset(2, 2), BorderSizePixel = 0,
+      BackgroundTransparency = 0.4, ZIndex = 2,
+    }, strip)
+    bind(d, "BackgroundColor3", "Line")
+  end
+end
+patDots(UDim2.fromOffset(0, TOP_H + 1), 0)
+patDots(UDim2.new(0, 0, 1, 0), 1)
 local function vline(parent, pos)
   local f = new("Frame", { Position = pos, Size = UDim2.new(0, 1, 1, 0), BorderSizePixel = 0, ZIndex = 5 }, parent)
   bind(f, "BackgroundColor3", "Line")
