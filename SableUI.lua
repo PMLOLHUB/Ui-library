@@ -1,4 +1,5 @@
-local SableUI = { Name = "SABLE UI", Version = "1.0.0" }
+local Library = {}
+
 
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
