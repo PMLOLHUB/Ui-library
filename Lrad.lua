@@ -4050,7 +4050,7 @@ if Config.ShowSettingsTab ~= false then
       SettingsTab:CreateDropdown(T.PresetLabel, "lucide-palette", PresetOrder, CurrentPreset, nil, function(selected)
         applyPreset(selected)
       end)
-      SettingsTab:CreateSlider(T.OverallScaleLabel, "lucide-scaling", 70, 130, OverallScalePercent, "OverallScalePercent", function(v)
+      SettingsTab:CreateSlider(T.OverallScaleLabel, "lucide-scaling", 70, 110, OverallScalePercent, "OverallScalePercent", function(v)
         SetOverallScale(v)
       end)
       SettingsTab:CreateSlider(T.TransparencyLabel, "lucide-glasses", 0, 90, TransPercent, function(v)
