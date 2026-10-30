@@ -1862,6 +1862,12 @@ local function hotkeyEntryActive(entry)
   and entry.source.Parent ~= nil
 end
 
+local function readHotkeyState(entry)
+  if not entry or type(entry.GetState) ~= "function" then return false end
+  local ok, state = pcall(entry.GetState)
+  return ok and state == true
+end
+
 local function saveHotkeyEntry(entry)
   if not entry then return end
   local data = HotkeySettingsSaved[entry.Id]
@@ -1931,14 +1937,14 @@ local function createFloatingHotkey(entry)
   }, gui)
 entry.floatButton = button
 bind(button, "BackgroundColor3", function(theme)
-  if entry.kind == "Toggle" and entry.GetState then
-    return entry.GetState() and theme.Accent or theme.Row
+  if type(entry.GetState) == "function" then
+    return readHotkeyState(entry) and theme.Accent or theme.Row
   end
   return theme.Accent
 end)
 bind(button, "TextColor3", function(theme)
-  if entry.kind == "Toggle" and entry.GetState then
-    return entry.GetState() and theme.Cream or theme.Ink
+  if type(entry.GetState) == "function" then
+    return readHotkeyState(entry) and theme.Cream or theme.Ink
   end
   return theme.Cream
 end)
@@ -1947,8 +1953,8 @@ entry.corner = corner
 local stroke = new("UIStroke", { Thickness = 1.5 }, button)
 entry.stroke = stroke
 bind(stroke, "Color", function(theme)
-  if entry.kind == "Toggle" and entry.GetState then
-    return entry.GetState() and theme.Cream or theme.Line
+  if type(entry.GetState) == "function" then
+    return readHotkeyState(entry) and theme.Cream or theme.Line
   end
   return theme.Ink
 end)
@@ -1968,7 +1974,7 @@ if entry.iconAsset then
   }, button)
 entry.iconObject = icon
 bind(icon, "ImageColor3", function(theme)
-  if entry.kind == "Toggle" and entry.GetState and not entry.GetState() then
+  if type(entry.GetState) == "function" and not readHotkeyState(entry) then
     return theme.Ink
   end
   return theme.Cream
@@ -2004,7 +2010,9 @@ UpdateFloatingHotkeyVisual = function(entry)
   if not button or not button.Parent then return end
   local size = HotkeyButtonSize
   local toggle = entry.kind == "Toggle"
-  local active = toggle and entry.GetState and entry.GetState() == true or false
+  local stateful = type(entry.GetState) == "function"
+  local active = stateful and readHotkeyState(entry) or false
+  entry.lastVisualState = active
   button.Size = UDim2.fromOffset(size, size)
   local style = HotkeyButtonStyle
   if entry.corner then
@@ -2030,7 +2038,7 @@ UpdateFloatingHotkeyVisual = function(entry)
     entry.iconObject.Size = UDim2.fromOffset(iconSize, iconSize)
     entry.iconObject.Position = UDim2.fromScale(0.5, toggle and 0.38 or 0.5)
   end
-  if toggle then
+  if stateful then
     local stateColor = active and Theme.Accent or Theme.Row
     button.BackgroundColor3 = stateColor
     button.TextColor3 = active and Theme.Cream or Theme.Ink
@@ -2043,7 +2051,7 @@ UpdateFloatingHotkeyVisual = function(entry)
   end
   if style == "Outline" then
     button.BackgroundTransparency = 1
-    if toggle and not active then
+    if stateful and not active then
       button.TextColor3 = Theme.Ink
       if entry.iconObject then entry.iconObject.ImageColor3 = Theme.Ink end
     end
@@ -2059,6 +2067,21 @@ RefreshHotkeyItem = function(entry)
     destroyFloatingHotkey(entry)
   end
 end
+
+-- Re-check getters so floating buttons always reflect the real feature state.
+task.spawn(function()
+  while gui and gui.Parent do
+    for _, entry in ipairs(HotkeyEntries) do
+      if entry.floatButton and entry.floatButton.Parent and type(entry.GetState) == "function" then
+        local state = readHotkeyState(entry)
+        if entry.lastVisualState ~= state then
+          UpdateFloatingHotkeyVisual(entry)
+        end
+      end
+    end
+    task.wait(0.15)
+  end
+end)
 
 local function setHotkeyItemEnabled(entry, enabled)
   if not entry or entry.forced or entry.blocked then return end
@@ -2713,7 +2736,7 @@ function CategoryElements:CreateLabel(Text, IconName, TextColor)
 end
 
 function CategoryElements:CreateButton(ButtonText, IconName, TextColor, Callback)
-  local HotkeyOption, HotkeyId
+  local HotkeyOption, HotkeyId, HotkeyGetState
   if type(ButtonText) == "table" then
     local options = ButtonText
     ButtonText = options.Name or options.Text or "Button"
@@ -2722,6 +2745,7 @@ function CategoryElements:CreateButton(ButtonText, IconName, TextColor, Callback
     Callback = options.Callback
     HotkeyOption = options.Hotkey
     HotkeyId = options.HotkeyId or options.Id or options.Flag
+    HotkeyGetState = options.GetState
   else
     if type(IconName) == "function" then
       Callback = IconName; IconName = nil; TextColor = nil
@@ -2754,6 +2778,10 @@ end
 
 row.MouseButton1Click:Connect(activateButton)
 local hotkeyEntry = AttachHotkeySettings(row, ButtonText, IconName, "Button", HotkeyOption, HotkeyId, activateButton, CategoryName)
+if type(HotkeyGetState) == "function" then
+  hotkeyEntry.GetState = HotkeyGetState
+  UpdateFloatingHotkeyVisual(hotkeyEntry)
+end
 return {
   SetText = function(t)
     lbl.Text = U(t)
@@ -2991,14 +3019,18 @@ local function apply(fire)
 end
 
 local hotkeyEntry
-local function activateToggle()
-  current = not current
+local function setToggleState(value, fireCallback)
+  current = value == true
   if Flag and Flags[Flag] then
     Flags[Flag].Value = current
-    save()
   end
-  apply(true)
-  UpdateFloatingHotkeyVisual(hotkeyEntry)
+  apply(fireCallback == true)
+  if hotkeyEntry then UpdateFloatingHotkeyVisual(hotkeyEntry) end
+end
+
+local function activateToggle()
+  setToggleState(not current, true)
+  if Flag and Flags[Flag] then save() end
   if Library._sfx then
     Library._sfx(current and "toggleOn" or "toggleOff")
   end
@@ -3008,16 +3040,13 @@ apply(true)
 row.MouseButton1Click:Connect(activateToggle)
 row:SetAttribute("NoSelectSfx", true)
 hotkeyEntry = AttachHotkeySettings(row, ToggleText, IconName, "Toggle", HotkeyOption, HotkeyId, activateToggle, CategoryName)
+hotkeyEntry.flag = Flag
 hotkeyEntry.GetState = function() return current end
+hotkeyEntry.SetState = function(value) setToggleState(value, false) end
 UpdateFloatingHotkeyVisual(hotkeyEntry)
 
 return {
-  Set = function(v)
-    current = v == true
-    if Flag and Flags[Flag] then Flags[Flag].Value = current end
-    apply(true)
-    UpdateFloatingHotkeyVisual(hotkeyEntry)
-  end,
+  Set = function(v) setToggleState(v, true) end,
   Get = function() return current end,
 }
 end
@@ -3845,10 +3874,20 @@ function WindowElements:GetFlag(name)
   return f and f.Value or nil
 end
 function WindowElements:SetFlag(name, value)
-  if Flags[name] then
+  if not Flags[name] then return end
+  if Flags[name].Type == "Toggle" then
+    local handled = false
+    for _, entry in ipairs(HotkeyEntries) do
+      if entry.flag == name and type(entry.SetState) == "function" then
+        entry.SetState(value)
+        handled = true
+      end
+    end
+    if not handled then Flags[name].Value = value == true end
+  else
     Flags[name].Value = value
-    save()
   end
+  save()
 end
 function WindowElements:SaveConfiguration() save() end
 function WindowElements:Show() SetWindowOpen(true) end
