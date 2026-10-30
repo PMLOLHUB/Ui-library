@@ -7,7 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-local ConfigFileName = "Grad_Config.json"
+local ConfigFileName = "UNIT_Config.json"
 local EnableSave = true
 
 local Flags = {}
@@ -201,7 +201,7 @@ th = {
 local Presets = {
   Unit = { Paper = { 212, 207, 184 }, Row = { 200, 194, 169 }, Input = { 197, 192, 170 }, Accent = { 43, 42, 38 }, Ink = { 61, 58, 50 }, Cream = { 212, 207, 184 }, Line = { 135, 129, 114 }, Team = { 74, 71, 64 } },
   ["Unit Dark"] = { Paper = { 43, 42, 38 }, Row = { 61, 58, 50 }, Input = { 74, 71, 64 }, Accent = { 212, 207, 184 }, Ink = { 212, 207, 184 }, Cream = { 43, 42, 38 }, Line = { 135, 129, 114 }, Team = { 200, 194, 169 } },
-  Paper = { Paper = { 204, 198, 174 }, Row = { 172, 166, 149 }, Input = { 226, 220, 198 }, Accent = { 54, 50, 44 }, Ink = { 72, 66, 52 }, Cream = { 252, 248, 220 }, Line = { 158, 152, 129 }, Team = { 120, 110, 80 } },
+  Paper = { Paper = { 212, 207, 184 }, Row = { 200, 194, 169 }, Input = { 197, 192, 170 }, Accent = { 43, 42, 38 }, Ink = { 61, 58, 50 }, Cream = { 212, 207, 184 }, Line = { 135, 129, 114 }, Team = { 74, 71, 64 } },
   Dusk = { Paper = { 196, 184, 170 }, Row = { 172, 158, 144 }, Input = { 228, 216, 204 }, Accent = { 70, 52, 58 }, Ink = { 70, 54, 56 }, Cream = { 244, 232, 222 }, Line = { 150, 134, 124 }, Team = { 150, 90, 100 } },
   Moss = { Paper = { 198, 202, 176 }, Row = { 172, 178, 148 }, Input = { 224, 230, 200 }, Accent = { 46, 60, 44 }, Ink = { 52, 64, 48 }, Cream = { 236, 242, 218 }, Line = { 146, 154, 124 }, Team = { 90, 130, 80 } },
   Gold = { Paper = { 222, 205, 158 }, Row = { 204, 181, 123 }, Input = { 244, 232, 194 }, Accent = { 132, 91, 20 }, Ink = { 86, 62, 24 }, Cream = { 255, 247, 215 }, Line = { 184, 151, 79 }, Team = { 218, 165, 32 } },
@@ -421,7 +421,27 @@ function Library:CreateWindow(WindowName, Config)
       and savedTheme.Colors.Paper[1] == 34
       and savedTheme.Colors.Paper[2] == 34
       and savedTheme.Colors.Paper[3] == 30
-    if type(savedTheme.Colors) == "table" and not oldDefaultUnit then
+    local oldReferencePaper = false
+    if savedTheme.PresetName == "Paper" and type(savedTheme.Colors) == "table" then
+      local oldPaperColors = {
+        Paper = { 204, 198, 174 }, Row = { 172, 166, 149 }, Input = { 226, 220, 198 },
+        Accent = { 54, 50, 44 }, Ink = { 72, 66, 52 }, Cream = { 252, 248, 220 },
+        Line = { 158, 152, 129 }, Team = { 120, 110, 80 },
+      }
+      oldReferencePaper = true
+      for token, expected in pairs(oldPaperColors) do
+        local actual = savedTheme.Colors[token]
+        if type(actual) ~= "table" or actual[1] ~= expected[1] or actual[2] ~= expected[2] or actual[3] ~= expected[3] then
+          oldReferencePaper = false
+          break
+        end
+      end
+    end
+    local oldDesignPalette = oldDefaultUnit or oldReferencePaper
+    if oldDesignPalette then
+      loadPreset(Presets[CurrentPreset] or Presets.Unit)
+    end
+    if type(savedTheme.Colors) == "table" and not oldDesignPalette then
       for token, v in pairs(savedTheme.Colors) do
         if Theme[token] and type(v) == "table" and v[3] then
           Theme[token] = c3(v)
@@ -436,7 +456,7 @@ function Library:CreateWindow(WindowName, Config)
     if savedTheme.ToggleButtonScalePercent ~= nil then
       ToggleButtonScalePercent = math.clamp(tonumber(savedTheme.ToggleButtonScalePercent) or 100, 50, 180)
     end
-    if savedTheme.FontFamily and FontPresets[savedTheme.FontFamily] and not (oldDefaultUnit and savedTheme.FontFamily == "Arcade") then FontFamily = savedTheme.FontFamily end
+    if savedTheme.FontFamily and FontPresets[savedTheme.FontFamily] and not (oldDesignPalette and savedTheme.FontFamily == "Arcade") then FontFamily = savedTheme.FontFamily end
     if savedTheme.Language == "th" or savedTheme.Language == "en" then Language = savedTheme.Language end
     if savedTheme.BorderEnabled ~= nil then BorderEnabled = savedTheme.BorderEnabled end
     if savedTheme.BackgroundImage ~= nil then BgImage = savedTheme.BackgroundImage end
@@ -575,11 +595,19 @@ end
 
 local camera = workspace.CurrentCamera
 local vp = camera and camera.ViewportSize or Vector2.new(1280, 720)
-local startSize = savedSize or UDim2.fromOffset(math.min(700, math.floor(vp.X * 0.94)), math.min(420, math.floor(vp.Y * 0.82)))
-local startPos = savedPos or UDim2.new(0.5, -startSize.X.Offset / 2, 0.5, -startSize.Y.Offset / 2)
-local ColumnCount = tonumber(Config.Columns) or (startSize.X.Offset < 520 and 1 or 2)
+if savedSize and vp.X >= 1040 and savedSize.X.Offset < 980 then
+  savedSize = nil
+  savedPos = nil
+end
+local FULLSCREEN_LAYOUT = Config.Fullscreen ~= false
+local PAGE_MARGIN = math.clamp(math.floor(vp.X * 0.0378), 18, 55)
+local startSize = FULLSCREEN_LAYOUT and UDim2.fromOffset(vp.X, vp.Y)
+  or savedSize or UDim2.fromOffset(math.min(1360, math.floor(vp.X * 0.944)), math.min(1000, math.floor(vp.Y * 0.98)))
+local startPos = FULLSCREEN_LAYOUT and UDim2.fromOffset(0, 0)
+  or savedPos or UDim2.new(0.5, -startSize.X.Offset / 2, 0, 0)
+local ColumnCount = tonumber(Config.Columns) or (startSize.X.Offset < 700 and 1 or (startSize.X.Offset < 1040 and 2 or 3))
 ColumnCount = math.clamp(math.floor(ColumnCount), 1, 3)
-local COL_GAP = 16
+local COL_GAP = startSize.X.Offset < 700 and 18 or (startSize.X.Offset < 1040 and 24 or 36)
 
 local main = new("Frame", {
   Name = "MainFrame",
@@ -591,8 +619,8 @@ local main = new("Frame", {
 }, gui)
 mainUIScale = new("UIScale", { Scale = OverallScalePercent / 100 }, main)
 bind(main, "BackgroundColor3", "Paper")
-bindGlass(main)
-local mainStroke = new("UIStroke", { Thickness = 1, Enabled = BorderEnabled }, main)
+main.BackgroundTransparency = 0
+local mainStroke = new("UIStroke", { Thickness = 1, Enabled = BorderEnabled and not FULLSCREEN_LAYOUT }, main)
 bind(mainStroke, "Color", "Line")
 
 local bgImageLabel = new("ImageLabel", {
@@ -724,12 +752,14 @@ local function hline(parent, pos, size)
   return f
 end
 
-local TOP_H = 42
+local TOP_H = 90
+local ACTION_H = 36
 local top = new("Frame", { Name = "TopBar", Size = UDim2.new(1, 0, 0, TOP_H), BorderSizePixel = 0, ZIndex = 3 }, main)
 bind(top, "BackgroundColor3", "Paper")
 bindGlass(top)
-hline(main, UDim2.fromOffset(0, TOP_H), UDim2.new(1, 0, 0, 1))
--- Optional background motif: disabled by default for the reference style
+hline(main, UDim2.fromOffset(PAGE_MARGIN, TOP_H), UDim2.new(1, -PAGE_MARGIN * 2, 0, 1))
+
+-- The reference uses a quiet paper surface; optional decoration stays off by default.
 local patternOn = Config.BackgroundPattern == true
 local Pattern = new("Frame", {
   Name = "NierPattern", BackgroundTransparency = 1,
@@ -757,8 +787,8 @@ local function patRing(r, alpha)
     BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 0,
   }, Pattern)
   new("UICorner", { CornerRadius = UDim.new(1, 0) }, ring)
-  local s = new("UIStroke", { Thickness = 1, Transparency = alpha }, ring)
-  bind(s, "Color", "Line")
+  local st = new("UIStroke", { Thickness = 1, Transparency = alpha }, ring)
+  bind(st, "Color", "Line")
 end
 patRing(70, 0.8); patRing(110, 0.86); patRing(160, 0.92)
 
@@ -779,49 +809,47 @@ local function patDots(pos, anchorY)
 end
 patDots(UDim2.fromOffset(0, TOP_H + 1), 0)
 patDots(UDim2.new(0, 0, 1, 0), 1)
-local function vline(parent, pos)
-  local f = new("Frame", { Position = pos, Size = UDim2.new(0, 1, 1, 0), BorderSizePixel = 0, ZIndex = 5 }, parent)
-  bind(f, "BackgroundColor3", "Line")
-  return f
-end
 
-local logoCell = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(TOP_H, TOP_H), ZIndex = 4 }, top)
+local titleText = U(WindowName or "UI LIBRARY")
+local logoOffset = PAGE_MARGIN
 if Config.Logo and Config.Logo ~= "" then
   new("ImageLabel", {
     BackgroundTransparency = 1,
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(0.5, 0.5),
+    AnchorPoint = Vector2.new(0, 0.5),
+    Position = UDim2.new(0, PAGE_MARGIN, 0, 30),
     Size = UDim2.fromOffset(20, 20),
     Image = Config.Logo,
     ZIndex = 5,
-  }, logoCell)
-else
-  local dia = new("Frame", {
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(0.5, 0.5),
-    Size = UDim2.fromOffset(13, 13),
-    Rotation = 45,
-    BorderSizePixel = 0,
-    ZIndex = 5,
-  }, logoCell)
-bind(dia, "BackgroundColor3", "Accent")
+  }, top)
+  logoOffset = 56
 end
-vline(top, UDim2.fromOffset(TOP_H - 1, 0))
-
-local titleText = U(WindowName or "UNIT UI")
-local titleW = math.clamp(measure(titleText, 12) + 36, 90, 260)
 local titleLabel = new("TextLabel", {
   BackgroundTransparency = 1,
-  Position = UDim2.fromOffset(TOP_H + 18, 0),
-  Size = UDim2.fromOffset(titleW - 36, TOP_H),
+  Position = UDim2.fromOffset(logoOffset, 8),
+  Size = UDim2.new(0.62, -logoOffset, 0, 42),
   Text = titleText,
   TextXAlignment = Enum.TextXAlignment.Left,
+  TextYAlignment = Enum.TextYAlignment.Center,
   TextTruncate = Enum.TextTruncate.AtEnd,
   ZIndex = 4,
 }, top)
-bindFont(titleLabel, 12, true)
+bindFont(titleLabel, 18, false)
 bind(titleLabel, "TextColor3", "Ink")
-vline(top, UDim2.fromOffset(TOP_H + titleW - 1, 0))
+
+local metaLabel = new("TextLabel", {
+  BackgroundTransparency = 1,
+  AnchorPoint = Vector2.new(1, 0),
+  Position = UDim2.new(1, -(ACTION_H + PAGE_MARGIN + 8), 0, 8),
+  Size = UDim2.fromOffset(190, 42),
+  Text = Config.HeaderMeta or "COMPONENTS / V1.0",
+  TextXAlignment = Enum.TextXAlignment.Right,
+  TextYAlignment = Enum.TextYAlignment.Center,
+  TextTruncate = Enum.TextTruncate.AtEnd,
+  ZIndex = 4,
+}, top)
+bindFont(metaLabel, 9, true)
+metaLabel.TextTransparency = 0.12
+bind(metaLabel, "TextColor3", "Ink")
 
 local function cellButton(indexFromRight)
   local b = new("TextButton", {
@@ -829,23 +857,22 @@ local function cellButton(indexFromRight)
     AutoButtonColor = false,
     BorderSizePixel = 0,
     Text = "",
-    Size = UDim2.fromOffset(TOP_H, TOP_H),
-    Position = UDim2.new(1, -TOP_H * indexFromRight, 0, 0),
+    Size = UDim2.fromOffset(ACTION_H, ACTION_H),
+    Position = UDim2.new(1, -(PAGE_MARGIN + ACTION_H * indexFromRight), 0, 11),
     ZIndex = 4,
   }, top)
-b.BackgroundColor3 = Theme.Accent
-table.insert(lookers, { row = b, fn = function() b.BackgroundColor3 = Theme.Accent end })
-local parts = {}
-b.MouseEnter:Connect(function()
-  tw(b, 0.12, { BackgroundTransparency = 0 })
-  for _, p in ipairs(parts) do tw(p[1], 0.12, { [p[2]] = Theme.Cream }) end
-end)
-b.MouseLeave:Connect(function()
-  tw(b, 0.12, { BackgroundTransparency = 1 })
-  for _, p in ipairs(parts) do tw(p[1], 0.12, { [p[2]] = Theme.Ink }) end
-end)
-vline(b, UDim2.fromOffset(0, 0))
-return b, parts
+  b.BackgroundColor3 = Theme.Accent
+  table.insert(lookers, { row = b, fn = function() b.BackgroundColor3 = Theme.Accent end })
+  local parts = {}
+  b.MouseEnter:Connect(function()
+    tw(b, 0.12, { BackgroundTransparency = 0 })
+    for _, part in ipairs(parts) do tw(part[1], 0.12, { [part[2]] = Theme.Cream }) end
+  end)
+  b.MouseLeave:Connect(function()
+    tw(b, 0.12, { BackgroundTransparency = 1 })
+    for _, part in ipairs(parts) do tw(part[1], 0.12, { [part[2]] = Theme.Ink }) end
+  end)
+  return b, parts
 end
 
 local gearBtn, gearParts = cellButton(1)
@@ -859,8 +886,8 @@ if Icons["lucide-settings"] then
     Image = Icons["lucide-settings"],
     ZIndex = 5,
   }, gearBtn)
-bind(gi, "ImageColor3", "Ink")
-table.insert(gearParts, { gi, "ImageColor3" })
+  bind(gi, "ImageColor3", "Ink")
+  table.insert(gearParts, { gi, "ImageColor3" })
 else
   local gl = new("TextLabel", {
     BackgroundTransparency = 1,
@@ -868,24 +895,28 @@ else
     Text = "CFG",
     ZIndex = 5,
   }, gearBtn)
-bindFont(gl, 10, true)
-bind(gl, "TextColor3", "Ink")
-table.insert(gearParts, { gl, "TextColor3" })
+  bindFont(gl, 10, true)
+  bind(gl, "TextColor3", "Ink")
+  table.insert(gearParts, { gl, "TextColor3" })
 end
 
 local tabsHolder = new("ScrollingFrame", {
   Name = "Tabs",
   BackgroundTransparency = 1,
   BorderSizePixel = 0,
-  Position = UDim2.fromOffset(TOP_H + titleW, 0),
-  Size = UDim2.new(1, -(TOP_H + titleW + TOP_H), 1, 0),
+  Position = UDim2.fromOffset(PAGE_MARGIN, 52),
+  Size = UDim2.new(1, -(PAGE_MARGIN * 2), 0, 34),
   ScrollBarThickness = 0,
   CanvasSize = UDim2.new(),
   AutomaticCanvasSize = Enum.AutomaticSize.X,
   ScrollingDirection = Enum.ScrollingDirection.X,
   ZIndex = 4,
 }, top)
-new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, SortOrder = Enum.SortOrder.LayoutOrder }, tabsHolder)
+new("UIListLayout", {
+  FillDirection = Enum.FillDirection.Horizontal,
+  SortOrder = Enum.SortOrder.LayoutOrder,
+  Padding = UDim.new(0, 14),
+}, tabsHolder)
 
 local body = new("Frame", {
   Name = "Body",
@@ -922,6 +953,7 @@ local resizeClip = new("Frame", {
   Position = UDim2.fromOffset(4, 4),
   Size = UDim2.fromOffset(14, 14),
   ZIndex = 11,
+  Visible = not FULLSCREEN_LAYOUT,
 }, resizeBtn)
 
 local resizeDot = new("Frame", {
@@ -947,8 +979,8 @@ do
       local d = input.Position - resizeStart
       local scaleFactor = math.max(OverallScalePercent / 100, 0.01)
       main.Size = UDim2.fromOffset(
-      math.clamp(startAbs.X + d.X / scaleFactor, 400, 1000),
-      math.clamp(startAbs.Y + d.Y / scaleFactor, 260, 700)
+      math.clamp(startAbs.X + d.X / scaleFactor, 400, math.max(420, vp.X - 16)),
+      math.clamp(startAbs.Y + d.Y / scaleFactor, 260, math.max(280, vp.Y - 16))
       )
     end
   end)
@@ -1472,7 +1504,7 @@ local card = new("Frame", {
   Position = UDim2.fromScale(1, 0),
   BorderSizePixel = 0,
 }, slot)
-bind(card, "BackgroundColor3", "Accent")
+bind(card, "BackgroundColor3", "Paper")
 local cardStroke = new("UIStroke", { Thickness = 1 }, card)
 bind(cardStroke, "Color", "Line")
 
@@ -1483,10 +1515,10 @@ local iconBox = new("Frame", {
   BorderSizePixel = 0,
 }, card)
 local ist = new("UIStroke", { Thickness = 1 }, iconBox)
-bind(ist, "Color", "Cream")
+bind(ist, "Color", "Ink")
 local ex = new("TextLabel", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Text = "!" }, iconBox)
 bindFont(ex, 13, true)
-bind(ex, "TextColor3", "Cream")
+bind(ex, "TextColor3", "Ink")
 
 local tl = new("TextLabel", {
   BackgroundTransparency = 1,
@@ -1497,7 +1529,7 @@ local tl = new("TextLabel", {
   TextTruncate = Enum.TextTruncate.AtEnd,
 }, card)
 bindFont(tl, 12, true)
-bind(tl, "TextColor3", "Cream")
+bind(tl, "TextColor3", "Ink")
 if sub then
   local sl = new("TextLabel", {
     BackgroundTransparency = 1,
@@ -1509,7 +1541,7 @@ if sub then
     TextTransparency = 0.2,
   }, card)
 bindFont(sl, 10, false)
-bind(sl, "TextColor3", "Cream")
+bind(sl, "TextColor3", "Ink")
 end
 
 TweenService:Create(card, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
@@ -2467,7 +2499,7 @@ local catIcon
 if catAsset then
   catIcon = new("ImageLabel", {
     BackgroundTransparency = 1,
-    Position = UDim2.new(0, 10, 0.5, -7),
+    Position = UDim2.new(0, 0, 0.5, -7),
     Size = UDim2.fromOffset(14, 14),
     Image = catAsset,
     ZIndex = 5,
@@ -2510,7 +2542,8 @@ local CategoryPage = new("ScrollingFrame", {
 }, ContentContainer)
 bind(CategoryPage, "ScrollBarImageColor3", "Accent")
 new("UIPadding", {
-  PaddingTop = UDim.new(0, 16), PaddingBottom = UDim.new(0, 22),
+  PaddingLeft = UDim.new(0, PAGE_MARGIN), PaddingRight = UDim.new(0, PAGE_MARGIN),
+  PaddingTop = UDim.new(0, 30), PaddingBottom = UDim.new(0, 24),
 }, CategoryPage)
 
 local cols, colH = {}, {}
@@ -2521,8 +2554,8 @@ local function buildCols()
   colHolder = new("Frame", {
     Name = "Cols",
     BackgroundTransparency = 1,
-    Position = UDim2.fromOffset(16, 0),
-    Size = UDim2.new(1, -(16 + 18), 0, 0),
+    Position = UDim2.fromOffset(0, 0),
+    Size = UDim2.new(1, 0, 0, 0),
     AutomaticSize = Enum.AutomaticSize.Y,
   }, CategoryPage)
 new("UIListLayout", {
@@ -2572,12 +2605,12 @@ bind(ps, "Color", "Line")
 local inner = new("Frame", {
   Name = "Inner",
   BackgroundTransparency = 1,
-  Position = UDim2.fromOffset(10, 8),
-  Size = UDim2.new(1, -20, 0, 0),
+  Position = UDim2.fromOffset(22, 14),
+  Size = UDim2.new(1, -44, 0, 0),
   AutomaticSize = Enum.AutomaticSize.Y,
 }, panel)
-new("UIPadding", { PaddingBottom = UDim.new(0, 8) }, inner)
-new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) }, inner)
+new("UIPadding", { PaddingBottom = UDim.new(0, 14) }, inner)
+new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8) }, inner)
 curPanel = inner
 
 local headLabel
@@ -2585,24 +2618,24 @@ if title ~= nil then
   panelCount += 1
   local h = new("Frame", {
     Name = "PanelHeader",
-    Size = UDim2.new(1, 0, 0, 30),
+    Size = UDim2.new(1, 0, 0, 36),
     BackgroundTransparency = 1,
     BorderSizePixel = 0,
     LayoutOrder = 0,
   }, inner)
 local ln = new("Frame", { Position = UDim2.new(0, 0, 1, -1), Size = UDim2.new(1, 0, 0, 1), BorderSizePixel = 0, ZIndex = 3 }, h)
 bind(ln, "BackgroundColor3", "Line")
-local x = 12
+local x = 0
 local asset = resolveIcon(iconName)
 if asset then
   local img = new("ImageLabel", {
     BackgroundTransparency = 1,
-    Position = UDim2.new(0, 10, 0.5, -7),
+    Position = UDim2.new(0, 0, 0.5, -7),
     Size = UDim2.fromOffset(14, 14),
     Image = asset,
   }, h)
 bind(img, "ImageColor3", "Accent")
-x = 30
+x = 22
 end
 local text = NumberSections and string.format("%02d / %s", panelCount, U(title)) or U(title)
 headLabel = new("TextLabel", {
@@ -2613,13 +2646,15 @@ headLabel = new("TextLabel", {
   TextXAlignment = Enum.TextXAlignment.Left,
   TextTruncate = Enum.TextTruncate.AtEnd,
 }, h)
-bindFont(headLabel, 11, true)
+bindFont(headLabel, 11, false)
 if textColor then
   headLabel.TextColor3 = textColor
 else
   bind(headLabel, "TextColor3", "Ink")
 end
-colH[ci] += 30
+colH[ci] += 72
+else
+  colH[ci] += 28
 end
 return panel, headLabel
 end
@@ -2665,7 +2700,7 @@ end
 
 local function newRow(className, height)
   ensurePanel()
-  height = height or 30
+  height = height or 36
   local row = new(className, {
     Size = UDim2.new(1, 0, 0, height),
     BackgroundTransparency = 1,
@@ -2676,7 +2711,7 @@ local function newRow(className, height)
     row.AutoButtonColor = false
     row.Text = ""
   end
-  colH[curCol] += height
+  colH[curCol] += height + 8
   return row
 end
 
@@ -2720,7 +2755,7 @@ local function hoverable(o)
     ZIndex = 0,
     Size = emptySize,
   }, o.row)
-bind(wipe, "BackgroundColor3", "Accent")
+bind(wipe, "BackgroundColor3", "Team")
 
 local function look(animate)
   local h = state.hover
@@ -2746,28 +2781,32 @@ end
 
 local function inputBox(row, placeholder, text, width)
   local bg = new("Frame", {
-    AnchorPoint = Vector2.new(1, 0.5),
-    Position = UDim2.new(1, -10, 0.5, 0),
-    Size = UDim2.fromOffset(width or 130, 20),
+    Position = UDim2.fromOffset(0, 27),
+    Size = UDim2.new(1, 0, 0, 40),
     BorderSizePixel = 0,
   }, row)
-bind(bg, "BackgroundColor3", inputColor)
-local st = new("UIStroke", { Thickness = 1 }, bg)
-bind(st, "Color", "Line")
-local tb = new("TextBox", {
-  BackgroundTransparency = 1,
-  Position = UDim2.fromOffset(6, 0),
-  Size = UDim2.new(1, -12, 1, 0),
-  PlaceholderText = placeholder or "",
-  Text = text or "",
-  ClearTextOnFocus = false,
-  TextXAlignment = Enum.TextXAlignment.Left,
-  TextTruncate = Enum.TextTruncate.AtEnd,
-}, bg)
-bindFont(tb, 11, false)
-bind(tb, "TextColor3", "Ink")
-bind(tb, "PlaceholderColor3", dimInk)
-return tb
+  bind(bg, "BackgroundColor3", inputColor)
+  local baseline = new("Frame", {
+    AnchorPoint = Vector2.new(0, 1),
+    Position = UDim2.new(0, 0, 1, 0),
+    Size = UDim2.new(1, 0, 0, 1),
+    BorderSizePixel = 0,
+  }, bg)
+  bind(baseline, "BackgroundColor3", "Line")
+  local tb = new("TextBox", {
+    BackgroundTransparency = 1,
+    Position = UDim2.fromOffset(10, 0),
+    Size = UDim2.new(1, -20, 1, 0),
+    PlaceholderText = placeholder or "",
+    Text = text or "",
+    ClearTextOnFocus = false,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextTruncate = Enum.TextTruncate.AtEnd,
+  }, bg)
+  bindFont(tb, 11, false)
+  bind(tb, "TextColor3", "Ink")
+  bind(tb, "PlaceholderColor3", dimInk)
+  return tb
 end
 
 function CategoryElements:CreateLabel(Text, IconName, TextColor)
@@ -2804,9 +2843,15 @@ function CategoryElements:CreateButton(ButtonText, IconName, TextColor, Callback
     end
   end
 
-  local row = newRow("TextButton", 32)
+  local row = newRow("TextButton", 50)
   local marker, hasIcon = addMarker(row, IconName)
-  local lbl = addLabel(row, ButtonText, hasIcon and 32 or 12, 1, 36)
+  local lbl = addLabel(row, ButtonText, hasIcon and 34 or 12, 1, 36)
+  if not hasIcon then
+    lbl.AnchorPoint = Vector2.new(0.5, 0)
+    lbl.Position = UDim2.new(0.5, 0, 0, 0)
+    lbl.Size = UDim2.new(1, -48, 1, 0)
+    lbl.TextXAlignment = Enum.TextXAlignment.Center
+  end
   local rowStroke = new("UIStroke", { Thickness = 1 }, row)
   local hovering = false
   local hotkeyEntry
@@ -2863,22 +2908,117 @@ function CategoryElements:CreateMenuButton(ButtonText, IconName, Items)
   end)
 end
 
+function CategoryElements:CreateMenuList(Items, DefaultSelected, Callback)
+  ensurePanel()
+  Items = Items or {}
+  local entries = {}
+  local selected = DefaultSelected
+  local height = math.max(#Items, 1) * 38
+  local holder = new("Frame", {
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, 0, 0, height),
+    LayoutOrder = nextOrder(),
+  }, curPanel)
+  colH[curCol] += height + 8
+  new("UIListLayout", {
+    SortOrder = Enum.SortOrder.LayoutOrder,
+    Padding = UDim.new(0, 0),
+  }, holder)
+
+  local function paint(entry)
+    local active = entry.value == selected
+    entry.button.BackgroundTransparency = active and 0 or 1
+    entry.button.BackgroundColor3 = Theme.Team
+    entry.label.TextColor3 = active and Theme.Cream or Theme.Ink
+    entry.diamond.BackgroundTransparency = active and 0 or 1
+    entry.diamond.BackgroundColor3 = active and Theme.Cream or Theme.Ink
+    entry.diamondStroke.Color = active and Theme.Cream or Theme.Ink
+  end
+
+  for index, item in ipairs(Items) do
+    local def = type(item) == "table" and item or { Text = tostring(item) }
+    local value = def.Value ~= nil and def.Value or def.Text or tostring(item)
+    if def.Selected == true and selected == nil then selected = value end
+    local button = new("TextButton", {
+      AutoButtonColor = false,
+      BackgroundTransparency = 1,
+      BorderSizePixel = 0,
+      Text = "",
+      Size = UDim2.new(1, 0, 0, 38),
+      LayoutOrder = index,
+    }, holder)
+    local diamond = new("Frame", {
+      AnchorPoint = Vector2.new(0, 0.5),
+      Position = UDim2.new(0, 15, 0.5, 0),
+      Size = UDim2.fromOffset(8, 8),
+      Rotation = 45,
+      BorderSizePixel = 0,
+    }, button)
+    local diamondStroke = new("UIStroke", { Thickness = 1 }, diamond)
+    local label = new("TextLabel", {
+      BackgroundTransparency = 1,
+      Position = UDim2.fromOffset(40, 0),
+      Size = UDim2.new(1, -50, 1, 0),
+      Text = U(def.Text or value),
+      TextXAlignment = Enum.TextXAlignment.Left,
+      TextTruncate = Enum.TextTruncate.AtEnd,
+    }, button)
+    bindFont(label, 12, false)
+    local entry = {
+      button = button,
+      label = label,
+      diamond = diamond,
+      diamondStroke = diamondStroke,
+      value = value,
+      callback = def.Callback,
+    }
+    entries[#entries + 1] = entry
+    button.MouseEnter:Connect(function()
+      if entry.value ~= selected then
+        button.BackgroundTransparency = 0
+        button.BackgroundColor3 = Theme.Row
+        label.TextColor3 = Theme.Ink
+      end
+    end)
+    button.MouseLeave:Connect(function()
+      paint(entry)
+    end)
+    button.MouseButton1Click:Connect(function()
+      selected = entry.value
+      for _, other in ipairs(entries) do paint(other) end
+      if entry.callback then task.spawn(entry.callback, selected) end
+      if Callback then task.spawn(Callback, selected) end
+    end)
+    table.insert(lookers, { row = button, fn = function() paint(entry) end })
+    paint(entry)
+  end
+
+  for _, entry in ipairs(entries) do paint(entry) end
+  return {
+    SetSelected = function(value)
+      selected = value
+      for _, entry in ipairs(entries) do paint(entry) end
+    end,
+    GetSelected = function() return selected end,
+  }
+end
+
 function CategoryElements:CreateButtonRow(Buttons)
   ensurePanel()
   local holder = new("Frame", {
     BackgroundTransparency = 1,
-    Size = UDim2.new(1, 0, 0, 42),
+    Size = UDim2.new(1, 0, 0, 60),
     LayoutOrder = nextOrder(),
   }, curPanel)
-colH[curCol] += 42
+colH[curCol] += 68
 new("UIListLayout", {
   FillDirection = Enum.FillDirection.Horizontal,
-  HorizontalAlignment = Enum.HorizontalAlignment.Right,
+  HorizontalAlignment = Enum.HorizontalAlignment.Left,
   VerticalAlignment = Enum.VerticalAlignment.Center,
   SortOrder = Enum.SortOrder.LayoutOrder,
-  Padding = UDim.new(0, 8),
+  Padding = UDim.new(0, 14),
 }, holder)
-new("UIPadding", { PaddingRight = UDim.new(0, 10) }, holder)
+new("UIPadding", { PaddingLeft = UDim.new(0, 0) }, holder)
 
 for i, def in ipairs(Buttons or {}) do
   local primary = def.Primary == true
@@ -2886,7 +3026,7 @@ for i, def in ipairs(Buttons or {}) do
     AutoButtonColor = false,
     BorderSizePixel = 0,
     Text = U(def.Text or "OK"),
-    Size = UDim2.fromOffset(def.Width or 86, 24),
+    Size = UDim2.fromOffset(def.Width or (primary and 128 or 116), 50),
     LayoutOrder = i,
   }, holder)
 bindFont(b, 11, true)
@@ -2920,10 +3060,15 @@ function CategoryElements:CreateTextbox(TextboxText, IconName, Placeholder, Flag
     restored = SavedFlags[Flag]
   end
 
-  local row = newRow("Frame")
+  local row = newRow("Frame", 72)
   local marker, hasIcon = addMarker(row, IconName)
-  local lbl = addLabel(row, TextboxText, hasIcon and 32 or 12, 1, 140)
-  if hasIcon then bind(marker, "ImageColor3", "Accent") end
+  local lbl = addLabel(row, TextboxText, hasIcon and 22 or 0, 1, 0)
+  lbl.Size = UDim2.new(1, -24, 0, 22)
+  if hasIcon then
+    marker.Position = UDim2.fromOffset(0, 3)
+    marker.Size = UDim2.fromOffset(14, 14)
+    bind(marker, "ImageColor3", "Accent")
+  end
 
   local tb = inputBox(row, Placeholder, restored or "")
   if Flag then
@@ -2948,10 +3093,15 @@ function CategoryElements:CreateNumberTextbox(LabelText, IconName, DefaultNumber
     DefaultNumber = SavedFlags[Flag]
   end
 
-  local row = newRow("Frame")
+  local row = newRow("Frame", 72)
   local marker, hasIcon = addMarker(row, IconName)
-  local lbl = addLabel(row, LabelText, hasIcon and 32 or 12, 1, 140)
-  if hasIcon then bind(marker, "ImageColor3", "Accent") end
+  local lbl = addLabel(row, LabelText, hasIcon and 22 or 0, 1, 0)
+  lbl.Size = UDim2.new(1, -24, 0, 22)
+  if hasIcon then
+    marker.Position = UDim2.fromOffset(0, 3)
+    marker.Size = UDim2.fromOffset(14, 14)
+    bind(marker, "ImageColor3", "Accent")
+  end
 
   local tb = inputBox(row, tostring(DefaultNumber or ""), DefaultNumber and tostring(DefaultNumber) or "")
   if Flag then
@@ -3035,42 +3185,43 @@ function CategoryElements:CreateToggle(ToggleText, IconName, DefaultState, Flag,
     Flags[Flag] = { Type = "Toggle", Value = current }
   end
 
-  local row = newRow("TextButton")
+  local row = newRow("TextButton", 38)
   local marker, hasIcon = addMarker(row, IconName)
-  local lbl = addLabel(row, ToggleText, hasIcon and 32 or 12, 1, 56)
-  local box = new("Frame", {
-    AnchorPoint = Vector2.new(1, 0.5),
-    Position = UDim2.new(1, -44, 0.5, 0),
-    Size = UDim2.fromOffset(38, 18),
-    BackgroundTransparency = 0,
+  if hasIcon then
+    marker.Position = UDim2.fromOffset(31, 11)
+    marker.Size = UDim2.fromOffset(14, 14)
+  end
+  local lbl = addLabel(row, ToggleText, hasIcon and 52 or 30, 1, 38)
+  local diamond = new("Frame", {
+    AnchorPoint = Vector2.new(0, 0.5),
+    Position = UDim2.new(0, 5, 0.5, 0),
+    Size = UDim2.fromOffset(17, 17),
+    Rotation = 45,
     BorderSizePixel = 0,
+    BackgroundTransparency = current and 0 or 1,
   }, row)
-local boxStroke = new("UIStroke", { Thickness = 1 }, box)
-local knob = new("Frame", {
-  AnchorPoint = Vector2.new(0, 0.5),
-  Position = UDim2.new(0, 3, 0.5, 0),
-  Size = UDim2.fromOffset(10, 10),
-  BorderSizePixel = 0,
-}, box)
+  bind(diamond, "BackgroundColor3", "Accent")
+  local diamondStroke = new("UIStroke", { Thickness = 1 }, diamond)
+  bind(diamondStroke, "Color", "Ink")
 
-local hovering = false
-local function paint(animate)
-  local dur = animate and 0.14 or 0
-  tw(box, dur, { BackgroundColor3 = current and Theme.Accent or Theme.Input })
-  tw(knob, dur, {
-    Position = current and UDim2.new(1, -13, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
-    BackgroundColor3 = current and Theme.Cream or Theme.Ink,
+  local hovering = false
+  local function paint(animate)
+    local dur = animate and 0.14 or 0
+    tw(diamond, dur, {
+      BackgroundTransparency = current and 0 or 1,
+      BackgroundColor3 = current and Theme.Accent or Theme.Paper,
+    })
+    diamondStroke.Color = current and Theme.Accent or Theme.Ink
+    if hasIcon then marker.ImageColor3 = Theme.Accent end
+  end
+  hoverable({
+    row = row, marker = marker, hasIcon = hasIcon, labels = { lbl },
+    active = function() return current end,
+    onLook = function(_, animate)
+      hovering = _
+      paint(animate)
+    end,
   })
-  boxStroke.Color = current and Theme.Accent or Theme.Line
-end
-hoverable({
-  row = row, marker = marker, hasIcon = hasIcon, labels = { lbl },
-  active = function() return current end,
-  onLook = function(h, animate)
-    hovering = h
-    paint(animate)
-  end,
-})
 
 local function apply(fire)
   paint(true)
@@ -3125,49 +3276,50 @@ function CategoryElements:CreateSlider(SliderText, IconName, Min, Max, Default, 
     Flags[Flag] = { Type = "Slider", Value = value }
   end
 
-  local row = newRow("Frame")
+  local row = newRow("Frame", 58)
   local marker, hasIcon = addMarker(row, IconName)
-  local lbl = addLabel(row, SliderText, hasIcon and 32 or 12, 0.4)
+  local lbl = addLabel(row, SliderText, hasIcon and 32 or 12, 1, 54)
+  lbl.Size = UDim2.new(1, -78, 0, 22)
   local valLbl = new("TextLabel", {
     BackgroundTransparency = 1,
-    AnchorPoint = Vector2.new(1, 0.5),
-    Position = UDim2.new(1, -10, 0.5, 0),
-    Size = UDim2.fromOffset(34, 20),
+    AnchorPoint = Vector2.new(1, 0),
+    Position = UDim2.new(1, -10, 0, 0),
+    Size = UDim2.fromOffset(58, 22),
     TextXAlignment = Enum.TextXAlignment.Right,
   }, row)
-bindFont(valLbl, 11, false)
+  bindFont(valLbl, 11, false)
 
-local track = new("Frame", {
-  AnchorPoint = Vector2.new(1, 0.5),
-  Position = UDim2.new(1, -50, 0.5, 0),
-  Size = UDim2.new(0.44, 0, 0, 5),
-  BackgroundTransparency = 0,
-  Active = true,
-}, row)
-bind(track, "BackgroundColor3", "Row")
-new("UISizeConstraint", { MinSize = Vector2.new(70, 5), MaxSize = Vector2.new(240, 5) }, track)
-local fill = new("Frame", {
-  Size = UDim2.new(0, 0, 1, 0),
-  BorderSizePixel = 0,
-}, track)
-bind(fill, "BackgroundColor3", "Accent")
-local thumb = new("Frame", {
-  AnchorPoint = Vector2.new(0.5, 0.5),
-  Size = UDim2.fromOffset(2, 11),
-  BorderSizePixel = 0,
-  ZIndex = 2,
-}, track)
+  local track = new("Frame", {
+    Position = UDim2.new(0, 12, 0, 34),
+    Size = UDim2.new(1, -24, 0, 6),
+    BackgroundTransparency = 0,
+    Active = true,
+  }, row)
+  bind(track, "BackgroundColor3", "Row")
+  local fill = new("Frame", {
+    Size = UDim2.new(0, 0, 1, 0),
+    BorderSizePixel = 0,
+  }, track)
+  bind(fill, "BackgroundColor3", "Accent")
+  local thumb = new("Frame", {
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Size = UDim2.fromOffset(2, 14),
+    BorderSizePixel = 0,
+    ZIndex = 2,
+  }, track)
+  bind(thumb, "BackgroundColor3", "Accent")
 
-local hoverState
-local function render()
-  local h = hoverState and hoverState.hover or false
-  local f = (Max == Min) and 0 or (value - Min) / (Max - Min)
-  valLbl.Text = tostring(value)
-  valLbl.TextColor3 = h and Theme.Cream or Theme.Ink:Lerp(Theme.Paper, 0.35)
-  fill.Size = UDim2.new(f, 0, 1, 0)
-  thumb.Position = UDim2.new(f, 0, 0.5, 0)
-  thumb.BackgroundColor3 = h and Theme.Team or Theme.Accent
-end
+  local hoverState
+  local function render()
+    local hovering = hoverState and hoverState.hover or false
+    local fraction = (Max == Min) and 0 or (value - Min) / (Max - Min)
+    valLbl.Text = tostring(value)
+    valLbl.TextColor3 = hovering and Theme.Cream or Theme.Ink:Lerp(Theme.Paper, 0.25)
+    fill.Size = UDim2.new(fraction, 0, 1, 0)
+    thumb.Position = UDim2.new(fraction, 0, 0.5, 0)
+    thumb.BackgroundColor3 = hovering and Theme.Team or Theme.Accent
+  end
+
 hoverState = hoverable({
   row = row, marker = marker, hasIcon = hasIcon, labels = { lbl },
   onLook = function() render() end,
@@ -3207,21 +3359,21 @@ end
 
 function CategoryElements:CreateProgress(ProgressText, Default)
   local value = math.clamp(tonumber(Default) or 0, 0, 100)
-  local row = newRow("Frame", 46)
+  local row = newRow("Frame", 58)
   local lbl = addLabel(row, ProgressText, 12, 0.7)
-  lbl.Size = UDim2.new(0.7, -22, 0, 26)
+  lbl.Size = UDim2.new(0.7, -22, 0, 22)
   local pct = new("TextLabel", {
     BackgroundTransparency = 1,
     AnchorPoint = Vector2.new(1, 0),
     Position = UDim2.new(1, -10, 0, 0),
-    Size = UDim2.fromOffset(60, 26),
+    Size = UDim2.fromOffset(60, 22),
     TextXAlignment = Enum.TextXAlignment.Right,
   }, row)
 bindFont(pct, 11, false)
 local bar = new("Frame", {
   BackgroundTransparency = 0,
-  Position = UDim2.fromOffset(12, 29),
-  Size = UDim2.new(1, -22, 0, 5),
+  Position = UDim2.fromOffset(0, 34),
+  Size = UDim2.new(1, 0, 0, 6),
   BorderSizePixel = 0,
 }, row)
 bind(bar, "BackgroundColor3", "Row")
@@ -3265,7 +3417,7 @@ function CategoryElements:CreateSegmented(SegText, IconName, Options, Default, F
     Flags[Flag] = { Type = "Segmented", Value = current }
   end
 
-  local row = newRow("Frame", 36)
+  local row = newRow("Frame", 42)
   local marker, hasIcon = addMarker(row, IconName)
   addLabel(row, SegText, hasIcon and 32 or 12, 0.4)
   local group = new("Frame", {
@@ -3342,27 +3494,45 @@ function CategoryElements:CreateSwatches(SwatchText, IconName, Colors, DefaultIn
     DefaultIndex = SavedFlags[Flag]
   end
   Colors = Colors or {}
+  local defaultTokenNames = #Colors == 5 and { "SAND", "DUST", "STONE", "INK", "NIGHT" } or {}
   local index = tonumber(DefaultIndex) or 1
   if Flag then
     Flags[Flag] = { Type = "Swatches", Value = index }
   end
 
-  local row = newRow("Frame", 36)
+  local row = newRow("Frame", 90)
   local marker, hasIcon = addMarker(row, IconName)
-  addLabel(row, SwatchText, hasIcon and 32 or 12, 0.4)
+  local swatchLabel = addLabel(row, SwatchText, hasIcon and 22 or 0, 1, 0)
+  swatchLabel.Size = UDim2.new(1, 0, 0, 20)
+  if hasIcon then
+    marker.Position = UDim2.fromOffset(0, 3)
+    marker.Size = UDim2.fromOffset(14, 14)
+    bind(marker, "ImageColor3", "Accent")
+  end
   local holder = new("Frame", {
     BackgroundTransparency = 1,
-    AnchorPoint = Vector2.new(1, 0.5),
-    Position = UDim2.new(1, -12, 0.5, 0),
-    Size = UDim2.new(0.56, 0, 1, 0),
+    Position = UDim2.fromOffset(0, 25),
+    Size = UDim2.new(1, 0, 0, 46),
   }, row)
 new("UIListLayout", {
   FillDirection = Enum.FillDirection.Horizontal,
-  HorizontalAlignment = Enum.HorizontalAlignment.Right,
+  HorizontalAlignment = Enum.HorizontalAlignment.Left,
   VerticalAlignment = Enum.VerticalAlignment.Center,
   SortOrder = Enum.SortOrder.LayoutOrder,
-  Padding = UDim.new(0, 8),
+  Padding = UDim.new(0, 12),
 }, holder)
+local namesHolder = new("Frame", {
+  BackgroundTransparency = 1,
+  Position = UDim2.fromOffset(0, 72),
+  Size = UDim2.new(1, 0, 0, 12),
+}, row)
+new("UIListLayout", {
+  FillDirection = Enum.FillDirection.Horizontal,
+  HorizontalAlignment = Enum.HorizontalAlignment.Left,
+  VerticalAlignment = Enum.VerticalAlignment.Center,
+  SortOrder = Enum.SortOrder.LayoutOrder,
+  Padding = UDim.new(0, 12),
+}, namesHolder)
 
 local swatches = {}
 local function paint()
@@ -3372,27 +3542,41 @@ local function paint()
   end
 end
 for i, col in ipairs(Colors) do
-  local s = new("TextButton", {
-    AutoButtonColor = false,
-    Text = "",
-    BorderSizePixel = 0,
-    BackgroundColor3 = col,
-    Size = UDim2.fromOffset(20, 20),
-    LayoutOrder = i,
-  }, holder)
-local st = new("UIStroke", { Thickness = 2 }, s)
-swatches[i] = { btn = s, stroke = st }
-s.MouseButton1Click:Connect(function()
-  index = i
-  if Flag then
-    Flags[Flag].Value = index
-    save()
+  local color = typeof(col) == "Color3" and col or (type(col) == "table" and (col.Color or col.Value))
+  local tokenName = (type(col) == "table" and col.Name) or defaultTokenNames[i] or ""
+  if typeof(color) == "Color3" then
+    local s = new("TextButton", {
+      AutoButtonColor = false,
+      Text = "",
+      BorderSizePixel = 0,
+      BackgroundColor3 = color,
+      Size = UDim2.fromOffset(44, 44),
+      LayoutOrder = i,
+    }, holder)
+    local st = new("UIStroke", { Thickness = 2 }, s)
+    local name = new("TextLabel", {
+      BackgroundTransparency = 1,
+      Text = U(tokenName),
+      TextXAlignment = Enum.TextXAlignment.Center,
+      TextTruncate = Enum.TextTruncate.AtEnd,
+      Size = UDim2.fromOffset(44, 12),
+      LayoutOrder = i,
+    }, namesHolder)
+    bindFont(name, 7, false)
+    bind(name, "TextColor3", "Ink")
+    swatches[i] = { btn = s, stroke = st }
+    s.MouseButton1Click:Connect(function()
+      index = i
+      if Flag then
+        Flags[Flag].Value = index
+        save()
+      end
+      paint()
+      if Callback then
+        Callback(color, i)
+      end
+    end)
   end
-  paint()
-  if Callback then
-    Callback(col, i)
-  end
-end)
 end
 table.insert(lookers, { row = row, fn = paint })
 paint()
@@ -3576,13 +3760,18 @@ local lbl = addLabel(header, text, hasIcon and 32 or 12, 0.5)
 local box = new("Frame", {
   AnchorPoint = Vector2.new(1, 0.5),
   Position = UDim2.new(1, -10, 0, 14),
-  Size = UDim2.new(0.46, 0, 0, 22),
+  Size = UDim2.new(0.46, 0, 0, 24),
   BackgroundTransparency = 0,
   BorderSizePixel = 0,
 }, header)
 bind(box, "BackgroundColor3", "Input")
-new("UISizeConstraint", { MinSize = Vector2.new(110, 20), MaxSize = Vector2.new(260, 20) }, box)
-local boxStroke = new("UIStroke", { Thickness = 1 }, box)
+new("UISizeConstraint", { MinSize = Vector2.new(110, 22), MaxSize = Vector2.new(260, 22) }, box)
+local boxStroke = new("UIStroke", { Thickness = 0 }, box)
+local boxBaseline = new("Frame", {
+  AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0),
+  Size = UDim2.new(1, 0, 0, 1), BorderSizePixel = 0,
+}, box)
+bind(boxBaseline, "BackgroundColor3", "Line")
 local valLbl = new("TextLabel", {
   BackgroundTransparency = 1,
   Position = UDim2.fromOffset(8, 0),
@@ -3606,6 +3795,7 @@ hoverable({
   labels = { lbl, valLbl, arrow }, wipeHeight = 28,
   onLook = function(h)
     boxStroke.Color = h and Theme.Cream or Theme.Ink
+    boxBaseline.BackgroundColor3 = h and Theme.Cream or Theme.Line
   end,
 })
 
