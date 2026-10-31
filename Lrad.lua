@@ -15,26 +15,56 @@ local ThemeSettings = {}
 
 local WHITE = Color3.new(1, 1, 1)
 
+-- [Arceus X] robust executor function lookup (getgenv / getfenv / _G / shared)
 local function getExecutorFunction(name)
-  local ok, value = pcall(function()
-    return _G and _G[name] or nil
-  end)
-  if ok and type(value) == "function" then
-    return value
-  end
-  ok, value = pcall(function()
-    return getfenv and getfenv(0)[name] or nil
-  end)
-  if ok and type(value) == "function" then
-    return value
+  local getters = {
+    function() return getgenv and getgenv() end,
+    function() return getfenv and getfenv(0) end,
+    function() return _G end,
+    function() return shared end,
+  }
+  for _, getEnv in ipairs(getters) do
+    local ok, env = pcall(getEnv)
+    if ok and type(env) == "table" then
+      local okV, v = pcall(function() return env[name] end)
+      if okV and type(v) == "function" then
+        return v
+      end
+    end
   end
   return nil
 end
 
+-- [Arceus X] HttpGet with fallbacks (HttpGet(url,true) / request / http_request)
+local function httpGet(url)
+  local ok, res = pcall(function() return game:HttpGet(url) end)
+  if ok and type(res) == "string" and res ~= "" then return res end
+  ok, res = pcall(function() return game:HttpGet(url, true) end)
+  if ok and type(res) == "string" and res ~= "" then return res end
+  for _, n in ipairs({ "request", "http_request" }) do
+    local req = getExecutorFunction(n)
+    if req then
+      local okR, r = pcall(req, { Url = url, Method = "GET" })
+      if okR and type(r) == "table" and type(r.Body) == "string" and r.Body ~= "" then
+        return r.Body
+      end
+    end
+  end
+  return nil
+end
+
+local function fetchFirst(urls)
+  for _, u in ipairs(urls) do
+    local s = httpGet(u)
+    if s then return s end
+  end
+  return nil
+end
+
+-- [Arceus X] isfile is optional now
 local function fileApiReady()
   return getExecutorFunction("writefile") ~= nil
   and getExecutorFunction("readfile") ~= nil
-  and getExecutorFunction("isfile") ~= nil
 end
 
 local function SaveConfig(frame)
@@ -83,12 +113,14 @@ local function LoadConfig()
   end
   local isFile = getExecutorFunction("isfile")
   local read = getExecutorFunction("readfile")
-  if not isFile or not read then
+  if not read then
     return
   end
-  local existsOk, exists = pcall(isFile, ConfigFileName)
-  if not existsOk or not exists then
-    return
+  if isFile then
+    local existsOk, exists = pcall(isFile, ConfigFileName)
+    if not existsOk or not exists then
+      return
+    end
   end
   local ok, content = pcall(read, ConfigFileName)
   if not ok or not content then
@@ -116,10 +148,11 @@ local Icons = {}
 local NIER_ICON_URL = "https://github.com/PMLOLHUB/assets-library-/raw/refs/heads/main/Icon"
 
 do
-  local okSource, source = pcall(function()
-    return game:HttpGet(NIER_ICON_URL)
-  end)
-  if okSource and type(source) == "string" and source ~= "" then
+  local source = fetchFirst({
+    NIER_ICON_URL,
+    "https://raw.githubusercontent.com/PMLOLHUB/assets-library-/refs/heads/main/Icon",
+  })
+  if source then
     local compiler = getExecutorFunction("loadstring")
     if not compiler then
       local ok, value = pcall(function() return loadstring end)
@@ -371,7 +404,22 @@ function Library:CreateWindow(WindowName, Config)
     BgImageEnabled = Config.BackgroundImageEnabled
   end
 
-  local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+  -- [Arceus X] detect executor / mobile
+  local function executorName()
+    local f = getExecutorFunction("identifyexecutor") or getExecutorFunction("getexecutorname")
+    if f then
+      local ok, n = pcall(f)
+      if ok and n then return string.lower(tostring(n)) end
+    end
+    return ""
+  end
+  local isArceus = string.find(executorName(), "arceus", 1, true) ~= nil
+  local isMobile
+  if Config.ForceMobile ~= nil then
+    isMobile = Config.ForceMobile == true
+  else
+    isMobile = isArceus or (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
+  end
   local MobileStyleOrder = { "Classic", "Circle", "Diamond", "Pill", "Bracket" }
   local function validStyle(name)
     for _, n in ipairs(MobileStyleOrder) do
@@ -580,6 +628,7 @@ local main = new("Frame", {
   Position = startPos,
   BorderSizePixel = 0,
   ClipsDescendants = true,
+  Active = true, -- [Arceus X] sink touch input so taps don't pass through to the game
   Visible = false,
 }, gui)
 mainUIScale = new("UIScale", { Scale = OverallScalePercent / 100 }, main)
@@ -1537,7 +1586,14 @@ local function ShowContextMenu(items, position)
   local w = math.clamp(maxW + 32, 150, 320)
   local h = #items * ROW_H
   local vp = gui.AbsoluteSize
-  position = position or UserInputService:GetMouseLocation()
+  -- [Arceus X] GetMouseLocation is meaningless on touch: center the menu instead
+  if not position then
+    if isMobile then
+      position = Vector2.new(vp.X / 2 - w / 2, vp.Y / 2 - h / 2)
+    else
+      position = UserInputService:GetMouseLocation()
+    end
+  end
   local x = math.clamp(position.X, 4, math.max(4, vp.X - w - 4))
   local y = math.clamp(position.Y, 4, math.max(4, vp.Y - h - 4))
 
@@ -2744,6 +2800,13 @@ end
 local target = o.target or o.row
 target.MouseEnter:Connect(function() state.hover = true; look(true) end)
 target.MouseLeave:Connect(function() state.hover = false; look(true) end)
+-- [Arceus X] touch has no reliable MouseLeave: clear hover when the finger lifts
+target.InputEnded:Connect(function(input)
+  if input.UserInputType == Enum.UserInputType.Touch and state.hover then
+    state.hover = false
+    look(true)
+  end
+end)
 table.insert(lookers, { row = o.row, fn = look })
 look(false)
 return state, look, wipe
@@ -2890,6 +2953,12 @@ local function paint()
 end
 b.MouseEnter:Connect(function() hover = true; paint() end)
 b.MouseLeave:Connect(function() hover = false; paint() end)
+b.InputEnded:Connect(function(input)
+  if input.UserInputType == Enum.UserInputType.Touch and hover then
+    hover = false
+    paint()
+  end
+end)
 b.MouseButton1Click:Connect(function()
   if def.Callback then
     task.spawn(def.Callback)
@@ -3734,10 +3803,14 @@ b.MouseEnter:Connect(function()
   ol.TextColor3 = Theme.Ink
   mark.BackgroundColor3 = Theme.Ink
 end)
-b.MouseLeave:Connect(function()
+local function unhover()
   b.BackgroundTransparency = 1
   ol.TextColor3 = Theme.Cream
   mark.BackgroundColor3 = Theme.Cream
+end
+b.MouseLeave:Connect(unhover)
+b.InputEnded:Connect(function(input)
+  if input.UserInputType == Enum.UserInputType.Touch then unhover() end
 end)
 b.MouseButton1Click:Connect(function()
   if multi then
@@ -4192,10 +4265,11 @@ end
 local NIER_SOUND_URL = "https://github.com/PMLOLHUB/assets-library-/raw/refs/heads/main/NierSound.lua"
 
 do
-  local okSource, source = pcall(function()
-    return game:HttpGet(NIER_SOUND_URL)
-  end)
-  if okSource and type(source) == "string" and source ~= "" then
+  local source = fetchFirst({
+    NIER_SOUND_URL,
+    "https://raw.githubusercontent.com/PMLOLHUB/assets-library-/refs/heads/main/NierSound.lua",
+  })
+  if source then
     local compiler = getExecutorFunction("loadstring")
     if not compiler then
       local ok, value = pcall(function() return loadstring end)
